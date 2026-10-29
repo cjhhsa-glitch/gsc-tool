@@ -9,6 +9,8 @@ const SPRITE_NAMES = {0x01:"주인공",0x02:"주인공(자전거)",0x03:"게임�
 const SONG_NAMES = ["(없음)","타이틀 화면","1번도로","3번도로","12번도로","자기열차","관동 관장 배틀","관동 트레이너 배틀","관동 야생 배틀","포켓몬센터","등산가 마주침","아가씨 마주침","경찰관 마주침","포켓몬 회복","보라타운","2번도로","달맞이산","마을 안내","게임코너","자전거","명예의 전당","상록시티","무지개시티","트레이너 승리","야생 포켓몬 승리","관장 승리","달맞이산 광장","체육관","태초마을","오박사의 포켓몬 강좌","오박사","라이벌 등장","라이벌 퇴장","파도타기","진화","자연공원","엔딩 스태프롤","고동마을","무궁시티","기모노 아가씨 마주침","연결동굴","성도 야생 배틀","성도 트레이너 배틀","30번도로","인주시티","도라지시티","성도 관장 배틀","챔피언 배틀","라이벌 배틀","로켓단 배틀","공박사","어둠의 동굴","29번도로","36번도로","아쿠아호","반바지 꼬마 마주침","누나 마주침","로켓단 마주침","포켓몬 마니아 마주침","수도승 마주침","연두마을","금빛시티","갈색시티","포켓몬 채널","포켓몬 피리","방울탑","모다피의 탑","불탄탑","등대","분노의 호수","석영고원","37번도로","로켓단 아지트","용의 굴","성도 야생 배틀 (밤)","알프의 유적 라디오","포획 성공","26번도로","엄마","챔피언로드","포켓몬 자장가","포켓몬 행진곡","오프닝 1","오프닝 2","메인 메뉴","알프의 유적 내부","로켓단 서곡","가무연습장","벌레잡기 대회 결과","벌레잡기 대회","로켓단 라디오","프린터","엔딩 후"];
 const SONG_GROUPS = [["🏘 마을 · 도시",[0x3C, 0x26, 0x2D, 0x25, 0x3D, 0x2C, 0x45, 0x46, 0x1C, 0x15, 0x3E, 0x16, 0x0E]],["🌳 도로 · 이동",[0x34, 0x2B, 0x35, 0x47, 0x4D, 0x02, 0x03, 0x04, 0x0F, 0x23, 0x13, 0x21, 0x05, 0x36]],["🏠 건물 · 동굴 · 탑",[0x09, 0x0D, 0x1B, 0x32, 0x1E, 0x4E, 0x28, 0x33, 0x10, 0x1A, 0x41, 0x42, 0x43, 0x44, 0x48, 0x49, 0x55, 0x4F, 0x12, 0x57]],["⚔ 배틀 · 승리",[0x29, 0x4A, 0x2A, 0x2E, 0x30, 0x31, 0x2F, 0x08, 0x07, 0x06, 0x17, 0x18, 0x19, 0x4C]],["👀 트레이너 마주침",[0x1F, 0x20, 0x37, 0x38, 0x39, 0x3A, 0x3B, 0x27, 0x0A, 0x0B, 0x0C]],["🎬 이벤트 · 기타",[0x01, 0x52, 0x53, 0x54, 0x11, 0x22, 0x14, 0x24, 0x5C, 0x1D, 0x3F, 0x40, 0x50, 0x51, 0x4B, 0x5A, 0x56, 0x58, 0x59, 0x5B]]];
 const VANILLA_MUSIC_TABLE = "3A85513AB1773B00403BCA423B06453BF0753B20473BFA493B6D503BC6553D11743B9B573B2D583C97463B2F773BDD583B295B3BD85B3B6D5D3B19613CBF453D00403D5B433A9F7E3D18453D2C463D15483DAE483D0C4B3D9F4C3DEA4D3D794F3D27513D8A513CE1463DE854074C783DE8573D035B3DB8793D605C3DC55D3D96603B017C3BD0723C00403AB6643A6A693AF8563A185B3AE95F3A67623C86433A92543A426D3DC3663B3E6E3DA2743AD57D3B5E633A7C723AFC733A1F763B5F643D137B3D11683D74693D996A3B69653BC5663B52683B4B693B756B3BE86C3D5C603BCB6D3D02463BB26F3DF26B3D726C3D796D3D236E3D55703D08733DFD783A927D3D6D763BBC793B3E7B3D167C3BB1753CFD4733D27C";
+const EFFECT_CONSTS = "NORMAL_HIT SLEEP POISON_HIT LEECH_HIT BURN_HIT FREEZE_HIT PARALYZE_HIT SELFDESTRUCT DREAM_EATER MIRROR_MOVE ATTACK_UP DEFENSE_UP SPEED_UP SP_ATK_UP SP_DEF_UP ACCURACY_UP EVASION_UP ALWAYS_HIT ATTACK_DOWN DEFENSE_DOWN SPEED_DOWN SP_ATK_DOWN SP_DEF_DOWN ACCURACY_DOWN EVASION_DOWN RESET_STATS BIDE RAMPAGE FORCE_SWITCH MULTI_HIT CONVERSION FLINCH_HIT HEAL TOXIC PAY_DAY LIGHT_SCREEN TRI_ATTACK UNUSED_25 OHKO RAZOR_WIND SUPER_FANG STATIC_DAMAGE TRAP_TARGET UNUSED_2B DOUBLE_HIT JUMP_KICK MIST FOCUS_ENERGY RECOIL_HIT CONFUSE ATTACK_UP_2 DEFENSE_UP_2 SPEED_UP_2 SP_ATK_UP_2 SP_DEF_UP_2 ACCURACY_UP_2 EVASION_UP_2 TRANSFORM ATTACK_DOWN_2 DEFENSE_DOWN_2 SPEED_DOWN_2 SP_ATK_DOWN_2 SP_DEF_DOWN_2 ACCURACY_DOWN_2 EVASION_DOWN_2 REFLECT POISON PARALYZE ATTACK_DOWN_HIT DEFENSE_DOWN_HIT SPEED_DOWN_HIT SP_ATK_DOWN_HIT SP_DEF_DOWN_HIT ACCURACY_DOWN_HIT EVASION_DOWN_HIT SKY_ATTACK CONFUSE_HIT POISON_MULTI_HIT UNUSED_4E SUBSTITUTE HYPER_BEAM RAGE MIMIC METRONOME LEECH_SEED SPLASH DISABLE LEVEL_DAMAGE PSYWAVE COUNTER ENCORE PAIN_SPLIT SNORE CONVERSION2 LOCK_ON SKETCH DEFROST_OPPONENT SLEEP_TALK DESTINY_BOND REVERSAL SPITE FALSE_SWIPE HEAL_BELL PRIORITY_HIT TRIPLE_KICK THIEF MEAN_LOOK NIGHTMARE FLAME_WHEEL CURSE UNUSED_6E PROTECT SPIKES FORESIGHT PERISH_SONG SANDSTORM ENDURE ROLLOUT SWAGGER FURY_CUTTER ATTRACT RETURN PRESENT FRUSTRATION SAFEGUARD SACRED_FIRE MAGNITUDE BATON_PASS PURSUIT RAPID_SPIN UNUSED_82 UNUSED_83 MORNING_SUN SYNTHESIS MOONLIGHT HIDDEN_POWER RAIN_DANCE SUNNY_DAY DEFENSE_UP_HIT ATTACK_UP_HIT ALL_UP_HIT FAKE_OUT BELLY_DRUM PSYCH_UP MIRROR_COAT SKULL_BASH TWISTER EARTHQUAKE FUTURE_SIGHT GUST STOMP SOLARBEAM THUNDER TELEPORT BEAT_UP FLY DEFENSE_CURL";
+const EFFECT_KO = {NORMAL_HIT:"일반 공격",SLEEP:"잠들게 하기",POISON_HIT:"공격 + 독 (확률)",LEECH_HIT:"공격 + HP 흡수",BURN_HIT:"공격 + 화상 (확률)",FREEZE_HIT:"공격 + 얼음 (확률)",PARALYZE_HIT:"공격 + 마비 (확률)",SELFDESTRUCT:"자폭 (쓰러짐)",DREAM_EATER:"꿈먹기 (잠든 상대만)",MIRROR_MOVE:"따라하기",ALWAYS_HIT:"반드시 명중",RESET_STATS:"능력 변화 없애기 (흑안개)",BIDE:"참기",RAMPAGE:"난동 (2~3턴 후 혼란)",FORCE_SWITCH:"강제 교체·도망 (울부짖기)",MULTI_HIT:"2~5번 연속 공격",CONVERSION:"텍스처 (타입 바꾸기)",FLINCH_HIT:"공격 + 풀죽음 (확률)",HEAL:"HP 절반 회복",TOXIC:"맹독",PAY_DAY:"고양이돈받기",LIGHT_SCREEN:"빛의장막",TRI_ATTACK:"트라이어택",OHKO:"일격필살",RAZOR_WIND:"2턴 공격 (모으기)",SUPER_FANG:"상대 HP 절반 데미지",STATIC_DAMAGE:"고정 데미지 (위력 = 데미지)",TRAP_TARGET:"조이기·묶기 (2~5턴)",DOUBLE_HIT:"2번 공격",JUMP_KICK:"빗나가면 반동 (점프킥)",MIST:"흰안개",FOCUS_ENERGY:"기충전 (급소율 상승)",RECOIL_HIT:"반동 데미지",CONFUSE:"혼란시키기",TRANSFORM:"변신",REFLECT:"리플렉터",POISON:"독 걸기",PARALYZE:"마비시키기",SKY_ATTACK:"2턴 공격 (불새)",CONFUSE_HIT:"공격 + 혼란 (확률)",POISON_MULTI_HIT:"2번 공격 + 독 (더블니들)",SUBSTITUTE:"대타출동",HYPER_BEAM:"파괴광선 (다음 턴 쉼)",RAGE:"분노",MIMIC:"흉내내기",METRONOME:"손가락흔들기",LEECH_SEED:"씨뿌리기",SPLASH:"튀어오르기 (효과 없음)",DISABLE:"사슬묶기",LEVEL_DAMAGE:"레벨만큼 데미지",PSYWAVE:"사이코웨이브",COUNTER:"카운터",ENCORE:"앵콜",PAIN_SPLIT:"아픔나누기",SNORE:"코골기",CONVERSION2:"텍스처2",LOCK_ON:"록온",SKETCH:"스케치",DEFROST_OPPONENT:"공격 + 상대 얼음 녹임",SLEEP_TALK:"잠꼬대",DESTINY_BOND:"길동무",REVERSAL:"기사회생 (HP 적을수록 강함)",SPITE:"원한",FALSE_SWIPE:"칼등치기 (HP 1 남김)",HEAL_BELL:"치료방울",PRIORITY_HIT:"선제공격",TRIPLE_KICK:"트리플킥",THIEF:"도둑질",MEAN_LOOK:"검은눈빛 (도망 못 감)",NIGHTMARE:"악몽",FLAME_WHEEL:"공격 + 화상, 자신 얼음 녹임",CURSE:"저주",PROTECT:"방어 (막기)",SPIKES:"압정뿌리기",FORESIGHT:"꿰뚫어보기",PERISH_SONG:"멸망의노래",SANDSTORM:"모래바람",ENDURE:"버티기",ROLLOUT:"구르기",SWAGGER:"뽐내기",FURY_CUTTER:"연속자르기",ATTRACT:"헤롱헤롱",RETURN:"은혜갚기 (친밀도 높을수록 강함)",PRESENT:"프레젠트",FRUSTRATION:"화풀이 (친밀도 낮을수록 강함)",SAFEGUARD:"신비의부적",SACRED_FIRE:"성스러운불꽃",MAGNITUDE:"매그니튜드",BATON_PASS:"바톤터치",PURSUIT:"따라가때리기",RAPID_SPIN:"고속스핀",MORNING_SUN:"아침햇살",SYNTHESIS:"광합성",MOONLIGHT:"달의불빛",HIDDEN_POWER:"잠재파워",RAIN_DANCE:"비바라기",SUNNY_DAY:"쾌청",DEFENSE_UP_HIT:"공격 + 자신 방어 상승",ATTACK_UP_HIT:"공격 + 자신 공격 상승",ALL_UP_HIT:"공격 + 자신 모든 능력 상승",FAKE_OUT:"속이기 (첫 턴 풀죽음)",BELLY_DRUM:"배북",PSYCH_UP:"자기암시",MIRROR_COAT:"미러코트",SKULL_BASH:"로케트박치기",TWISTER:"회오리",EARTHQUAKE:"지진",FUTURE_SIGHT:"미래예지",GUST:"바람일으키기",STOMP:"짓밟기",SOLARBEAM:"솔라빔",THUNDER:"번개",TELEPORT:"순간이동",BEAT_UP:"집단구타",FLY:"공중날기·구멍파기",DEFENSE_CURL:"웅크리기"};
 // ===== 10-charset.js
 // ================================================================ 글자표 (Program.cs Charset 과 같음)
 class Charset {
@@ -226,6 +228,7 @@ class Rom {
     this.analyze();
     this.findFree();
     this.gfx = new MapRender(this.data);
+    this.loadData();
   }
 
   off(bank, addr) { return bank === 0 ? addr : bank * 0x4000 + (addr - 0x4000); }
@@ -387,6 +390,7 @@ class Rom {
     if (!Rom.banked(ptr)) return;
     const h = this.off(bank, ptr);
     this.usedFlags.add(this.w(h));
+    o.trainer = { cls: this.data[h + 2], id: this.data[h + 3] };
     this.addText(o, bank, this.w(h + 4)); // 만났을 때
     this.addText(o, bank, this.w(h + 6)); // 이겼을 때
     this.addText(o, bank, this.w(h + 8)); // 졌을 때
@@ -413,6 +417,8 @@ class Rom {
         case 0x4D: case 0x52: case 0x53: this.addText(o, bank, a1); break;
         case 0x64: this.addText(o, bank, a1); this.addText(o, bank, this.w(pc + 3)); break;
         case 0x31: case 0x32: case 0x33: this.usedFlags.add(a1); break;
+        case 0x5E: if (!o.trainer) o.trainer = { cls: d[pc + 1], id: d[pc + 2] }; break;          // loadtrainer
+        case 0x94: if (d[pc + 1] !== 2 && d[pc + 1] !== 4) o.mart = this.w(pc + 2); break;         // pokemart
       }
       switch (op) {
         case 0x03: case 0x04: case 0x05: case 0x0C: case 0x52: case 0x53: case 0x8F:
@@ -1015,6 +1021,505 @@ const Player = {
   stop() { if (this.src) { try { this.src.stop(); } catch (e) { } this.src = null; } }
 };
 
+// ===== 50-data.js
+// ================================================================ 게임 데이터 (RomEdit.cs · RomDex.cs · RomMart.cs · RomTypeMatchup.cs 와 같음)
+const TYPES = [[0, '노말'], [1, '격투'], [2, '비행'], [3, '독'], [4, '땅'], [5, '바위'], [7, '벌레'], [8, '고스트'], [9, '강철'],
+  [0x14, '불꽃'], [0x15, '물'], [0x16, '풀'], [0x17, '전기'], [0x18, '에스퍼'], [0x19, '얼음'], [0x1A, '드래곤'], [0x1B, '악']];
+const TYPE_NAME = new Map(TYPES.concat([[0x13, '???']]));
+const GRASS_CHANCE = [30, 30, 20, 10, 5, 4, 1], WATER_CHANCE = [60, 30, 10];
+const GROWTH = ['보통 (100만)', '조금 빠름', '조금 느림', '보통보다 느림 (105만)', '빠름 (80만)', '느림 (125만)'];
+const GENDER_VALS = [0, 31, 63, 127, 191, 254, 255];
+const GENDER_NAMES = ['수컷만', '암컷 12.5%', '암컷 25%', '암컷 50%', '암컷 75%', '암컷만', '성별 없음'];
+const EVO_METHODS = ['', '레벨업', '진화의 돌·도구', '통신교환', '친밀도', '레벨+공격/방어 비교'];
+const MAX_MART_ITEMS = 15;
+
+Object.assign(Rom.prototype, {
+  loadData() {
+    const safe = f => { try { f(); } catch (e) { console.warn(e); } };
+    this.pokemonNames = []; this.itemNames = []; this.classNames = []; this.moveNames = [];
+    this.wild = []; this.trainerClasses = []; this.marts = [];
+    safe(() => this.loadNames());
+    safe(() => this.loadWild());
+    safe(() => this.loadTrainers());
+    safe(() => this.loadDex());
+    safe(() => this.loadMarts());
+  },
+
+  fixedName(off, len) {
+    const b = Array.from(this.data.subarray(off, off + len)); b.push(0x50);
+    const r = this.cs.decode(b, 0);
+    return r ? r.text : '?';
+  },
+
+  encodeName(s) { return this.cs.encode(s, { firstBreak: true }, false); },
+
+  // 첫 몇 개 이름으로 표를 찾아 '@'(끝) 으로 이어진 이름들을 읽음
+  readList(first, max) {
+    let pat;
+    try { pat = []; for (const s of first.split('@').filter(x => x)) { pat.push(...this.encodeName(s), 0x50); } } catch (e) { return { names: [], off: -1 }; }
+    let p = this.findPattern(pat, 0, this.data.length);
+    if (p < 0) return { names: [], off: -1 };
+    const start = p, list = [''];
+    for (let i = 0; i < max; i++) {
+      const r = this.cs.decode(this.data, p);
+      if (!r || r.term !== 0x50 || r.end - p > 24) break;
+      list.push(r.text); p = r.end + 1;
+    }
+    return { names: list, off: start, len: p - start };
+  },
+
+  loadNames() {
+    const d = this.data;
+    const f = this.findPattern([0xF5, 0xE5, 0x3E, -1, 0xD7, 0xFA, -1, -1, 0x3D, 0x21, -1, -1, 0x5F, 0x16, 0x00, 0x19], 0, 0x4000);
+    if (f >= 0) {
+      this.pokemonNamesOff = this.off(d[f + 3], this.w(f + 10));
+      this.pokemonNames = [''];
+      for (let i = 0; i < 251; i++) this.pokemonNames.push(this.fixedName(this.pokemonNamesOff + i * 10, 10));
+    }
+    this.itemNames = this.readList('마스터볼@하이퍼볼@', 255).names;
+    this.classNames = this.readList('체육관 관장@체육관 관장@', 80).names;
+  },
+  monName(i) { return this.pokemonNames[i] || ('#' + i); },
+  itemName(i) { return i === 0 ? '(없음)' : this.itemNames[i] || ('도구 ' + i); },
+  moveName(i) { return i === 0 ? '(없음)' : this.moveNames[i] || ('기술 ' + i); },
+
+  // ------------------------------------------------ 야생 포켓몬
+  loadWild() {
+    const g = this.findPattern([0x21, -1, -1, 0x01, 0x2F, 0x00, 0xCD, -1, -1, 0xD8, 0x21, -1, -1, 0x11, -1, -1], 0x4000, this.data.length);
+    const w = this.findPattern([0x21, -1, -1, 0x01, 0x09, 0x00, 0xCD, -1, -1, 0xD8, 0x21, -1, -1, 0x11, -1, -1], 0x4000, this.data.length);
+    const read = (p, water) => {
+      const size = water ? 9 : 47;
+      for (let n = 0; n < 200 && p + size < this.data.length; n++, p += size) {
+        if (this.data[p] === 0xFF) break;
+        this.wild.push({ off: p, water, group: this.data[p], map: this.data[p + 1] });
+      }
+    };
+    if (g >= 0) { const b = Math.floor(g / 0x4000); read(this.off(b, this.w(g + 11)), false); read(this.off(b, this.w(g + 14)), false); }
+    if (w >= 0) { const b = Math.floor(w / 0x4000); read(this.off(b, this.w(w + 11)), true); read(this.off(b, this.w(w + 14)), true); }
+  },
+  wildFor(a) { return this.wild.filter(x => x.group === a.group && x.map === a.map); },
+  // 시간대 t(0 아침, 1 낮, 2 밤), 칸 i 의 [레벨, 포켓몬] 위치
+  wildSlot(t, time, i) { return t.water ? t.off + 3 + i * 2 : t.off + 5 + (time * 7 + i) * 2; },
+  wildRate(t, time) { return t.off + 2 + time; },
+
+  // ------------------------------------------------ 트레이너
+  loadTrainers() {
+    const t = this.findPattern([0x21, -1, -1, 0x7A, 0x3D, 0x4F, 0x06, 0x00, 0x09, 0x09, 0x3E, -1, 0xCD], 0x4000, this.data.length);
+    if (t < 0) return;
+    const bank = this.data[t + 11], tbl = this.w(t + 1);
+    this.trainerBank = bank; this.trainerTbl = this.off(bank, tbl);
+    let classes = (this.w(this.trainerTbl) - tbl) / 2;
+    if (classes <= 0 || classes > 100) classes = Math.max(0, Math.min(100, this.classNames.length - 1));
+    const ptrs = [];
+    for (let i = 0; i < classes; i++) { const v = this.w(this.trainerTbl + i * 2); if (!Rom.banked(v)) break; ptrs.push(v); }
+    for (let c = 0; c < ptrs.length; c++) {
+      const start = ptrs[c];
+      let end = 0x8000; for (const x of ptrs) if (x > start && x < end) end = x;
+      const tc = { cls: c + 1, name: this.classNames[c + 1] || ('트레이너 ' + (c + 1)), off: this.off(bank, start), parties: [], tail: [] };
+      let p = tc.off; const pend = this.off(bank, end);
+      while (p < pend && tc.parties.length < 64) {
+        const party = this.readParty(p, pend);
+        if (!party) break;
+        tc.parties.push(party); p += party.length;
+      }
+      tc.length = p - tc.off;
+      if (end < 0x8000 && pend - p > 0 && pend - p <= 0x1000) tc.tail = Array.from(this.data.subarray(p, pend));
+      this.trainerClasses.push(tc);
+    }
+  },
+  readParty(p, pend) {
+    const d = this.data, r = this.cs.decode(d, p);
+    if (!r || r.term !== 0x50 || r.end - p > 20 || r.end + 2 >= pend) return null;
+    const type = d[r.end + 1];
+    if (type > 3) return null;
+    const party = { name: r.text, type, mons: [] };
+    let q = r.end + 2;
+    while (q < pend && d[q] !== 0xFF) {
+      if (party.mons.length >= 6) return null;
+      const m = { level: d[q], species: d[q + 1], item: 0, moves: [0, 0, 0, 0] };
+      if (m.level < 1 || m.level > 100 || m.species < 1 || m.species > 251) return null;
+      let k = q + 2;
+      if (type & 2) m.item = d[k++];
+      if (type & 1) for (let i = 0; i < 4; i++) m.moves[i] = d[k++];
+      party.mons.push(m); q = k;
+    }
+    if (q >= pend || !party.mons.length) return null;
+    party.length = q + 1 - p;
+    return party;
+  },
+  allocInBank(bank, n) {
+    for (const r of this.free) if (Math.floor(r[0] / 0x4000) === bank && r[1] - r[0] >= n) { const p = r[0]; r[0] += n; return p; }
+    return -1;
+  },
+  writeTrainerClass(tc) {
+    const b = [];
+    for (const pt of tc.parties) {
+      let nm;
+      try { nm = this.encodeName(pt.name); } catch (e) { return e.message; }
+      if (nm.length > 10) return "'" + pt.name + "' 이름이 너무 길어요 (한글 5글자까지)";
+      b.push(...nm, 0x50, pt.type);
+      if (pt.mons.length < 1 || pt.mons.length > 6) return '포켓몬은 1~6마리여야 해요';
+      for (const m of pt.mons) {
+        b.push(m.level, m.species);
+        if (pt.type & 2) b.push(m.item);
+        if (pt.type & 1) b.push(...m.moves);
+      }
+      b.push(0xFF);
+    }
+    b.push(...tc.tail);
+    let p = tc.off;
+    if (b.length > tc.length + tc.tail.length) {
+      p = this.allocInBank(this.trainerBank, b.length);
+      if (p < 0) return '트레이너 데이터 공간이 부족해요 (포켓몬 수나 기술 지정을 줄여주세요)';
+      const addr = 0x4000 + p % 0x4000, slot = this.trainerTbl + (tc.cls - 1) * 2;
+      this.data[slot] = addr & 0xff; this.data[slot + 1] = addr >> 8;
+      tc.off = p;
+    }
+    this.data.set(b, p);
+    tc.length = Math.max(tc.length + tc.tail.length, b.length) - tc.tail.length;
+    this.dirty = true;
+    return null;
+  },
+  trainerLabel(cls, id) {
+    const tc = this.trainerClasses.find(c => c.cls === cls);
+    const pt = tc && tc.parties[id - 1];
+    if (!pt) return '트레이너 ' + cls + '-' + id;
+    return tc.name + ' ' + pt.name + ' — ' + pt.mons.map(m => this.monName(m.species) + ' Lv' + m.level).join(', ');
+  },
+
+  // ------------------------------------------------ 도감 (능력치 · 기술)
+  findSequence(stride, count) {
+    const d = this.data;
+    let best = -1, bestHits = Math.floor(count * 6 / 10);
+    for (let p = 0x4000; p + stride * count < d.length; p++) {
+      if (d[p] !== 1 || d[p + stride] !== 2) continue;
+      let hits = 0;
+      for (let i = 0; i < count; i++) if (d[p + stride * i] === i + 1) hits++;
+      if (hits > bestHits) { bestHits = hits; best = p; if (hits === count) break; }
+    }
+    return best;
+  },
+  loadDex() {
+    this.baseStatsOff = this.findSequence(32, 251);
+    this.movesOff = this.findSequence(7, 251);
+    // 기술 이름표: 게임이 쓰는 이름 주소 표(포켓몬 이름 바로 다음 칸)를 따라감 → 이름을 길게 바꿔 옮긴 롬도 맞게 읽음
+    this.moveNamesRef = -1;
+    if (this.pokemonNamesOff >= 0) {
+      const tri = o => [Math.floor(o / 0x4000), (0x4000 + o % 0x4000) & 0xff, (0x4000 + o % 0x4000) >> 8];
+      const r = this.findPattern(tri(this.pokemonNamesOff), 0, 0x4000);
+      if (r >= 0 && Rom.banked(this.w(r + 4))) {
+        const start = this.off(this.data[r + 3], this.w(r + 4)), names = [''];
+        let p = start;
+        for (let i = 0; i < 251; i++) {
+          const x = this.cs.decode(this.data, p);
+          if (!x || x.term !== 0x50 || x.end - p > 24) break;
+          names.push(x.text); p = x.end + 1;
+        }
+        if (names.length > 250) { this.moveNames = names; this.moveNamesOff = start; this.moveNamesLen = p - start; this.moveNamesRef = r + 3; }
+      }
+    }
+    if (this.moveNamesRef < 0) {
+      const mn = this.readList('막치기@태권당수@', 251);
+      if (mn.names.length > 1) { this.moveNames = mn.names; this.moveNamesOff = mn.off; this.moveNamesLen = mn.len; }
+    }
+    const f = this.findPattern([0x4F, 0x06, 0x00, 0x21, -1, -1, 0x09, 0x09, 0x3E, -1, 0xCD], 0x4000, this.data.length);
+    this.evosBank = -1;
+    if (f >= 0) { this.evosBank = this.data[f + 9]; this.evosTbl = this.off(this.evosBank, this.w(f + 4)); }
+    this.tmOff = this.findPattern([0xDF, 0x1D, 0xAE, 0xCD], 0, this.data.length);
+  },
+  statOff(mon) { return this.baseStatsOff + (mon - 1) * 32; },
+  moveOff(move) { return this.movesOff + (move - 1) * 7; },
+  setPokemonName(mon, name) {
+    const b = this.encodeName(name);
+    if (b.length > 10) throw new Error('이름이 너무 길어요 (한글 5글자까지)');
+    const off = this.pokemonNamesOff + (mon - 1) * 10;
+    for (let i = 0; i < 10; i++) this.data[off + i] = i < b.length ? b[i] : 0x50;
+    this.pokemonNames[mon] = name; this.dirty = true;
+  },
+  setMoveName(move, name) {
+    if (!(this.moveNamesOff >= 0)) throw new Error('기술 이름표를 찾지 못했어요');
+    if (this.encodeName(name).length > 14) throw new Error('이름이 너무 길어요 (한글 7글자까지)');
+    const copy = this.moveNames.slice(); copy[move] = name;
+    const all = [];
+    for (let i = 1; i < copy.length; i++) all.push(...this.encodeName(copy[i]), 0x50);
+    if (all.length > this.moveNamesLen) {
+      const bank = Math.floor(this.moveNamesOff / 0x4000), addr = 0x4000 + this.moveNamesOff % 0x4000;
+      const pat = [bank, addr & 0xff, addr >> 8];
+      const ref = this.moveNamesRef >= 0 ? this.moveNamesRef : this.findPattern(pat, 0, this.data.length);
+      if (ref < 0 || (this.moveNamesRef < 0 && this.findPattern(pat, ref + 1, this.data.length) >= 0)) throw new Error('기술 이름 전체 공간이 부족해요. 다른 기술 이름을 조금 줄여주세요.');
+      const a = this.alloc(all.length + 32);
+      if (!a) throw new Error('롬에 빈 공간이 부족해요');
+      const na = 0x4000 + a.p % 0x4000;
+      this.data[ref] = Math.floor(a.p / 0x4000); this.data[ref + 1] = na & 0xff; this.data[ref + 2] = na >> 8;
+      this.moveNamesOff = a.p; this.moveNamesLen = all.length + 32;
+    }
+    for (let i = 0; i < this.moveNamesLen; i++) this.data[this.moveNamesOff + i] = i < all.length ? all[i] : 0x50;
+    this.moveNames = copy; this.dirty = true;
+  },
+  evosOff(mon) { return this.off(this.evosBank, this.w(this.evosTbl + (mon - 1) * 2)); },
+  readEvos(mon) {
+    const d = this.data, evos = [], moves = [];
+    let p = this.evosOff(mon); const start = p;
+    while (d[p] !== 0 && evos.length < 8) {
+      const e = { method: d[p], p1: d[p + 1], p2: 0, species: 0 };
+      if (e.method === 5) { e.p2 = d[p + 2]; e.species = d[p + 3]; p += 4; } else { e.species = d[p + 2]; p += 3; }
+      evos.push(e);
+    }
+    p++;
+    while (d[p] !== 0 && moves.length < 64) { moves.push({ level: d[p], move: d[p + 1] }); p += 2; }
+    p++;
+    return { evos, moves, length: p - start };
+  },
+  writeEvos(mon, evos, moves) {
+    const b = [];
+    for (const e of evos) { b.push(e.method, e.p1); if (e.method === 5) b.push(e.p2); b.push(e.species); }
+    b.push(0);
+    for (const m of moves.slice().sort((x, y) => x.level - y.level)) b.push(m.level, m.move);
+    b.push(0);
+    let p = this.evosOff(mon);
+    if (b.length > this.readEvos(mon).length) {
+      p = this.allocInBank(this.evosBank, b.length);
+      if (p < 0) return '진화·기술 데이터 공간이 부족해요';
+      const addr = 0x4000 + p % 0x4000;
+      this.data[this.evosTbl + (mon - 1) * 2] = addr & 0xff; this.data[this.evosTbl + (mon - 1) * 2 + 1] = addr >> 8;
+    }
+    this.data.set(b, p); this.dirty = true;
+    return null;
+  },
+  // 그 레벨까지 배운 마지막 기술 4개 (게임이 기본으로 넣어주는 기술)
+  defaultMoves(species, level) {
+    const res = [0, 0, 0, 0];
+    if (this.evosBank < 0) return res;
+    const learned = [];
+    for (const m of this.readEvos(species).moves) {
+      if (m.level > level || learned.includes(m.move)) continue;
+      if (learned.length === 4) learned.shift();
+      learned.push(m.move);
+    }
+    learned.forEach((m, i) => res[i] = m);
+    return res;
+  },
+
+  // ------------------------------------------------ 상점 · 가격
+  loadMarts() {
+    const d = this.data;
+    const f = this.findPattern([0x21, -1, -1, 0x19, 0x19, 0x5E, 0x23, 0x56, 0x06, -1], 0, d.length);
+    if (f >= 0) {
+      this.martBank = d[f + 9];
+      const tblAddr = this.w(f + 1);
+      this.martTbl = this.off(this.martBank, tblAddr);
+      let minPtr = 0x8000, n = 0;
+      while (n < 80 && tblAddr + n * 2 < minPtr) {
+        const a = this.w(this.martTbl + n * 2);
+        if (!Rom.banked(a)) break;
+        if (a > tblAddr) minPtr = Math.min(minPtr, a);
+        n++;
+      }
+      for (let i = 0; i < n; i++) {
+        const a = this.w(this.martTbl + i * 2);
+        if (!Rom.banked(a)) break;
+        const m = { id: i, off: this.off(this.martBank, a), items: [] };
+        const cnt = d[m.off];
+        if (cnt > 40) break;
+        for (let k = 0; k < cnt; k++) m.items.push(d[m.off + 1 + k]);
+        m.length = cnt + 2;
+        this.marts.push(m);
+      }
+    }
+    const g = this.findPattern([0x21, -1, -1, 0x3D, 0x4F, 0x06, 0x00, 0x3E, 0x07, 0xCD, -1, -1, 0x3E, -1], 0x4000, d.length);
+    if (g >= 0) this.itemAttrOff = this.off(d[g + 13], this.w(g + 1) - 2);
+    else this.itemAttrOff = this.findPattern([0x00, 0x00, -1, -1, -1, -1, -1, 0xB0, 0x04, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0x58, 0x02, -1, -1, -1, -1, -1, 0xC8, 0x00], 0x4000, d.length);
+  },
+  getPrice(item) { return this.itemAttrOff < 0 || item < 1 ? 0 : this.w(this.itemAttrOff + (item - 1) * 7); },
+  setPrice(item, price) {
+    if (this.itemAttrOff < 0 || item < 1) return;
+    const o = this.itemAttrOff + (item - 1) * 7;
+    this.data[o] = price & 0xff; this.data[o + 1] = price >> 8; this.dirty = true;
+  },
+  writeMart(m, items) {
+    if (items.length < 1) return '물건이 하나 이상 있어야 해요';
+    if (items.length > MAX_MART_ITEMS) return '물건은 ' + MAX_MART_ITEMS + '개까지 넣을 수 있어요';
+    const b = [items.length, ...items, 0xFF];
+    let p = m.off;
+    if (b.length > m.length) {
+      p = this.allocInBank(this.martBank, b.length);
+      if (p < 0) return '상점 데이터 공간이 부족해요';
+      const addr = 0x4000 + p % 0x4000;
+      this.data[this.martTbl + m.id * 2] = addr & 0xff; this.data[this.martTbl + m.id * 2 + 1] = addr >> 8;
+      m.off = p; m.length = b.length;
+    }
+    this.data.set(b, p);
+    m.items = items.slice(); this.dirty = true;
+    return null;
+  },
+
+  // ------------------------------------------------ 타입 상성
+  typeMatchupsOff() {
+    if (this._tmOff !== undefined) return this._tmOff;
+    let o = this.findPattern([0x00, 0x05, 0x05, 0x00, 0x09, 0x05, 0x14, 0x14, 0x05], 0x20000, this.data.length);
+    if (o < 0) o = this.findPattern([0x14, 0x16, 0x14, 0x14, 0x19, 0x14, 0x14, 0x07, 0x14], 0x20000, this.data.length);
+    if (o < 0) o = this.findPattern([0x14, 0x14, 0x05, 0x14, 0x15, 0x05], 0x20000, this.data.length);
+    // 상성을 바꾼 롬은 앞부분 모양이 달라서, 찾은 곳에서 표가 시작하는 데까지 거슬러 올라감
+    const d = this.data, ids = new Set(TYPES.map(t => t[0]).concat([0x13]));
+    const ok = p => p >= 0 && ids.has(d[p]) && ids.has(d[p + 1]) && [0, 5, 10, 20].includes(d[p + 2]);
+    if (o >= 0) while (ok(o - 3)) o -= 3;
+    return this._tmOff = o;
+  },
+  readTypeMatchups() {
+    const list = [], off = this.typeMatchupsOff(), d = this.data;
+    if (off < 0) return list;
+    let p = off, foresight = false;
+    while (p < d.length - 3) {
+      if (d[p] === 0xFF) break;
+      if (d[p] === 0xFE) { foresight = true; p++; continue; }
+      list.push({ atk: d[p], def: d[p + 1], mult: d[p + 2], foresight });
+      p += 3;
+    }
+    return list;
+  },
+  saveTypeMatchups(entries) {
+    const off = this.typeMatchupsOff(), d = this.data;
+    if (off < 0) return '타입 상성 표를 찾지 못했어요';
+    const b = [];
+    for (const e of entries) if (!e.foresight && e.mult !== 10) b.push(e.atk, e.def, e.mult);
+    b.push(0xFE);
+    for (const e of entries) if (e.foresight) b.push(e.atk, e.def, e.mult);
+    b.push(0xFF);
+    let len = 0; for (let p = off; p < d.length && d[p] !== 0xFF; p++) len++;
+    len++;
+    if (b.length > len) return '상성 표 공간이 부족해요 (원래보다 특별한 상성을 너무 많이 넣었어요)';
+    for (let i = 0; i < len; i++) d[off + i] = i < b.length ? b[i] : 0xFF;
+    this.dirty = true;
+    return null;
+  },
+
+  // ------------------------------------------------ 바깥 지도 NPC 모습 목록 (RomOutdoorSprites.cs)
+  // 금·은은 바깥 지도에서 지도 묶음마다 정해진 11가지 모습만 불러옴. 목록에 없는 모습은 게임에서 엉뚱한 인물로 보임
+  outdoorTable() {
+    if (this._outTbl !== undefined) return this._outTbl;
+    this._outTbl = -1;
+    const p = this.findPattern([0xFA, -1, -1, 0x3D, 0x4F, 0x06, 0x00, 0x21, -1, -1, 0x09, 0x09, 0x2A, 0x66, 0x6F, 0x0E], 0, 0x20000);
+    if (p >= 0) {
+      this._outLen = this.data[p + 16];
+      if (this._outLen >= 1 && this._outLen <= 32) this._outTbl = this.off(Math.floor(p / 0x4000), this.w(p + 8));
+    }
+    return this._outTbl;
+  },
+  isOutdoor(a) { return a && (a.env === 1 || a.env === 2); },
+  outdoorListOff(group) {
+    const t = this.outdoorTable();
+    if (t < 0 || group < 1) return -1;
+    return this.off(Math.floor(t / 0x4000), this.w(t + (group - 1) * 2));
+  },
+  outdoorSprites(a) {
+    if (!this.isOutdoor(a)) return null;
+    const o = this.outdoorListOff(a.group);
+    if (o < 0) return null;
+    return Array.from(this.data.subarray(o, o + this._outLen));
+  },
+  spriteShows(a, sprite) { if (sprite <= 0) return true; const l = this.outdoorSprites(a); return !l || l.includes(sprite); },
+  isStillSprite(sprite) {
+    const g = this.gfx;
+    if (!g.spritePtr || sprite < 1 || sprite >= 0x80) return false;
+    return this.data[g.off(g.spriteBank, g.spritePtr) + (sprite - 1) * 6 + 4] === 3;
+  },
+  // 구역의 모든 오브젝트 (지운 것 포함) 모습
+  areaObjects(a) {
+    const d = this.data;
+    let e = this.off(a.scriptBank, a.eventsAddr) + 2;
+    e += 1 + d[e] * 5; e += 1 + d[e] * 8; e += 1 + d[e] * 5;
+    const n = d[e++], res = [];
+    for (let i = 0; i < n && i < 64; i++, e += 13) res.push({ sprite: d[e], hidden: d[e + 5] === 0xFF && d[e + 6] === 0x00 });
+    return res;
+  },
+  usedOutdoorSprites(group) {
+    const used = new Set();
+    for (const x of this.allAreas) if (x.group === group && this.isOutdoor(x)) for (const ob of this.areaObjects(x)) if (!ob.hidden) used.add(ob.sprite);
+    return used;
+  },
+  outdoorRegionText(a) {
+    const list = this.outdoorSprites(a);
+    if (!list) return null;
+    const used = this.usedOutdoorSprites(a.group);
+    const walking = list.filter(s => !this.isStillSprite(s));
+    const free = walking.filter(s => !used.has(s)).length;
+    const missing = [...used].filter(s => !this.isStillSprite(s) && !list.includes(s));
+    let t = '이 지역 바깥 지도는 움직이는 NPC 모습을 ' + walking.length + '가지까지만 쓸 수 있어요 (게임 한계). 지금: ' +
+      walking.map(s => (used.has(s) ? '' : '(안 씀) ') + Names.sprite(s)).join(', ') + ' · 빈 칸 ' + free + '개';
+    if (missing.length) t += '\n⚠ 게임에서 다른 인물로 보이는 모습: ' + missing.map(s => Names.sprite(s)).join(', ') +
+      (free === 0 ? ' → 위 모습 중 하나를 이 지역에서 안 쓰게 바꿔야 자리가 생겨요' : ' → 그 NPC 를 골라 [모습 적용]을 누르면 빈 칸에 들어가요');
+    return t;
+  },
+  // sprite 모습을 이 구역 묶음의 바깥 지도 목록에 넣음. 안내 문구 (필요 없으면 null)
+  ensureOutdoorSprite(a, sprite) {
+    if (this.spriteShows(a, sprite)) return null;
+    const lo = this.outdoorListOff(a.group);
+    if (lo < 0) return null;
+    const list = this.outdoorSprites(a), used = this.usedOutdoorSprites(a.group), still = this.isStillSprite(sprite);
+    const slot = list.findIndex(s => !used.has(s) && this.isStillSprite(s) === still);
+    if (slot < 0)
+      return "⚠ '" + Names.sprite(sprite) + "' 모습은 이 지역 바깥 지도에서 게임에 다른 인물로 보여요. 이 지역은 NPC 모습을 " + list.length + '가지까지만 쓸 수 있는데 모두 쓰는 중이에요.\n이 지역에서 이미 쓰는 모습 중에서 고르세요: ' +
+        [...new Set(list.filter(s => this.isStillSprite(s) === still))].map(s => Names.sprite(s)).join(', ');
+    const old = list[slot], tbl = this.outdoorTable(), bank = Math.floor(tbl / 0x4000);
+    let groups = 0; for (const x of this.allAreas) groups = Math.max(groups, x.group);
+    const sharing = []; for (let g = 1; g <= groups; g++) if (g !== a.group && this.outdoorListOff(g) === lo) sharing.push(g);
+    let target = lo;
+    if (sharing.length) {
+      const p = this.allocInBank(bank, this._outLen);
+      if (p < 0) {
+        for (const g of sharing) for (const x of this.allAreas)
+          if (x.group === g && this.isOutdoor(x) && this.areaObjects(x).some(ob => !ob.hidden && ob.sprite === old))
+            return '⚠ 이 지역 NPC 모습 목록을 늘릴 공간이 없어서 게임에서 다른 인물로 보일 수 있어요.';
+      } else {
+        this.data.copyWithin(p, lo, lo + this._outLen);
+        const addr = 0x4000 + p % 0x4000;
+        this.data[tbl + (a.group - 1) * 2] = addr & 0xFF; this.data[tbl + (a.group - 1) * 2 + 1] = addr >> 8;
+        target = p;
+      }
+    }
+    this.data[target + slot] = sprite; this.dirty = true;
+    return "이 지역 바깥 지도에서도 '" + Names.sprite(sprite) + "' 모습이 보이도록 NPC 모습 목록에 넣었어요 (안 쓰던 '" + Names.sprite(old) + "' 모습과 바꿈).";
+  },
+
+  // ------------------------------------------------ NPC 수정
+  moveOwner(o, x, y) {
+    const d = this.data;
+    if (o.isSign) { d[o.eventOff] = y; d[o.eventOff + 1] = x; }
+    else { d[o.eventOff + 1] = y + 4; d[o.eventOff + 2] = x + 4; }
+    o.x = x; o.y = y; this.dirty = true;
+  },
+  setLook(a, o, sprite, move) {
+    this.data[o.eventOff] = sprite; this.data[o.eventOff + 3] = move;
+    o.sprite = sprite; o.move = move; this.dirty = true;
+    return this.ensureOutdoorSprite(a, sprite);
+  },
+  eventsSize(e) {
+    const d = this.data;
+    let p = e + 2;
+    p += 1 + d[p] * 5; p += 1 + d[p] * 8; p += 1 + d[p] * 5;
+    return p + 1 + d[p] * 13 - e;
+  },
+  // NPC·표지판 지우기 (중간 NPC 는 순서를 지키려고 안 보이게만 함)
+  deleteOwner(a, o) {
+    if (o.eventOff < 0) return '이 항목은 지울 수 없어요 (자동 이벤트)';
+    const d = this.data, ev = this.off(a.scriptBank, a.eventsAddr), end = ev + this.eventsSize(ev);
+    let p = ev + 2;
+    p += 1 + d[p] * 5; p += 1 + d[p] * 8;
+    const bgCount = p;
+    p += 1 + d[p] * 5;
+    const objCount = p, objStart = p + 1;
+    if (o.isSign) { d.copyWithin(o.eventOff, o.eventOff + 5, end); d[bgCount]--; }
+    else {
+      const idx = (o.eventOff - objStart) / 13;
+      if (idx === d[objCount] - 1) d[objCount]--;
+      else { d[o.eventOff + 5] = 0xFF; d[o.eventOff + 6] = 0x00; }
+    }
+    this.dirty = true;
+    this.loadArea(a);
+    return null;
+  }
+});
+
 // ===== 90-ui.js
 // ================================================================ 화면 (블로그 글 안의 <div id="gsc-tool"> 에 붙음)
 const CSS = `
@@ -1032,7 +1537,7 @@ const CSS = `
 .gsc .drop{border:2px dashed var(--line);border-radius:10px;padding:40px 16px;text-align:center;color:var(--sub);background:var(--panel)}
 .gsc .drop.over{border-color:var(--accent);background:#eef3ff}
 .gsc .drop b{color:var(--ink);font-size:16px}
-.gsc .tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:10px}
+.gsc .tabs{display:flex;flex-wrap:wrap;gap:2px 4px;border-bottom:1px solid var(--line);margin-bottom:10px}
 .gsc .tabs button{border:none;border-bottom:3px solid transparent;border-radius:0;background:none;padding:6px 12px}
 .gsc .tabs button.on{border-bottom-color:var(--accent);font-weight:bold}
 .gsc .cols{display:grid;grid-template-columns:230px minmax(0,1fr) 320px;grid-template-areas:"tree map text";gap:10px;min-height:520px}
@@ -1073,6 +1578,25 @@ const CSS = `
 .gsc.gsc-full{position:fixed;inset:0;z-index:2147483000;max-width:none;border-radius:0;border:none;overflow:auto;margin:0}
 .gsc.gsc-full .tree,.gsc.gsc-full .texts{max-height:calc(100vh - 190px)}
 .gsc.gsc-full .mapwrap{max-height:calc(100vh - 240px)}
+.gsc input.num,.gsc input.txt{font:inherit;border:1px solid var(--line);border-radius:6px;padding:4px 6px;background:var(--panel);color:var(--ink)}
+.gsc input.txt{width:140px}
+.gsc .side{display:grid;grid-template-columns:240px minmax(0,1fr);gap:10px}
+.gsc.w-narrow .side{grid-template-columns:minmax(0,1fr)}
+.gsc .list{overflow:auto;max-height:560px;flex:1;margin-top:6px}
+.gsc .list .it{padding:3px 8px;cursor:pointer;border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px}
+.gsc .list .it:hover{background:var(--bg)}
+.gsc .list .it.on{background:var(--accent);color:var(--accent-ink)}
+.gsc .list .grp2{font-weight:bold;font-size:12px;color:var(--sub);padding:6px 4px 2px}
+.gsc table.grid{border-collapse:collapse;font-size:13px}
+.gsc table.grid td,.gsc table.grid th{border:1px solid var(--line);padding:3px 5px;text-align:left}
+.gsc table.grid th{background:var(--bg);font-weight:normal;color:var(--sub)}
+.gsc .scrollx{overflow:auto;max-width:100%}
+.gsc .ok{color:var(--ok)} .gsc .bad{color:var(--warn)}
+.gsc .mon{border:1px solid var(--line);border-radius:6px;padding:6px;margin-bottom:6px}
+.gsc .tm{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:2px;font-size:12px;max-height:220px;overflow:auto;border:1px solid var(--line);border-radius:6px;padding:4px}
+.gsc table.types td.c{width:30px;height:26px;text-align:center;cursor:pointer;user-select:none;font-weight:bold;padding:0}
+.gsc table.types td.m0{background:#555;color:#fff}.gsc table.types td.m5{background:#f4b6b6}.gsc table.types td.m20{background:#a8e0a8}
+.gsc table.types th.v{writing-mode:vertical-rl;padding:4px 2px;font-size:12px}
 .gsc .credit{margin-top:10px;font-size:11px;color:var(--sub);text-align:right}
 `;
 
@@ -1088,6 +1612,20 @@ function el(tag, attrs, ...kids) {
   return e;
 }
 
+// [[값, 이름], …] 로 고르기 상자
+function sel(options, value, onchange) {
+  const s = el('select');
+  for (const [v, t] of options) { const o = el('option', { value: v, text: t }); if (v === value) o.selected = true; s.append(o); }
+  if (onchange) s.addEventListener('change', () => onchange(+s.value));
+  return s;
+}
+function num(value, min, max, onchange) {
+  const i = el('input', { type: 'number', min, max, value, style: 'width:70px' });
+  i.className = 'num';
+  if (onchange) i.addEventListener('change', () => { let v = Math.round(+i.value); if (isNaN(v)) v = min; v = Math.max(min, Math.min(max, v)); i.value = v; onchange(v); });
+  return i;
+}
+
 class App {
   constructor(host) {
     this.host = host;
@@ -1095,6 +1633,7 @@ class App {
     this.spriteCache = new Map();
     if (!document.getElementById('gsc-style')) document.head.append(el('style', { id: 'gsc-style', text: CSS }));
     host.classList.add('gsc');
+    host.gscApp = this;
     // 화면 크기가 아니라 블로그 글 칸 너비에 맞춰 배치를 바꿈
     const fit = () => {
       const w = host.clientWidth;
@@ -1168,7 +1707,8 @@ class App {
       this.saveBtn);
     this.tabBtns = {};
     const tabs = el('div', { class: 'tabs' });
-    for (const [k, label] of [['map', '🗺 지도 · 대사'], ['music', '🎵 배경음악'], ['find', '🔍 대사 찾기']]) {
+    for (const [k, label] of [['map', '🗺 지도 · 대사'], ['wild', '🌿 야생'], ['trainer', '⚔ 트레이너'], ['mart', '🏪 상점'],
+      ['dex', '📖 포켓몬'], ['moves', '💥 기술'], ['types', '⚡ 타입 상성'], ['music', '🎵 배경음악'], ['find', '🔍 대사 찾기']]) {
       const b = el('button', { text: label, onclick: () => this.setTab(k) });
       this.tabBtns[k] = b; tabs.append(b);
     }
@@ -1185,7 +1725,8 @@ class App {
     Player.stop();
     if (k === 'map') { this.body.replaceChildren(this.mapTab); if (this.area) this.drawMap(); }
     else if (k === 'music') this.body.replaceChildren(this.buildMusicTab());
-    else this.body.replaceChildren(this.buildFindTab());
+    else if (k === 'find') this.body.replaceChildren(this.buildFindTab());
+    else this.body.replaceChildren(this['tab_' + k]());
   }
 
   say(s, bad) { this.status.textContent = s; this.status.style.color = bad ? 'var(--warn)' : ''; }
@@ -1295,6 +1836,14 @@ class App {
     const r = this.canvas.getBoundingClientRect();
     const T = 16 * this.scale * (r.width / this.canvas.width);
     const x = Math.floor((e.clientX - r.left) / T), y = Math.floor((e.clientY - r.top) / T);
+    if (this.moving) {
+      const o = this.moving; this.moving = null;
+      this.canvas.style.cursor = '';
+      this.rom.moveOwner(o, x, y);
+      this.drawMap(); this.fillOwners();
+      this.say(o.name + ' 을(를) (' + x + ', ' + y + ') 로 옮겼어요');
+      return;
+    }
     const hit = this.area.owners.find(o => o.x === x && o.y === y) || this.area.extras.find(o => o.x === x && o.y === y);
     if (!hit) { this.say('(' + x + ', ' + y + ') 칸 — 여기엔 사람이나 표지판이 없어요'); return; }
     this.owner = hit;
@@ -1316,9 +1865,51 @@ class App {
   fillTexts() {
     const o = this.owner;
     this.textBox.replaceChildren();
-    if (!o || !o.texts.length) { this.textBox.append(el('div', { class: 'hint', text: '이 구역에서 대사가 있는 사람을 골라 주세요.' })); return; }
+    if (o && o.eventOff >= 0) this.textBox.append(this.npcPanel(o));
+    if (!o || !o.texts.length) { this.textBox.append(el('div', { class: 'hint', text: o ? '이 NPC 는 대사가 없어요.' : '지도에서 사람이나 표지판을 골라 주세요.' })); return; }
     this.textBox.append(el('div', { class: 'hint', text: '빈 줄 = 다음 말풍선. {이름} 같은 표시는 지우지 마세요. 고친 대사는 초록색이에요.' }));
     o.texts.forEach((t, i) => this.textBox.append(this.textEditor(t, (i + 1) + '번째 대사' + (this.rom.textNote.has(t) ? ' · ' + this.rom.textNote.get(t) : ''))));
+  }
+
+  // 고른 NPC·표지판의 모습 · 움직임 · 위치 · 지우기
+  npcPanel(o) {
+    const rom = this.rom, a = this.area;
+    const box = el('div', { class: 'npc' });
+    const note = el('div', { class: 'hint', style: 'white-space:pre-line' });
+    const moveBtn = el('button', { text: '📍 지도에서 옮기기', onclick: () => {
+      this.moving = o; this.canvas.style.cursor = 'crosshair';
+      this.say('지도에서 ' + o.name + ' 을(를) 옮길 칸을 누르세요');
+    } });
+    const delBtn = el('button', { text: '🗑 지우기', onclick: () => {
+      if (!confirm(o.name + ' 을(를) 지울까요?')) return;
+      const err = rom.deleteOwner(a, o);
+      if (err) { this.say(err, true); return; }
+      this.owner = null; this.drawMap(); this.fillOwners(); this.say(o.name + ' 을(를) 지웠어요');
+    } });
+    box.append(el('div', { class: 'bar' }, el('b', { text: o.name }), el('span', { class: 'hint', text: '(' + o.x + ', ' + o.y + ')' })));
+    if (!o.isSign) {
+      const sprites = Object.keys(SPRITE_NAMES).map(Number).sort((x, y) => x - y);
+      if (!sprites.includes(o.sprite)) sprites.unshift(o.sprite);
+      const allowed = rom.outdoorSprites(a);
+      const look = sel(sprites.map(s => [s, (allowed && allowed.includes(s) ? '✓ ' : '') + Names.sprite(s)]), o.sprite);
+      const MOVE_IDS = [6, 7, 8, 9, 3, 2], MOVE_NAMES = ['아래를 보고 서 있음', '위를 보고 서 있음', '왼쪽을 보고 서 있음', '오른쪽을 보고 서 있음', '제자리에서 두리번', '돌아다님'];
+      const mv = sel(MOVE_IDS.map((m, i) => [m, MOVE_NAMES[i]]).concat(MOVE_IDS.includes(o.move) ? [] : [[o.move, '특별한 움직임 (그대로)']]), o.move);
+      const pic = el('canvas', { width: 16, height: 16, style: 'width:32px;height:32px;background:#eee;border-radius:4px' });
+      const drawPic = () => { const g = pic.getContext('2d'); g.clearRect(0, 0, 16, 16); const sp = this.spriteImg(+look.value, o.pal); if (sp) g.drawImage(sp, 0, 0); };
+      look.addEventListener('change', drawPic); drawPic();
+      const apply = el('button', { class: 'pri', text: '모습 적용', onclick: () => {
+        const msg = rom.setLook(a, o, +look.value, +mv.value);
+        this.drawMap(); note.textContent = msg || ''; this.say(o.name + ' 모습을 바꿨어요');
+      } });
+      box.append(el('div', { class: 'bar' }, pic, look), el('div', { class: 'bar' }, mv, apply));
+      const region = rom.outdoorRegionText(a);
+      if (region) note.textContent = region + '\n(✓ = 이 지역 바깥 지도에서 그대로 보이는 모습)';
+    }
+    box.append(el('div', { class: 'bar' }, moveBtn, delBtn));
+    if (o.trainer) box.append(el('div', { class: 'bar' }, el('button', { text: '⚔ 이 트레이너 팀 고치기', onclick: () => { this.pick = { trainer: o.trainer }; this.setTab('trainer'); } })));
+    if (o.mart != null) box.append(el('div', { class: 'bar' }, el('button', { text: '🏪 이 상점 물건 고치기', onclick: () => { this.pick = { mart: o.mart }; this.setTab('mart'); } })));
+    box.append(note, el('hr', { style: 'border:none;border-top:1px solid var(--line);margin:8px 0' }));
+    return box;
   }
 
   textEditor(t, title) {
@@ -1435,6 +2026,402 @@ class App {
   }
 }
 
+
+// ===== 95-tabs.js
+// ================================================================ 데이터 편집 탭들 (야생 · 트레이너 · 상점 · 포켓몬 · 기술 · 타입 상성)
+const pad3 = n => String(n).padStart(3, '0');
+
+// 왼쪽 목록 (찾기 칸 + 항목들). items: [{ label, value, group? }]
+function listPanel(items, onPick, placeholder, current) {
+  const q = el('input', { type: 'search', placeholder: placeholder || '찾기' });
+  const list = el('div', { class: 'list' });
+  let on = null;
+  const fill = () => {
+    const s = q.value.trim();
+    list.replaceChildren();
+    let lastGroup = null;
+    for (const it of items) {
+      if (s && it.label.indexOf(s) < 0 && (it.group || '').indexOf(s) < 0) continue;
+      if (it.group && it.group !== lastGroup) { list.append(el('div', { class: 'grp2', text: it.group })); lastGroup = it.group; }
+      const d = el('div', { class: 'it', text: it.label, title: it.label });
+      d.addEventListener('click', () => { if (on) on.classList.remove('on'); on = d; d.classList.add('on'); onPick(it.value, d); });
+      if (current !== undefined && it.value === current) { on = d; d.classList.add('on'); }
+      list.append(d);
+    }
+  };
+  q.addEventListener('input', fill);
+  fill();
+  setTimeout(() => { if (on) on.scrollIntoView({ block: 'nearest' }); }, 0);
+  return el('div', { class: 'box' }, q, list);
+}
+
+Object.assign(App.prototype, {
+  monOptions(withNone) { const r = this.rom, o = []; if (withNone) o.push([0, '(없음)']); for (let i = 1; i < r.pokemonNames.length; i++) o.push([i, pad3(i) + ' ' + r.pokemonNames[i]]); return o; },
+  itemOptions() { const r = this.rom, o = [[0, '(없음)']]; for (let i = 1; i < r.itemNames.length; i++) o.push([i, r.itemNames[i]]); return o; },
+  moveOptions() { const r = this.rom, o = [[0, '(없음)']]; for (let i = 1; i < r.moveNames.length; i++) o.push([i, pad3(i) + ' ' + r.moveNames[i]]); return o; },
+  typeOptions() { return TYPES.map(([v, n]) => [v, n]); },
+  notFound(what) { return el('div', { class: 'box' }, el('div', { text: '이 롬에서 ' + what + ' 데이터를 찾지 못했어요.' })); },
+  okMsg(box, msg, bad) { box.textContent = msg; box.className = bad ? 'bad' : 'ok'; },
+  areaByGM(g, m) { return this.rom.allAreas.find(a => a.group === g && a.map === m); },
+
+  // ---------------------------------------------------------------- 야생 포켓몬
+  tab_wild() {
+    const rom = this.rom;
+    if (!rom.wild.length || !rom.pokemonNames.length) return this.notFound('야생 포켓몬');
+    const keys = [];
+    for (const t of rom.wild) { const k = t.group * 256 + t.map; if (!keys.includes(k)) keys.push(k); }
+    const order = rom.allAreas.map(a => a.group * 256 + a.map);
+    keys.sort((x, y) => (order.indexOf(x) + 1 || 9999) - (order.indexOf(y) + 1 || 9999));
+    const items = keys.map(k => { const a = this.areaByGM(k >> 8, k & 255); return { value: k, label: a ? a.name : '구역 ' + (k >> 8) + '-' + (k & 255), group: a ? a.regionName : '' }; });
+    const right = el('div', { class: 'box' });
+    const show = k => {
+      right.replaceChildren();
+      const a = this.areaByGM(k >> 8, k & 255);
+      right.append(el('div', { class: 'bar' }, el('b', { text: a ? a.regionName + ' › ' + a.name : '' }),
+        a ? el('button', { text: '🗺 지도 보기', onclick: () => this.selectArea(a) }) : null));
+      for (const t of rom.wild.filter(x => x.group * 256 + x.map === k)) {
+        right.append(el('div', { class: 'grp', text: t.water ? '🌊 물 위 (낚시 아닌 파도타기)' : '🌿 풀숲 · 동굴' }));
+        const times = t.water ? [0] : [0, 1, 2], tn = ['아침', '낮', '밤'];
+        const tbl = el('table', { class: 'grid' });
+        const head = el('tr', null, el('th', { text: '칸 (확률)' }));
+        for (const ti of times) head.append(el('th', { text: t.water ? '포켓몬 · 레벨' : tn[ti] + ' 포켓몬 · 레벨' }));
+        tbl.append(head);
+        const rate = el('tr', null, el('th', { text: '만나는 빈도' }));
+        for (const ti of times) {
+          const o = rom.wildRate(t, ti);
+          rate.append(el('td', null, num(rom.data[o], 0, 255, v => { rom.data[o] = v; rom.dirty = true; }), el('span', { class: 'hint', text: ' /255' })));
+        }
+        tbl.append(rate);
+        const chances = t.water ? WATER_CHANCE : GRASS_CHANCE;
+        const opts = this.monOptions(false);
+        for (let i = 0; i < chances.length; i++) {
+          const tr = el('tr', null, el('th', { text: (i + 1) + '번 (' + chances[i] + '%)' }));
+          for (const ti of times) {
+            const o = rom.wildSlot(t, ti, i);
+            tr.append(el('td', null,
+              sel(opts, rom.data[o + 1], v => { rom.data[o + 1] = v; rom.dirty = true; }),
+              el('span', { text: ' Lv ' }), num(rom.data[o], 1, 100, v => { rom.data[o] = v; rom.dirty = true; })));
+          }
+          tbl.append(tr);
+        }
+        right.append(el('div', { class: 'scrollx' }, tbl));
+      }
+      right.append(el('div', { class: 'hint', text: '바꾸면 바로 롬에 들어가요. [고친 롬 내려받기]로 저장하세요.' }));
+    };
+    const cur = this.area ? this.area.group * 256 + this.area.map : -1;
+    const first = keys.includes(cur) ? cur : keys[0];
+    show(first);
+    return el('div', { class: 'side' }, listPanel(items, show, '장소 찾기', first), right);
+  },
+
+  // ---------------------------------------------------------------- 트레이너
+  tab_trainer() {
+    const rom = this.rom;
+    if (!rom.trainerClasses.length) return this.notFound('트레이너');
+    const items = [];
+    for (const tc of rom.trainerClasses) tc.parties.forEach((p, i) => items.push({ value: tc.cls * 256 + i + 1, label: p.name + ' — ' + p.mons.map(m => rom.monName(m.species) + ' ' + m.level).join(', '), group: tc.name }));
+    const right = el('div', { class: 'box' });
+    const show = key => {
+      const tc = rom.trainerClasses.find(c => c.cls === key >> 8), pt = tc && tc.parties[(key & 255) - 1];
+      right.replaceChildren();
+      if (!pt) return;
+      // 편집용 복사본
+      const ed = { name: pt.name, type: pt.type, mons: pt.mons.map(m => ({ level: m.level, species: m.species, item: m.item, moves: m.moves.slice() })) };
+      const msg = el('div');
+      const monsBox = el('div');
+      const nameIn = el('input', { class: 'txt', value: ed.name }); nameIn.addEventListener('input', () => ed.name = nameIn.value);
+      const cbMoves = el('input', { type: 'checkbox' }), cbItem = el('input', { type: 'checkbox' });
+      cbMoves.checked = !!(ed.type & 1); cbItem.checked = !!(ed.type & 2);
+      const typeChange = () => { ed.type = (cbMoves.checked ? 1 : 0) | (cbItem.checked ? 2 : 0); drawMons(); };
+      cbMoves.addEventListener('change', () => {
+        if (cbMoves.checked) for (const m of ed.mons) if (!m.moves.some(x => x)) m.moves = rom.defaultMoves(m.species, m.level);
+        typeChange();
+      });
+      cbItem.addEventListener('change', typeChange);
+      const monOpts = this.monOptions(false), itemOpts = this.itemOptions(), moveOpts = this.moveOptions();
+      const drawMons = () => {
+        monsBox.replaceChildren();
+        ed.mons.forEach((m, i) => {
+          const box = el('div', { class: 'mon' });
+          const row = el('div', { class: 'bar' }, el('b', { text: (i + 1) + '.' }),
+            sel(monOpts, m.species, v => m.species = v), el('span', { text: 'Lv' }), num(m.level, 1, 100, v => m.level = v));
+          if (ed.type & 2) row.append(el('span', { text: '도구' }), sel(itemOpts, m.item, v => m.item = v));
+          row.append(el('button', { text: '✕', title: '이 포켓몬 빼기', onclick: () => { if (ed.mons.length > 1) { ed.mons.splice(i, 1); drawMons(); } } }));
+          box.append(row);
+          if (ed.type & 1) {
+            const mr = el('div', { class: 'bar' });
+            for (let k = 0; k < 4; k++) mr.append(sel(moveOpts, m.moves[k], v => m.moves[k] = v));
+            mr.append(el('button', { text: '기본 기술', title: '그 레벨까지 배운 기술로 채우기', onclick: () => { m.moves = rom.defaultMoves(m.species, m.level); drawMons(); } }));
+            box.append(mr);
+          }
+          monsBox.append(box);
+        });
+        if (ed.mons.length < 6) monsBox.append(el('button', { text: '+ 포켓몬 추가', onclick: () => { const l = ed.mons[ed.mons.length - 1]; ed.mons.push({ level: l ? l.level : 5, species: l ? l.species : 1, item: 0, moves: [0, 0, 0, 0] }); drawMons(); } }));
+      };
+      drawMons();
+      const apply = el('button', { class: 'pri', text: '적용', onclick: () => {
+        const backup = { name: pt.name, type: pt.type, mons: pt.mons };
+        Object.assign(pt, { name: ed.name.trim(), type: ed.type, mons: ed.mons.map(m => ({ level: m.level, species: m.species, item: m.item, moves: m.moves.slice() })) });
+        const err = rom.writeTrainerClass(tc);
+        if (err) { Object.assign(pt, backup); this.okMsg(msg, err, true); return; }
+        this.okMsg(msg, '적용했어요');
+      } });
+      right.append(el('div', { class: 'bar' }, el('b', { text: tc.name }), el('span', { class: 'hint', text: (key & 255) + '번' })),
+        el('div', { class: 'bar' }, el('span', { text: '이름' }), nameIn,
+          el('label', null, cbMoves, ' 기술 직접 정하기'), el('label', null, cbItem, ' 도구 지니게 하기')),
+        monsBox, el('div', { class: 'bar', style: 'margin-top:8px' }, apply, msg));
+      const where = [];
+      for (const a of rom.allAreas) for (const o of a.owners.concat(a.extras)) if (o.trainer && o.trainer.cls === tc.cls && o.trainer.id === (key & 255)) where.push([a, o]);
+      if (where.length) right.append(el('div', { class: 'bar' }, el('span', { class: 'hint', text: '나오는 곳:' }),
+        ...where.map(([a, o]) => el('button', { text: a.name + ' › ' + o.name, onclick: () => this.selectArea(a, o) }))));
+    };
+    let first = items[0].value;
+    if (this.pick && this.pick.trainer) { first = this.pick.trainer.cls * 256 + this.pick.trainer.id; this.pick = null; }
+    show(first);
+    return el('div', { class: 'side' }, listPanel(items, show, '트레이너 · 포켓몬 찾기', first), right);
+  },
+
+  // ---------------------------------------------------------------- 상점
+  tab_mart() {
+    const rom = this.rom;
+    if (!rom.marts.length) return this.notFound('상점');
+    const spots = new Map();
+    for (const a of rom.allAreas) for (const o of a.owners.concat(a.extras)) if (o.mart != null) { if (!spots.has(o.mart)) spots.set(o.mart, []); spots.get(o.mart).push([a, o]); }
+    const items = rom.marts.map(m => ({ value: m.id, label: m.id + '번 — ' + (spots.has(m.id) ? [...new Set(spots.get(m.id).map(([a]) => a.regionName + ' ' + a.name))].join(', ') : '(쓰는 곳 없음)') }));
+    const right = el('div', { class: 'box' });
+    const itemOpts = this.itemOptions().filter(([v]) => v > 0);
+    const show = id => {
+      const m = rom.marts.find(x => x.id === id);
+      right.replaceChildren();
+      const list = m.items.slice(), msg = el('div'), tb = el('div');
+      const draw = () => {
+        const t = el('table', { class: 'grid' }, el('tr', null, el('th', { text: '물건' }), el('th', { text: '값 (모든 상점 공통)' }), el('th', { text: '' })));
+        list.forEach((it, i) => {
+          t.append(el('tr', null,
+            el('td', null, sel(itemOpts, it, v => { list[i] = v; draw(); })),
+            el('td', null, num(rom.getPrice(it), 0, 65535, v => rom.setPrice(it, v)), el('span', { text: ' 원' })),
+            el('td', null,
+              el('button', { text: '▲', onclick: () => { if (i > 0) { [list[i - 1], list[i]] = [list[i], list[i - 1]]; draw(); } } }),
+              el('button', { text: '▼', onclick: () => { if (i < list.length - 1) { [list[i + 1], list[i]] = [list[i], list[i + 1]]; draw(); } } }),
+              el('button', { text: '✕', onclick: () => { list.splice(i, 1); draw(); } }))));
+        });
+        tb.replaceChildren(t);
+        if (list.length < MAX_MART_ITEMS) tb.append(el('button', { style: 'margin-top:6px', text: '+ 물건 추가', onclick: () => { list.push(itemOpts[3] ? itemOpts[3][0] : 1); draw(); } }));
+      };
+      draw();
+      right.append(el('div', { class: 'bar' }, el('b', { text: '상점 ' + id + '번' }), el('span', { class: 'hint', text: '물건은 ' + MAX_MART_ITEMS + '개까지' })), tb,
+        el('div', { class: 'bar', style: 'margin-top:8px' }, el('button', { class: 'pri', text: '물건 목록 적용', onclick: () => {
+          const err = rom.writeMart(m, list);
+          this.okMsg(msg, err || '적용했어요', !!err);
+        } }), msg),
+        el('div', { class: 'hint', text: '값은 바꾸는 즉시 들어가요 (모든 상점에서 같은 값).' }));
+      if (spots.has(id)) right.append(el('div', { class: 'bar' }, el('span', { class: 'hint', text: '이 상점 점원:' }),
+        ...spots.get(id).map(([a, o]) => el('button', { text: a.regionName + ' ' + a.name, onclick: () => this.selectArea(a, o) }))));
+    };
+    let first = rom.marts[0].id;
+    if (this.pick && this.pick.mart != null) { first = this.pick.mart; this.pick = null; }
+    show(first);
+    return el('div', { class: 'side' }, listPanel(items, show, '상점 · 장소 찾기', first), right);
+  },
+
+  // ---------------------------------------------------------------- 포켓몬 (도감 능력치 · 진화 · 기술)
+  tab_dex() {
+    const rom = this.rom;
+    if (rom.baseStatsOff < 0 || !rom.pokemonNames.length) return this.notFound('포켓몬 능력치');
+    const items = this.monOptions(false).map(([v, t]) => ({ value: v, label: t }));
+    const right = el('div', { class: 'box' });
+    const typeOpts = this.typeOptions(), itemOpts = this.itemOptions(), monOpts = this.monOptions(false), moveOpts = this.moveOptions();
+    const tms = [];
+    if (rom.tmOff >= 0) for (let i = 0; i < 57; i++) tms.push((i < 50 ? '기술머신' + String(i + 1).padStart(2, '0') : '비전머신' + String(i - 49).padStart(2, '0')) + ' ' + rom.moveName(rom.data[rom.tmOff + i]));
+    const show = mon => {
+      right.replaceChildren();
+      const d = rom.data, o = rom.statOff(mon), msg = el('div');
+      const nameIn = el('input', { class: 'txt', value: rom.pokemonNames[mon] });
+      const t1 = sel(typeOpts, d[o + 7]), t2 = sel(typeOpts, d[o + 8]);
+      const statNames = ['HP', '공격', '방어', '스피드', '특수공격', '특수방어'];
+      const stats = statNames.map((n, i) => num(Math.max(1, d[o + 1 + i]), 1, 255));
+      const total = el('b');
+      const sum = () => total.textContent = '합계 ' + stats.reduce((s, x) => s + (+x.value || 0), 0);
+      stats.forEach(s => s.addEventListener('input', sum)); sum();
+      const cr = num(d[o + 9], 0, 255), exp = num(d[o + 10], 0, 255), egg = num(d[o + 15], 0, 255);
+      const i1 = sel(itemOpts, d[o + 11]), i2 = sel(itemOpts, d[o + 12]);
+      const gi = GENDER_VALS.indexOf(d[o + 13]);
+      const gender = sel(GENDER_NAMES.map((n, i) => [i, n]), gi >= 0 ? gi : 3);
+      const growth = sel(GROWTH.map((n, i) => [i, n]), d[o + 22]);
+      const tmBoxes = tms.map((n, i) => { const c = el('input', { type: 'checkbox' }); c.checked = !!((d[o + 24 + (i >> 3)] >> (i & 7)) & 1); return [c, el('label', null, c, ' ' + n)]; });
+
+      // 진화 · 레벨업 기술
+      const ev = rom.evosBank >= 0 ? rom.readEvos(mon) : { evos: [], moves: [] };
+      const evos = ev.evos.map(e => Object.assign({}, e)), learn = ev.moves.map(m => Object.assign({}, m));
+      const evoBox = el('div'), learnBox = el('div');
+      const drawEvos = () => {
+        evoBox.replaceChildren();
+        evos.forEach((e, i) => {
+          const r = el('div', { class: 'bar' }, sel(EVO_METHODS.slice(1).map((n, k) => [k + 1, n]), e.method, v => { e.method = v; e.p1 = v === 3 ? 0xFF : v === 4 ? 1 : v === 2 ? 1 : 16; e.p2 = 1; drawEvos(); }));
+          if (e.method === 1 || e.method === 5) r.append(el('span', { text: 'Lv' }), num(e.p1, 1, 100, v => e.p1 = v));
+          if (e.method === 2) r.append(sel(itemOpts.slice(1), e.p1, v => e.p1 = v));
+          if (e.method === 3) r.append(sel([[0xFF, '(도구 없이)']].concat(itemOpts.slice(1)), e.p1, v => e.p1 = v));
+          if (e.method === 4) r.append(sel([[1, '언제나'], [2, '아침·낮'], [3, '밤']], e.p1, v => e.p1 = v));
+          if (e.method === 5) r.append(sel([[1, '공격 > 방어'], [2, '공격 < 방어'], [3, '공격 = 방어']], e.p2, v => e.p2 = v));
+          r.append(el('span', { text: '→' }), sel(monOpts, e.species, v => e.species = v), el('button', { text: '✕', onclick: () => { evos.splice(i, 1); drawEvos(); } }));
+          evoBox.append(r);
+        });
+        evoBox.append(el('button', { text: '+ 진화 추가', onclick: () => { evos.push({ method: 1, p1: 16, p2: 1, species: Math.min(251, mon + 1) }); drawEvos(); } }));
+      };
+      const drawLearn = () => {
+        learnBox.replaceChildren();
+        learn.forEach((m, i) => learnBox.append(el('div', { class: 'bar' }, el('span', { text: 'Lv' }), num(m.level, 1, 100, v => m.level = v),
+          sel(moveOpts.slice(1), m.move, v => m.move = v), el('button', { text: '✕', onclick: () => { learn.splice(i, 1); drawLearn(); } }))));
+        learnBox.append(el('button', { text: '+ 기술 추가', onclick: () => { const l = learn[learn.length - 1]; learn.push({ level: l ? Math.min(100, l.level + 1) : 1, move: 1 }); drawLearn(); } }));
+      };
+      drawEvos(); drawLearn();
+
+      const apply = el('button', { class: 'pri', text: '적용', onclick: () => {
+        try {
+          const nm = nameIn.value.trim();
+          if (nm !== rom.pokemonNames[mon]) rom.setPokemonName(mon, nm);
+          d[o + 7] = +t1.value; d[o + 8] = +t2.value;
+          stats.forEach((s, i) => d[o + 1 + i] = Math.max(1, Math.min(255, +s.value || 1)));
+          d[o + 9] = +cr.value & 255; d[o + 10] = +exp.value & 255; d[o + 15] = +egg.value & 255;
+          d[o + 11] = +i1.value; d[o + 12] = +i2.value;
+          d[o + 13] = GENDER_VALS[+gender.value]; d[o + 22] = +growth.value;
+          tmBoxes.forEach(([c], i) => { const b = o + 24 + (i >> 3), bit = 1 << (i & 7); d[b] = c.checked ? d[b] | bit : d[b] & ~bit; });
+          rom.dirty = true;
+          if (rom.evosBank >= 0) {
+            if (learn.some(m => !(m.level >= 1 && m.level <= 100))) throw new Error('레벨업 기술의 레벨은 1~100 이어야 해요');
+            const e = rom.writeEvos(mon, evos, learn);
+            if (e) throw new Error(e);
+          }
+          this.okMsg(msg, '적용했어요');
+        } catch (e) { this.okMsg(msg, e.message, true); }
+      } });
+
+      const grid = el('table', { class: 'grid' });
+      statNames.forEach((n, i) => grid.append(el('tr', null, el('th', { text: n }), el('td', null, stats[i]))));
+      grid.append(el('tr', null, el('th', { text: '' }), el('td', null, total)));
+      const etc = el('table', { class: 'grid' },
+        el('tr', null, el('th', { text: '잡히는 정도' }), el('td', null, cr, el('span', { class: 'hint', text: ' (높을수록 잘 잡힘)' }))),
+        el('tr', null, el('th', { text: '기본 경험치' }), el('td', null, exp)),
+        el('tr', null, el('th', { text: '야생이 지닌 도구' }), el('td', null, i1, ' ', i2)),
+        el('tr', null, el('th', { text: '성별' }), el('td', null, gender)),
+        el('tr', null, el('th', { text: '성장 속도' }), el('td', null, growth)),
+        el('tr', null, el('th', { text: '알 부화 걸음' }), el('td', null, egg, el('span', { class: 'hint', text: ' ×256 걸음' }))));
+      right.append(el('div', { class: 'bar' }, el('b', { text: pad3(mon) }), el('span', { text: '이름' }), nameIn, el('span', { text: '타입' }), t1, t2),
+        el('div', { class: 'bar', style: 'align-items:flex-start' }, grid, etc),
+        el('div', { class: 'grp', text: '진화' }), evoBox,
+        el('div', { class: 'grp', text: '레벨업으로 배우는 기술' }), learnBox);
+      if (tms.length) right.append(el('div', { class: 'grp', text: '기술머신 · 비전머신으로 배울 수 있는 기술' }), el('div', { class: 'tm' }, ...tmBoxes.map(x => x[1])));
+      right.append(el('div', { class: 'bar', style: 'margin-top:8px' }, apply, msg));
+    };
+    show(1);
+    return el('div', { class: 'side' }, listPanel(items, show, '포켓몬 찾기', 1), right);
+  },
+
+  // ---------------------------------------------------------------- 기술
+  tab_moves() {
+    const rom = this.rom;
+    if (rom.movesOff < 0 || rom.moveNames.length < 2) return this.notFound('기술');
+    const items = this.moveOptions().slice(1).map(([v, t]) => ({ value: v, label: t }));
+    const right = el('div', { class: 'box' });
+    const effects = moveEffects();
+    const show = mv => {
+      right.replaceChildren();
+      const d = rom.data, o = rom.moveOff(mv), msg = el('div');
+      const nameIn = el('input', { class: 'txt', value: rom.moveNames[mv] });
+      const eff = sel(effects.map((n, i) => [i, n]).concat(d[o + 1] >= effects.length ? [[d[o + 1], '효과 ' + d[o + 1]]] : []), d[o + 1]);
+      const power = num(d[o + 2], 0, 255), type = sel(this.typeOptions().concat(TYPE_NAME.has(d[o + 3]) && !TYPES.some(t => t[0] === d[o + 3]) ? [[d[o + 3], TYPE_NAME.get(d[o + 3])]] : []), d[o + 3]);
+      const acc = num(Math.min(100, Math.round(d[o + 4] * 100 / 255)), 0, 100), pp = num(Math.max(1, Math.min(40, d[o + 5])), 1, 40);
+      const chance = num(Math.min(100, Math.round(d[o + 6] * 100 / 255)), 0, 100);
+      const apply = el('button', { class: 'pri', text: '적용', onclick: () => {
+        try {
+          const nm = nameIn.value.trim();
+          if (nm !== rom.moveNames[mv]) rom.setMoveName(mv, nm);
+          d[o + 1] = +eff.value; d[o + 2] = Math.min(255, +power.value || 0); d[o + 3] = +type.value;
+          d[o + 4] = Math.min(255, Math.round((+acc.value || 0) * 255 / 100)); d[o + 5] = Math.max(1, Math.min(40, +pp.value || 1));
+          d[o + 6] = Math.min(255, Math.round((+chance.value || 0) * 255 / 100));
+          rom.dirty = true;
+          this.okMsg(msg, '적용했어요');
+        } catch (e) { this.okMsg(msg, e.message, true); }
+      } });
+      right.append(el('table', { class: 'grid' },
+        el('tr', null, el('th', { text: '이름' }), el('td', null, nameIn)),
+        el('tr', null, el('th', { text: '효과' }), el('td', null, eff)),
+        el('tr', null, el('th', { text: '위력' }), el('td', null, power)),
+        el('tr', null, el('th', { text: '타입' }), el('td', null, type)),
+        el('tr', null, el('th', { text: '명중률' }), el('td', null, acc, ' %')),
+        el('tr', null, el('th', { text: 'PP' }), el('td', null, pp)),
+        el('tr', null, el('th', { text: '추가 효과 확률' }), el('td', null, chance, ' %'))),
+        el('div', { class: 'bar', style: 'margin-top:8px' }, apply, msg));
+    };
+    show(1);
+    return el('div', { class: 'side' }, listPanel(items, show, '기술 찾기', 1), right);
+  },
+
+  // ---------------------------------------------------------------- 타입 상성
+  tab_types() {
+    const rom = this.rom;
+    const entries = rom.readTypeMatchups();
+    if (!entries.length) return this.notFound('타입 상성');
+    const normal = entries.filter(e => !e.foresight), foresight = entries.filter(e => e.foresight);
+    const grid = new Map();
+    for (const e of normal) grid.set(e.atk * 256 + e.def, e.mult);
+    const label = m => m === 0 ? '0' : m === 5 ? '½' : m === 20 ? '2' : m === 10 ? '' : (m / 10) + '';
+    const cycle = { 10: 20, 20: 5, 5: 0, 0: 10 };
+    const msg = el('div');
+    const tbl = el('table', { class: 'grid types' });
+    const head = el('tr', null, el('th', { text: '공격 ↓ / 방어 →' }));
+    for (const [, n] of TYPES) head.append(el('th', { class: 'v', text: n }));
+    tbl.append(head);
+    for (const [atk, an] of TYPES) {
+      const tr = el('tr', null, el('th', { text: an }));
+      for (const [def] of TYPES) {
+        const k = atk * 256 + def, m = grid.has(k) ? grid.get(k) : 10;
+        const td = el('td', { class: 'c m' + m, text: label(m), title: an + ' → ' + TYPE_NAME.get(def) });
+        td.addEventListener('mousedown', ev => {
+          ev.preventDefault();
+          const cur = grid.has(k) ? grid.get(k) : 10, nx = cycle[cur] !== undefined ? cycle[cur] : 10;
+          if (nx === 10) grid.delete(k); else grid.set(k, nx);
+          td.className = 'c m' + nx; td.textContent = label(nx);
+        });
+        tr.append(td);
+      }
+      tbl.append(tr);
+    }
+    const apply = el('button', { class: 'pri', text: '타입 상성 적용', onclick: () => {
+      // 원래 순서를 최대한 지키고, 새로 생긴 것은 뒤에
+      const list = [], seen = new Set();
+      for (const e of normal) { const k = e.atk * 256 + e.def; if (grid.has(k) && !seen.has(k)) { list.push({ atk: e.atk, def: e.def, mult: grid.get(k), foresight: false }); seen.add(k); } }
+      for (const [k, m] of grid) if (!seen.has(k)) list.push({ atk: k >> 8, def: k & 255, mult: m, foresight: false });
+      const err = rom.saveTypeMatchups(list.concat(foresight));
+      this.okMsg(msg, err || '적용했어요', !!err);
+    } });
+    return el('div', { class: 'box' },
+      el('div', { class: 'hint', text: '칸을 누를 때마다 보통 → 2배(굉장함) → ½배(반감) → 0배(무효) 순서로 바뀌어요. 고스트·노말/격투 무효(꿰뚫어보기로 풀리는 것)는 따로 그대로 둬요.' }),
+      el('div', { class: 'scrollx', style: 'margin:8px 0' }, tbl),
+      el('div', { class: 'bar' }, apply, msg));
+  }
+});
+
+// 기술 효과 이름 (RomDex.cs DexText.Effects 와 같음)
+function moveEffects() {
+  if (moveEffects.list) return moveEffects.list;
+  const stat = { ATTACK: '공격', DEFENSE: '방어', SPEED: '스피드', SP_ATK: '특수공격', SP_DEF: '특수방어', ACCURACY: '명중률', EVASION: '회피율' };
+  moveEffects.list = EFFECT_CONSTS.split(' ').map(c => {
+    if (EFFECT_KO[c]) return EFFECT_KO[c];
+    if (c.startsWith('UNUSED')) return '(미사용)';
+    const m = /^(ATTACK|DEFENSE|SPEED|SP_ATK|SP_DEF|ACCURACY|EVASION)_(UP|DOWN)(_2|_HIT)?$/.exec(c);
+    if (m) {
+      const st = stat[m[1]], up = m[2] === 'UP', k = m[3] || '';
+      if (k === '_HIT') return '공격 + 상대 ' + st + ' 하락 (확률)';
+      return up ? '자신 ' + st + ' ' + (k === '_2' ? '크게 상승' : '상승') : '상대 ' + st + ' ' + (k === '_2' ? '크게 하락' : '하락');
+    }
+    return c;
+  });
+  return moveEffects.list;
+}
+
+// ===== 99-mount.js
+// ================================================================ 블로그 글에 붙이기 (모든 조각이 정의된 뒤 마지막에)
 function mount() {
   const hosts = document.querySelectorAll('#gsc-tool, .gsc-tool');
   if (!hosts.length) {
