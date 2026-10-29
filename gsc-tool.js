@@ -1035,7 +1035,14 @@ const CSS = `
 .gsc .tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:10px}
 .gsc .tabs button{border:none;border-bottom:3px solid transparent;border-radius:0;background:none;padding:6px 12px}
 .gsc .tabs button.on{border-bottom-color:var(--accent);font-weight:bold}
-.gsc .cols{display:grid;grid-template-columns:230px minmax(0,1fr) 320px;gap:10px;min-height:520px}
+.gsc .cols{display:grid;grid-template-columns:230px minmax(0,1fr) 320px;grid-template-areas:"tree map text";gap:10px;min-height:520px}
+.gsc .c-tree{grid-area:tree}.gsc .c-map{grid-area:map}.gsc .c-text{grid-area:text}
+.gsc.w-mid .cols{grid-template-columns:200px minmax(0,1fr);grid-template-areas:"map map" "tree text";min-height:0}
+.gsc.w-mid .tree,.gsc.w-mid .texts{max-height:420px}
+.gsc.w-mid .mapwrap{max-height:480px}
+.gsc.w-narrow .cols{grid-template-columns:minmax(0,1fr);grid-template-areas:"tree" "map" "text";min-height:0}
+.gsc.w-narrow .tree,.gsc.w-narrow .texts{max-height:300px}
+.gsc.w-narrow .mapwrap{max-height:380px}
 .gsc .box{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px;min-width:0;display:flex;flex-direction:column}
 .gsc .tree{overflow:auto;flex:1;max-height:600px;margin-top:6px}
 .gsc .tree details summary{cursor:pointer;padding:2px 0;font-weight:bold}
@@ -1063,8 +1070,10 @@ const CSS = `
 .gsc .grp{margin:10px 0 4px;font-weight:bold}
 .gsc .bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:8px}
 .gsc .bar select{width:auto;max-width:260px}
+.gsc.gsc-full{position:fixed;inset:0;z-index:2147483000;max-width:none;border-radius:0;border:none;overflow:auto;margin:0}
+.gsc.gsc-full .tree,.gsc.gsc-full .texts{max-height:calc(100vh - 190px)}
+.gsc.gsc-full .mapwrap{max-height:calc(100vh - 240px)}
 .gsc .credit{margin-top:10px;font-size:11px;color:var(--sub);text-align:right}
-@media (max-width:900px){.gsc .cols{grid-template-columns:1fr}.gsc .tree,.gsc .mapwrap,.gsc .texts{max-height:340px}}
 `;
 
 function el(tag, attrs, ...kids) {
@@ -1086,7 +1095,16 @@ class App {
     this.spriteCache = new Map();
     if (!document.getElementById('gsc-style')) document.head.append(el('style', { id: 'gsc-style', text: CSS }));
     host.classList.add('gsc');
+    // 화면 크기가 아니라 블로그 글 칸 너비에 맞춰 배치를 바꿈
+    const fit = () => {
+      const w = host.clientWidth;
+      host.classList.toggle('w-mid', w < 1000 && w >= 560);
+      host.classList.toggle('w-narrow', w < 560);
+    };
+    fit();
+    if (window.ResizeObserver) new ResizeObserver(fit).observe(host); else window.addEventListener('resize', fit);
     this.showOpen();
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && host.classList.contains('gsc-full')) this.toggleFull(); });
     window.addEventListener('beforeunload', e => { if (this.rom && this.rom.hasChanges) { e.preventDefault(); e.returnValue = ''; } });
   }
 
@@ -1101,7 +1119,23 @@ class App {
     drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('over'); });
     drop.addEventListener('dragleave', () => drop.classList.remove('over'));
     drop.addEventListener('drop', e => { e.preventDefault(); drop.classList.remove('over'); if (e.dataTransfer.files[0]) this.load(e.dataTransfer.files[0]); });
-    this.host.replaceChildren(el('div', { class: 'top' }, el('h2', { text: '포켓몬 금은 올인원 툴' }), el('span', { class: 'sp' }), el('span', { class: 'hint', text: '웹판' })), drop, this.credit());
+    this.host.replaceChildren(el('div', { class: 'top' }, el('h2', { text: '포켓몬 금은 올인원 툴' }), el('span', { class: 'sp' }), this.fullBtn()), drop, this.credit());
+  }
+
+  // 블로그 글 칸이 좁으니 창 전체로 펼치기 (Esc 로 돌아옴)
+  fullBtn() {
+    const on = this.host.classList.contains('gsc-full');
+    return el('button', { class: 'gsc-fullbtn', text: on ? '✕ 원래 크기로' : '⛶ 넓게 보기', title: on ? 'Esc 키로도 돌아와요' : '창 전체로 크게 열어요', onclick: () => this.toggleFull() });
+  }
+  toggleFull() {
+    const on = this.host.classList.toggle('gsc-full');
+    document.documentElement.style.overflow = on ? 'hidden' : '';
+    // 테마의 transform 등에 갇히지 않게 펼칠 땐 body 바로 아래로 옮김
+    if (on) { this.home = document.createComment('gsc-tool'); this.host.before(this.home); document.body.append(this.host); }
+    else if (this.home) { this.home.replaceWith(this.host); this.home = null; }
+    for (const b of this.host.querySelectorAll('.gsc-fullbtn')) b.replaceWith(this.fullBtn());
+    if (!on) this.host.scrollIntoView({ block: 'start' });
+    if (this.area && this.tab === 'map') this.drawMap();
   }
 
   credit() { return el('div', { class: 'credit', text: '포켓몬스터는 Nintendo·Creatures·GAME FREAK 의 상표예요. 이 도구는 비공식 팬 도구이고 롬 파일은 직접 가진 것을 써 주세요.' }); }
@@ -1115,6 +1149,7 @@ class App {
         this.build();
         const first = rom.allAreas.find(a => a.name.indexOf('연두') >= 0) || rom.allAreas[0];
         if (first) this.selectArea(first);
+        if (/CRYSTAL/i.test(rom.title)) this.say('⚠ 크리스탈 롬이에요. 이 툴은 금·은 (한글판) 전용이라 지도·대사·음악이 틀리게 보이거나 저장하면 망가질 수 있어요.', true);
       } catch (e) { console.error(e); this.showOpen(e.message || String(e)); }
     };
     r.readAsArrayBuffer(f);
@@ -1128,6 +1163,7 @@ class App {
       el('h2', { text: '포켓몬 금은 올인원 툴' }),
       el('span', { class: 'hint', text: rom.fileName + ' · ' + rom.title }),
       el('span', { class: 'sp' }),
+      this.fullBtn(),
       el('button', { text: '다른 롬 열기', onclick: () => { if (!rom.hasChanges || confirm('고친 내용을 내려받지 않았어요. 그래도 다른 롬을 열까요?')) { Player.stop(); this.showOpen(); } } }),
       this.saveBtn);
     this.tabBtns = {};
@@ -1168,13 +1204,13 @@ class App {
     this.ownerBar = el('div', { class: 'owners' });
     this.textBox = el('div', { class: 'texts' });
     this.mapTab = el('div', { class: 'cols' },
-      el('div', { class: 'box' }, search, this.tree),
-      el('div', { class: 'box' },
+      el('div', { class: 'box c-tree' }, search, this.tree),
+      el('div', { class: 'box c-map' },
         el('div', { class: 'bar' }, this.areaTitle, el('span', { class: 'sp', style: 'flex:1' }), el('span', { class: 'hint', text: '확대' }), zoom),
         el('div', { class: 'mapwrap' }, this.canvas),
         el('div', { class: 'hint', text: '지도에서 사람이나 표지판(!)을 누르면 그 대사가 오른쪽에 나와요. 흐린 사람은 대사가 없는 NPC예요.' }),
         this.musicLine),
-      el('div', { class: 'box' }, this.ownerBar, this.textBox));
+      el('div', { class: 'box c-text' }, this.ownerBar, this.textBox));
     this.fillTree('');
   }
 
