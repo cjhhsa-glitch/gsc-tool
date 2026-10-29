@@ -225,6 +225,10 @@ class Rom {
     this.textNote = new Map();
     this.free = [];
     this.dirty = false;
+    this.gifts = [];                 // 선물 포켓몬 { area, owner, off, egg }
+    this.ownerPic = new Map();       // NPC → pokepic 포켓몬 번호 위치들
+    this.ownerCry = new Map();       // NPC → cry 포켓몬 번호 위치들
+    this.ownerPicCry = new Map();
     this.analyze();
     this.findFree();
     this.gfx = new MapRender(this.data);
@@ -333,14 +337,16 @@ class Rom {
   loadArea(area) {
     area.owners = []; area.extras = [];
     try { this.readMap(area, area.scriptBank, area.scriptsAddr, area.eventsAddr); } catch (e) { }
-    // 대사가 없는 NPC 는 지도에만 흐리게
-    const useless = o => o.texts.length === 0;
+    // 대사가 없는 NPC 는 지도에만 흐리게 (상점 점원은 목록에 남김)
+    const useless = o => o.texts.length === 0 && o.mart == null;
     area.extras = area.owners.filter(o => useless(o) && o.x >= 0 && !o.isSign);
     area.owners = area.owners.filter(o => !useless(o));
   }
 
   readMap(area, bank, scriptsAddr, eventsAddr) {
     const d = this.data;
+    this.curArea = area;
+    this.gifts = this.gifts.filter(g => g.area !== area);
     const auto = { name: '자동 이벤트', texts: [], x: -1, y: -1, eventOff: -1 };
     let p = this.off(bank, scriptsAddr);
     const nScene = d[p++];
@@ -351,10 +357,13 @@ class Rom {
     let e = this.off(bank, eventsAddr) + 2;
     const nWarp = d[e++]; e += nWarp * 5;
     const nCoord = d[e++];
+    const coordScripts = [], coordTexts = [];
     for (let i = 0; i < nCoord && i < 64; i++, e += 8) {
       const before = auto.texts.length;
       this.walk(auto, bank, this.w(e + 4));
-      for (const t of auto.texts.slice(before)) this.textNote.set(t, '타일 트리거 T' + (i + 1) + ' (' + d[e + 2] + ',' + d[e + 1] + ') 밟으면');
+      const added = auto.texts.slice(before);
+      for (const t of added) this.textNote.set(t, '타일 트리거 T' + (i + 1) + ' (' + d[e + 2] + ',' + d[e + 1] + ') 밟으면');
+      coordTexts.push(added); coordScripts.push(this.w(e + 4));
     }
     const nBg = d[e++];
     let signNo = 0;
@@ -383,6 +392,15 @@ class Rom {
     }
     const seen = new Map();
     for (const o of objs) if (counter.get(o.name) > 1) { const k = (seen.get(o.name) || 0) + 1; seen.set(o.name, k); o.name = o.name + ' ' + k; }
+    // 트리거에서 NPC 가 다가와 말하는 대사는 그 NPC 의 대사 목록에도 보이게
+    const objStart = e - nObj * 13;
+    coordScripts.forEach((addr, ci) => {
+      if (!Rom.banked(addr)) return;
+      const mover = this.scriptOps(bank, addr).find(op => op[0] === 0x69 && op.length > 1 && op[1] >= 2);
+      if (!mover) return;
+      const npc = objs.find(o => o.eventOff === objStart + (mover[1] - 2) * 13);
+      if (npc) for (const t of coordTexts[ci]) if (!npc.texts.includes(t)) npc.texts.push(t);
+    });
     area.owners.push(...objs, ...signs, auto);
   }
 
@@ -419,6 +437,10 @@ class Rom {
         case 0x31: case 0x32: case 0x33: this.usedFlags.add(a1); break;
         case 0x5E: if (!o.trainer) o.trainer = { cls: d[pc + 1], id: d[pc + 2] }; break;          // loadtrainer
         case 0x94: if (d[pc + 1] !== 2 && d[pc + 1] !== 4) o.mart = this.w(pc + 2); break;         // pokemart
+        case 0x2D: this.addGift(o, pc, false); break;                                             // givepoke
+        case 0x2E: this.addGift(o, pc, true); break;                                              // giveegg
+        case 0x56: this.addPicOrCry(o, pc + 1, false); break;                                     // pokepic
+        case 0x84: this.addPicOrCry(o, pc + 1, true); break;                                      // cry
       }
       switch (op) {
         case 0x03: case 0x04: case 0x05: case 0x0C: case 0x52: case 0x53: case 0x8F:
@@ -426,6 +448,35 @@ class Rom {
       }
       pc += len;
     }
+  }
+
+  addGift(o, pc, egg) {
+    if (!this.curArea || this.gifts.some(g => g.owner === o && g.off === pc)) return;
+    const sp = this.data[pc + 1], lv = this.data[pc + 2];
+    if (sp < 1 || sp > 251 || lv < 1 || lv > 100) return;
+    this.gifts.push({ area: this.curArea, owner: o, off: pc, egg });
+  }
+  addPicOrCry(o, off, cry) {
+    const m = cry ? this.ownerCry : this.ownerPic;
+    if (!m.has(o)) m.set(o, []);
+    if (!m.get(o).includes(off)) m.get(o).push(off);
+    if (!this.ownerPicCry.has(o)) this.ownerPicCry.set(o, []);
+    if (!this.ownerPicCry.get(o).includes(off)) this.ownerPicCry.get(o).push(off);
+  }
+
+  // 스크립트 명령들을 차례로 (분기는 따라가지 않음) → [[명령, 인자…], …]
+  scriptOps(bank, addr) {
+    const d = this.data, res = [];
+    let pc = this.off(bank, addr);
+    for (let n = 0; n < 300 && this.inRom(pc); n++) {
+      const op = d[pc];
+      const len = op === 0x2D ? (d[pc + 4] !== 0 ? 9 : 5) : SCRIPT_LEN[op];
+      if (len <= 0) break;
+      res.push(Array.from(d.subarray(pc, pc + len)));
+      if ([0x03, 0x04, 0x05, 0x0C, 0x52, 0x53, 0x8F, 0x90, 0x91, 0x92, 0x93, 0xA0, 0xA1].includes(op)) break;
+      pc += len;
+    }
+    return res;
   }
 
   addText(o, bank, addr) {
@@ -1520,73 +1571,329 @@ Object.assign(Rom.prototype, {
   }
 });
 
+// ===== 55-gift.js
+// ================================================================ 선물 포켓몬 · 오박사 인트로 · 포켓몬 그림 (RomGift.cs · RomIntro.cs · RomSprite.cs 와 같음)
+const ALL_TYPES = new Map(TYPES);
+// get 이 들어 있는 메서드 묶음을 붙임 (Object.assign 은 get 을 그 자리에서 실행해 버림)
+function mixin(target, src) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(src)); }
+
+mixin(Rom.prototype, {
+  // ------------------------------------------------ 포켓몬 앞·뒷모습 그림
+  loadSprites() {
+    if (this._spr) return;
+    this._spr = true;
+    this.picPtrOff = -1; this.monPalOff = -1; this.picBankFix = new Map();
+    const d = this.data;
+    const f = this.findPattern([0x21, -1, -1, 0xFA, -1, -1, 0x16, -1, 0xFE, 0xC9], 0x4000, d.length);
+    if (f >= 0) this.picPtrOff = this.off(d[f + 7], this.w(f + 1));
+    const t = this.findPattern([0x13, -1, 0x14, -1, 0x1F, -1, 0xFF], 0x4000, d.length);
+    if (t >= 0) { this.picBankFix.set(0x13, d[t + 1]); this.picBankFix.set(0x14, d[t + 3]); this.picBankFix.set(0x1F, d[t + 5]); }
+    const cands = [];
+    for (let g = 0x4000; ; g++) {
+      g = this.findPattern([0x6F, 0x26, 0x00, 0x29, 0x29, 0x29, 0x01, -1, -1, 0x09, 0xC9], g, d.length);
+      if (g < 0) break;
+      cands.push(this.off(Math.floor(g / 0x4000), this.w(g + 7)));
+    }
+    for (const c of cands) if (d[c] === d[c + 4] && d[c + 1] === d[c + 5] && d[c + 2] === d[c + 6] && d[c + 3] === d[c + 7]) { this.monPalOff = c; break; }
+    if (this.monPalOff < 0 && cands.length) this.monPalOff = cands[cands.length - 1];
+  },
+  get spritesAvailable() { this.loadSprites(); return this.picPtrOff >= 0 && this.monPalOff >= 0 && this.baseStatsOff >= 0; },
+  picOff(mon, back) {
+    const e = this.picPtrOff + (mon - 1) * 6 + (back ? 3 : 0);
+    let bank = this.data[e];
+    if (this.picBankFix.has(bank)) bank = this.picBankFix.get(bank);
+    return this.off(bank, this.w(e + 1));
+  },
+  frontSize(mon) { const s = this.data[this.statOff(mon) + 17] & 0x0F; return s >= 5 && s <= 7 ? s : 7; },
+  // 색 4개 (ABGR): 흰색, 밝은 색, 어두운 색, 검정
+  monPalette(mon, shiny) {
+    const o = this.monPalOff + mon * 8 + (shiny ? 4 : 0);
+    return [0xFFFFFFFF, MapRender.c555(this.w(o)), MapRender.c555(this.w(o + 2)), 0xFF000000];
+  },
+  // 그림 → { img: Uint8Array(px*px) 색 번호, size: 칸 수 }. 타일은 세로줄 순서
+  readPic(mon, back) {
+    this.loadSprites();
+    const tiles = back ? 6 : this.frontSize(mon);
+    const raw = this.gfx.decompress(this.picOff(mon, back));
+    const px = tiles * 8, img = new Uint8Array(px * px);
+    for (let t = 0; t < tiles * tiles; t++) {
+      const tx = Math.floor(t / tiles), ty = t % tiles;
+      for (let y = 0; y < 8; y++) {
+        const i = t * 16 + y * 2, lo = raw[i] || 0, hi = raw[i + 1] || 0;
+        for (let x = 0; x < 8; x++) img[(ty * 8 + y) * px + tx * 8 + x] = ((lo >> (7 - x)) & 1) | (((hi >> (7 - x)) & 1) << 1);
+      }
+    }
+    return { img, tiles };
+  },
+  // 포켓몬 앞모습 그림 → canvas (없으면 null)
+  monPicture(mon, zoom) {
+    try {
+      if (!this.spritesAvailable || mon < 1 || mon > 251) return null;
+      const { img, tiles } = this.readPic(mon, false), pal = this.monPalette(mon, false), n = tiles * 8;
+      const id = new ImageData(n, n), buf = new Uint32Array(id.data.buffer);
+      for (let i = 0; i < n * n; i++) buf[i] = pal[img[i]];
+      const c = document.createElement('canvas'); c.width = n; c.height = n; c.getContext('2d').putImageData(id, 0, 0);
+      const out = document.createElement('canvas'); out.width = out.height = 56 * (zoom || 1);
+      const g = out.getContext('2d'); g.imageSmoothingEnabled = false;
+      g.fillStyle = '#fff'; g.fillRect(0, 0, out.width, out.height);
+      const s = n * (zoom || 1), o = (out.width - s) / 2;
+      g.drawImage(c, o, out.height - s, s, s);
+      return out;
+    } catch (e) { return null; }
+  },
+
+  // ------------------------------------------------ 오박사 인트로
+  findIntro() {
+    if (this._intro) return;
+    this._intro = true;
+    this.introPicOff = this.introCryOff = -1;
+    const d = this.data;
+    for (let i = 4; i < 0x8000 - 14; i++) {
+      if (d[i] === 0x08 && d[i + 1] === 0x3E && d[i + 3] === 0xCD && d[i + 6] === 0xCD && d[i + 9] === 0x21 && d[i + 12] === 0xC9 && d[i - 4] === 0x16) {
+        this.introCryOff = i + 2;
+        for (let j = i - 1; j >= Math.max(0, i - 0x200); j--)
+          if (d[j] === 0x3E && d[j + 2] === 0xEA && d[j + 5] === 0xEA && d[j + 8] === 0xCD && d[j + 11] === 0x21) { this.introPicOff = j + 1; break; }
+        break;
+      }
+    }
+  },
+  get hasIntro() { this.findIntro(); return this.introPicOff >= 0 || this.introCryOff >= 0; },
+  get introPic() { this.findIntro(); return this.introPicOff >= 0 ? this.data[this.introPicOff] : 0; },
+  get introCry() { this.findIntro(); return this.introCryOff >= 0 ? this.data[this.introCryOff] : 0; },
+  setIntro(pic, cry) {
+    this.findIntro();
+    if (this.introPicOff >= 0) this.data[this.introPicOff] = pic;
+    if (this.introCryOff >= 0) this.data[this.introCryOff] = cry;
+    this.dirty = true;
+  },
+
+  // ------------------------------------------------ 선물 포켓몬
+  giftsOf(o) { return this.gifts.filter(g => g.owner === o); },
+  giftsIn(a) { return this.gifts.filter(g => g.area === a); },
+  giftWhere(g) { return g.area.regionName + ' › ' + g.area.name + ' › ' + g.owner.name; },
+  giftSpecies(g) { return this.data[g.off + 1]; },
+  giftLevel(g) { return this.data[g.off + 2]; },
+  giftItem(g) { return g.egg ? 0 : this.data[g.off + 3]; },
+  giftHasPic(g) { return this.ownerPic.has(g.owner); },
+  giftHasCry(g) { return this.ownerCry.has(g.owner); },
+  giftPic(g) { const l = this.ownerPic.get(g.owner); return l ? this.data[l[0]] : 0; },
+  giftCry(g) { const l = this.ownerCry.get(g.owner); return l ? this.data[l[0]] : 0; },
+  setGiftPicCry(g, pic, cry) {
+    let l;
+    if (pic > 0 && (l = this.ownerPic.get(g.owner))) for (const off of l) this.data[off] = pic;
+    if (cry > 0 && (l = this.ownerCry.get(g.owner))) for (const off of l) { this.data[off] = cry; this.data[off + 1] = 0; }
+    this.dirty = true;
+  },
+  setGift(g, species, level, item) {
+    const old = this.data[g.off + 1];
+    this.data[g.off + 1] = species; this.data[g.off + 2] = level;
+    if (!g.egg) this.data[g.off + 3] = item;
+    const l = this.ownerPicCry.get(g.owner);
+    if (old !== species && l) for (const off of l) if (this.data[off] === old) this.data[off] = species;
+    this.dirty = true;
+  },
+  giftLen(g) { return this.data[g.off + 4] === 0 ? 5 : 9; },
+  giftMovesAsm(g) {
+    if (g.egg) return -1;
+    const d = this.data, p = g.off + this.giftLen(g);
+    if (d[p] !== 0x0E) return -1;
+    const a = this.w(p + 2);
+    if (!Rom.banked(a)) return -1;
+    const asm = this.off(d[p + 1], a);
+    return this.inRom(asm + 40) && (d[asm] === 0xFA || d[asm] === 0xC9) && d[asm + 3] === 0xB7 ? asm : -1;
+  },
+  giftMoves(g) {
+    const d = this.data, asm = this.giftMovesAsm(g);
+    if (asm < 0 || d[asm] !== 0xFA) return null;
+    for (let p = asm; p < asm + 40; p++) {
+      if (d[p] !== 0x11 || d[p + 1] !== 0x30 || d[p + 2] !== 0x00 || d[p + 3] !== 0x05) continue;
+      let q = p + 9; const m = [];
+      for (let i = 0; i < 4; i++) { if (d[q] !== 0x36) return null; m.push(d[q + 1]); q += i < 3 ? 3 : 2; }
+      return m;
+    }
+    return null;
+  },
+  get partyMon1() {
+    if (this._pm1 !== undefined) return this._pm1;
+    const d = this.data, c = new Map();
+    for (let i = 0; i < d.length - 6; i++)
+      if (d[i] === 0x21 && d[i + 3] === 0x01 && d[i + 4] === 0x30 && d[i + 5] === 0x00) { const v = this.w(i + 1); if (v >= 0xC000 && v < 0xE000) c.set(v, (c.get(v) || 0) + 1); }
+    const cand = [...c].filter(([, n]) => n >= 5).map(([v]) => v).sort((a, b) => a - b);
+    this._pm1 = -1;
+    for (const m of cand) {
+      const cnt = m - 8; let uses = 0;
+      for (let i = 0; i < d.length - 3; i++) if (d[i] === 0xFA && this.w(i + 1) === cnt) uses++;
+      if (uses >= 20 && c.has(m + 2)) { this._pm1 = m; break; }
+    }
+    return this._pm1;
+  },
+  // 마지막으로 받은 포켓몬이 species 면 기술 4개·PP 를 바꾸는 코드
+  movesAsmBytes(species, moves) {
+    const mon1 = this.partyMon1;
+    if (mon1 < 0) throw new Error('이 롬에서는 포켓몬 기술을 정하는 데 필요한 정보를 못 찾았어요 (기본 기술로 주세요)');
+    const cnt = mon1 - 8, mv = mon1 + 2;
+    const pp = moves.map(m => m > 0 && this.movesOff >= 0 ? this.data[this.moveOff(m) + 5] : 0);
+    const c = [0xFA, cnt & 0xff, cnt >> 8, 0xB7, 0xC8, 0x47, 0x21, cnt & 0xff, cnt >> 8, 0x5F, 0x16, 0x00, 0x19, 0x7E, 0xFE, species, 0xC0,
+      0x21, mv & 0xff, mv >> 8, 0x11, 0x30, 0x00, 0x05, 0x28, 0x03, 0x19, 0x18, 0xFA];
+    for (let i = 0; i < 4; i++) { c.push(0x36, moves[i]); if (i < 3) c.push(0x23); }
+    c.push(0x11, 0x12, 0x00, 0x19);
+    for (let i = 0; i < 4; i++) { c.push(0x36, pp[i]); if (i < 3) c.push(0x23); }
+    c.push(0xC9);
+    return c;
+  },
+  // 선물 포켓몬의 기술 정하기. moves = null 이면 기본 기술로. 실패하면 이유
+  setGiftMoves(g, moves) {
+    const d = this.data;
+    if (g.egg) return moves ? '알로 주는 포켓몬은 기술을 따로 정할 수 없어요' : null;
+    const asm = this.giftMovesAsm(g);
+    if (!moves) { if (asm >= 0) { d[asm] = 0xC9; this.dirty = true; } return null; }
+    if (moves.every(m => m <= 0)) return '기술을 하나 이상 고르세요';
+    let code;
+    try { code = this.movesAsmBytes(d[g.off + 1], moves); } catch (e) { return e.message; }
+    if (asm >= 0) { d.set(code, asm); this.dirty = true; return null; }
+    const bank = Math.floor(g.off / 0x4000), len = this.giftLen(g);
+    const sc = this.allocInBank(bank, len + 4 + 3);
+    if (sc < 0) return '이 스크립트가 있는 곳에 빈 공간이 부족해요';
+    const a = this.alloc(code.length + 1);
+    if (!a) return '롬에 남은 빈 공간이 부족해요';
+    d.set(code, a.p); d[a.p + code.length] = a.fill === 0xFF ? 0 : 0xFF;
+    d.copyWithin(sc, g.off, g.off + len);
+    const aa = 0x4000 + a.p % 0x4000, back = 0x4000 + (g.off + len) % 0x4000, to = 0x4000 + sc % 0x4000;
+    d.set([0x0E, Math.floor(a.p / 0x4000), aa & 0xFF, aa >> 8, 0x03, back & 0xFF, back >> 8], sc + len);
+    d[g.off] = 0x03; d[g.off + 1] = to & 0xFF; d[g.off + 2] = to >> 8;
+    g.off = sc; this.dirty = true;
+    return null;
+  },
+
+  // ------------------------------------------------ 포켓몬을 바꿀 때 대사 속 이름·타입도 같이
+  monType(mon) { return mon >= 1 && mon <= 251 ? this.data[this.statOff(mon) + 7] : -1; },
+  replaceMonInText(s, oldMon, newMon) {
+    const N = this.pokemonNames;
+    if (oldMon === newMon || oldMon < 1 || newMon < 1 || newMon >= N.length || oldMon >= N.length) return s;
+    s = replaceWord(s, N[oldMon], N[newMon]);
+    const ot = ALL_TYPES.get(this.monType(oldMon)), nt = ALL_TYPES.get(this.monType(newMon));
+    if (ot && nt && ot !== nt)
+      for (const [a, b] of [['포켓몬', '포켓몬'], [' 포켓몬', ' 포켓몬'], ['의 포켓몬', '의 포켓몬'], ['의\n포켓몬', '의\n포켓몬'], ['타입', '타입'], [' 타입', ' 타입']])
+        s = s.split(ot + a).join(nt + b);
+    return s;
+  },
+  setTextChecked(t, s) { t.edited = s === t.original ? null : s; this.validate(t); },
+  mentionedOtherMon(g) {
+    const cur = this.giftSpecies(g); let best = 0, bestLen = 0;
+    for (const t of g.owner.texts)
+      for (let m = 1; m <= 251 && m < this.pokemonNames.length; m++) {
+        const n = this.pokemonNames[m];
+        if (m === cur || !n || n.length < 2 || n.length <= bestLen) continue;
+        if (t.current.includes(n)) { best = m; bestLen = n.length; }
+      }
+    return best;
+  },
+  updateGiftTexts(g, oldMon, newMon) {
+    let n = 0;
+    for (const t of g.owner.texts) {
+      const s = this.replaceMonInText(t.current, oldMon, newMon);
+      if (s === t.current) continue;
+      this.setTextChecked(t, s); n++;
+    }
+    return n;
+  },
+  textsMentioning(mon) {
+    const res = [];
+    if (mon < 1 || mon >= this.pokemonNames.length) return res;
+    const name = this.pokemonNames[mon], where = new Map();
+    for (const a of this.allAreas) for (const o of a.owners.concat(a.extras)) for (const t of o.texts) if (!where.has(t)) where.set(t, a.regionName + ' › ' + a.name + ' › ' + o.name);
+    for (const t of [...this.texts.values()].sort((x, y) => x.addr - y.addr))
+      if (t.current.includes(name)) res.push([t, where.get(t) || '기타 대사 (' + t.addr.toString(16).toUpperCase() + ')']);
+    return res;
+  }
+});
+
+function hasBatchim(c) { const k = c.charCodeAt(0); return k >= 0xAC00 && k <= 0xD7A3 && (k - 0xAC00) % 28 !== 0; }
+// 낱말을 바꾸고 바로 뒤 조사(가/이, 를/을, 는/은, 와/과, 로/으로)를 새 낱말 받침에 맞춤
+function replaceWord(text, oldW, newW) {
+  if (!oldW || oldW === newW) return text;
+  const pairs = [['가', '이'], ['를', '을'], ['는', '은'], ['와', '과']];
+  const last = w => w[w.length - 1];
+  const oldB = hasBatchim(last(oldW)), newB = hasBatchim(last(newW));
+  const isR = w => (last(w).charCodeAt(0) - 0xAC00) % 28 === 8;
+  const oldRo = oldB && !isR(oldW) ? '으로' : '로', newRo = newB && !isR(newW) ? '으로' : '로';
+  let out = '', i = 0;
+  for (;;) {
+    const k = text.indexOf(oldW, i);
+    if (k < 0) { out += text.substring(i); break; }
+    out += text.substring(i, k) + newW;
+    i = k + oldW.length;
+    if (text.startsWith(oldRo, i)) { out += newRo; i += oldRo.length; continue; }
+    if (i < text.length) for (const p of pairs) if (text[i] === p[oldB ? 1 : 0]) { out += p[newB ? 1 : 0]; i++; break; }
+  }
+  return out;
+}
+
 // ===== 90-ui.js
-// ================================================================ 화면 (블로그 글 안의 <div id="gsc-tool"> 에 붙음)
+// ================================================================ 화면 (데스크톱 툴과 같은 배치: 위 버튼줄 · 왼쪽 목록 · 오른쪽 위 지도 · 아래 탭)
 const CSS = `
-.gsc{--bg:#f7f8fb;--panel:#fff;--line:#d9dde6;--ink:#1d2330;--sub:#667085;--accent:#2f6fec;--accent-ink:#fff;--warn:#c0392b;--ok:#1e874b;--hl:#fff3b0;
-  font:14px/1.5 "Malgun Gothic","Apple SD Gothic Neo",sans-serif;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px;box-sizing:border-box;max-width:100%;overflow:hidden}
+.gsc{--bg:#f0f0f0;--panel:#fff;--line:#c9ced6;--ink:#1d2330;--sub:#6b7280;--accent:#2f6fec;--accent-ink:#fff;--warn:#c0392b;--ok:#1e874b;--save:#ffd65c;--play:#c8f0c8;
+  font:14px/1.5 "Malgun Gothic","Apple SD Gothic Neo",sans-serif;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px;box-sizing:border-box;max-width:100%;overflow:hidden}
 .gsc *{box-sizing:border-box}
-.gsc h2{margin:0;font-size:18px}
-.gsc .top{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:10px}
+.gsc h2{margin:0;font-size:17px}
+.gsc .top{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:8px}
 .gsc .top .sp{flex:1}
-.gsc button,.gsc .btn{font:inherit;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:6px;padding:5px 12px;cursor:pointer}
-.gsc button:hover,.gsc .btn:hover{border-color:var(--accent)}
-.gsc button.pri,.gsc .btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.gsc .status{color:var(--sub);font-size:13px;padding:0 4px}
+.gsc .status.bad{color:var(--warn)}
+.gsc button{font:inherit;font-size:13.5px;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:4px;padding:4px 12px;cursor:pointer}
+.gsc button:hover:not(:disabled){border-color:var(--accent)}
+.gsc button.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.gsc button.save,.gsc button.apply{background:var(--save);border-color:#d9b23a}
+.gsc button.play{background:var(--play);border-color:#8fcf8f}
 .gsc button:disabled{opacity:.45;cursor:default}
-.gsc input[type=search],.gsc select,.gsc textarea{font:inherit;border:1px solid var(--line);border-radius:6px;padding:5px 8px;background:var(--panel);color:var(--ink);width:100%}
+.gsc input[type=search],.gsc select,.gsc textarea{font:inherit;border:1px solid var(--line);border-radius:4px;padding:4px 8px;background:var(--panel);color:var(--ink)}
+.gsc input[type=search]{width:100%}
+.gsc select{max-width:100%}
 .gsc .drop{border:2px dashed var(--line);border-radius:10px;padding:40px 16px;text-align:center;color:var(--sub);background:var(--panel)}
 .gsc .drop.over{border-color:var(--accent);background:#eef3ff}
 .gsc .drop b{color:var(--ink);font-size:16px}
-.gsc .tabs{display:flex;flex-wrap:wrap;gap:2px 4px;border-bottom:1px solid var(--line);margin-bottom:10px}
-.gsc .tabs button{border:none;border-bottom:3px solid transparent;border-radius:0;background:none;padding:6px 12px}
-.gsc .tabs button.on{border-bottom-color:var(--accent);font-weight:bold}
-.gsc .cols{display:grid;grid-template-columns:230px minmax(0,1fr) 320px;grid-template-areas:"tree map text";gap:10px;min-height:520px}
-.gsc .c-tree{grid-area:tree}.gsc .c-map{grid-area:map}.gsc .c-text{grid-area:text}
-.gsc.w-mid .cols{grid-template-columns:200px minmax(0,1fr);grid-template-areas:"map map" "tree text";min-height:0}
-.gsc.w-mid .tree,.gsc.w-mid .texts{max-height:420px}
-.gsc.w-mid .mapwrap{max-height:480px}
-.gsc.w-narrow .cols{grid-template-columns:minmax(0,1fr);grid-template-areas:"tree" "map" "text";min-height:0}
-.gsc.w-narrow .tree,.gsc.w-narrow .texts{max-height:300px}
-.gsc.w-narrow .mapwrap{max-height:380px}
-.gsc .box{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px;min-width:0;display:flex;flex-direction:column}
-.gsc .tree{overflow:auto;flex:1;max-height:600px;margin-top:6px}
-.gsc .tree details summary{cursor:pointer;padding:2px 0;font-weight:bold}
-.gsc .tree .it{padding:2px 6px 2px 16px;cursor:pointer;border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.gsc .tree .it:hover{background:var(--bg)}
-.gsc .tree .it.on{background:var(--accent);color:var(--accent-ink)}
-.gsc .mapwrap{overflow:auto;flex:1;max-height:600px;background:#222;border-radius:6px}
-.gsc canvas{image-rendering:pixelated;image-rendering:crisp-edges;display:block;cursor:pointer}
-.gsc .hint{color:var(--sub);font-size:12px}
-.gsc .owners{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0}
-.gsc .owners button{padding:2px 8px;font-size:12px}
-.gsc .owners button.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
-.gsc .texts{overflow:auto;flex:1;max-height:520px}
+.gsc .main{display:grid;grid-template-columns:300px minmax(0,1fr);gap:8px;height:780px}
+.gsc .left{display:flex;flex-direction:column;min-height:0}
+.gsc .tree{overflow:auto;flex:1;margin-top:6px;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:4px;font-size:13.5px}
+.gsc .tree details{margin-left:0}
+.gsc .tree details details{margin-left:14px}
+.gsc .tree summary{cursor:pointer;padding:1px 4px;border-radius:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gsc .tree summary.on,.gsc .tree .it.on{background:var(--accent);color:var(--accent-ink)}
+.gsc .tree .it{padding:1px 4px 1px 30px;cursor:pointer;border-radius:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gsc .tree .it:hover,.gsc .tree summary:hover{background:#e8eefc}
+.gsc .tree .it.on:hover,.gsc .tree summary.on:hover{background:var(--accent)}
+.gsc .right{display:grid;grid-template-rows:minmax(0,45fr) minmax(0,55fr);gap:6px;min-height:0}
+.gsc .mapbox{display:flex;flex-direction:column;min-height:0}
+.gsc .maplabel{color:var(--sub);font-size:13px;display:flex;gap:8px;align-items:center;min-height:26px}
+.gsc .maplabel.pick{color:var(--warn);font-weight:bold}
+.gsc .mapwrap{overflow:auto;flex:1;background:#262626;border-radius:3px;min-height:0}
+.gsc .mapwrap .empty{color:#ddd;padding:12px}
+.gsc canvas.map{image-rendering:pixelated;image-rendering:crisp-edges;display:block;cursor:pointer}
+.gsc .tabbox{display:flex;flex-direction:column;min-height:0}
+.gsc .tabs{display:flex;flex-wrap:wrap;gap:0;border-bottom:1px solid var(--line)}
+.gsc .tabs button{border:1px solid transparent;border-bottom:none;border-radius:4px 4px 0 0;background:none;padding:5px 14px;margin-bottom:-1px}
+.gsc .tabs button.on{background:var(--panel);border-color:var(--line);font-weight:bold}
+.gsc .tabpage{flex:1;overflow:auto;background:var(--panel);border:1px solid var(--line);border-top:none;padding:10px;min-height:0}
+.gsc .hint{color:var(--sub);font-size:12.5px;white-space:pre-line}
+.gsc .ttl{font-size:16px;font-weight:bold;margin-bottom:6px}
 .gsc .tx{margin-bottom:10px}
 .gsc .tx .note{font-size:12px;color:var(--sub)}
-.gsc .tx textarea{min-height:70px;resize:vertical}
+.gsc .tx textarea{width:100%;min-height:70px;resize:vertical;font-size:15px}
 .gsc .tx.mod textarea{border-color:var(--ok);background:#f2fbf5}
 .gsc .tx .err{color:var(--warn);font-size:12px}
-.gsc .status{margin-top:8px;font-size:12px;color:var(--sub);min-height:18px}
-.gsc .songs{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:4px}
-.gsc .song{display:flex;align-items:center;gap:6px;padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:var(--panel);cursor:pointer;font-size:13px}
-.gsc .song.on{border-color:var(--accent);background:#eef3ff}
-.gsc .song .n{color:var(--sub);font-size:11px;width:28px}
-.gsc .song .chg{color:var(--warn);font-size:11px}
-.gsc .grp{margin:10px 0 4px;font-weight:bold}
-.gsc .bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:8px}
-.gsc .bar select{width:auto;max-width:260px}
-.gsc.gsc-full{position:fixed;inset:0;z-index:2147483000;max-width:none;border-radius:0;border:none;overflow:auto;margin:0}
-.gsc.gsc-full .tree,.gsc.gsc-full .texts{max-height:calc(100vh - 190px)}
-.gsc.gsc-full .mapwrap{max-height:calc(100vh - 240px)}
-.gsc input.num,.gsc input.txt{font:inherit;border:1px solid var(--line);border-radius:6px;padding:4px 6px;background:var(--panel);color:var(--ink)}
+.gsc .bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:6px}
+.gsc fieldset{border:1px solid var(--line);border-radius:4px;padding:6px 10px 10px;margin:0 0 10px}
+.gsc legend{padding:0 4px;color:var(--ink)}
+.gsc input.num,.gsc input.txt{font:inherit;border:1px solid var(--line);border-radius:4px;padding:3px 6px;background:var(--panel);color:var(--ink)}
 .gsc input.txt{width:140px}
 .gsc .side{display:grid;grid-template-columns:240px minmax(0,1fr);gap:10px}
-.gsc.w-narrow .side{grid-template-columns:minmax(0,1fr)}
+.gsc .box{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:8px;min-width:0;display:flex;flex-direction:column}
 .gsc .list{overflow:auto;max-height:560px;flex:1;margin-top:6px}
 .gsc .list .it{padding:3px 8px;cursor:pointer;border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px}
 .gsc .list .it:hover{background:var(--bg)}
 .gsc .list .it.on{background:var(--accent);color:var(--accent-ink)}
 .gsc .list .grp2{font-weight:bold;font-size:12px;color:var(--sub);padding:6px 4px 2px}
+.gsc .grp{margin:10px 0 4px;font-weight:bold}
 .gsc table.grid{border-collapse:collapse;font-size:13px}
 .gsc table.grid td,.gsc table.grid th{border:1px solid var(--line);padding:3px 5px;text-align:left}
 .gsc table.grid th{background:var(--bg);font-weight:normal;color:var(--sub)}
@@ -1597,7 +1904,22 @@ const CSS = `
 .gsc table.types td.c{width:30px;height:26px;text-align:center;cursor:pointer;user-select:none;font-weight:bold;padding:0}
 .gsc table.types td.m0{background:#555;color:#fff}.gsc table.types td.m5{background:#f4b6b6}.gsc table.types td.m20{background:#a8e0a8}
 .gsc table.types th.v{writing-mode:vertical-rl;padding:4px 2px;font-size:12px}
-.gsc .credit{margin-top:10px;font-size:11px;color:var(--sub);text-align:right}
+.gsc .songs{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:4px}
+.gsc .song{display:flex;align-items:center;gap:6px;padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:var(--panel);cursor:pointer;font-size:13px}
+.gsc .song.on{border-color:var(--accent);background:#eef3ff}
+.gsc .song .n{color:var(--sub);font-size:11px;width:28px}
+.gsc .song .chg{color:var(--warn);font-size:11px}
+.gsc .dlg-bg{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:2147483100;display:flex;align-items:center;justify-content:center;padding:16px}
+.gsc .dlg{background:var(--bg);border-radius:8px;box-shadow:0 10px 40px rgba(0,0,0,.35);width:min(1100px,100%);max-height:100%;display:flex;flex-direction:column}
+.gsc .dlg.small{width:min(560px,100%)}
+.gsc .dlg-head{display:flex;align-items:center;padding:8px 12px;border-bottom:1px solid var(--line);font-weight:bold}
+.gsc .dlg-head span{flex:1}
+.gsc .dlg-body{padding:12px;overflow:auto;flex:1}
+.gsc .credit{margin-top:8px;font-size:11px;color:var(--sub);text-align:right}
+.gsc.gsc-full{position:fixed;inset:0;z-index:2147483000;max-width:none;border-radius:0;border:none;overflow:auto;margin:0;display:flex;flex-direction:column}
+.gsc.gsc-full .main{flex:1;height:auto;min-height:0}
+.gsc.w-mid .main,.gsc.w-narrow .main{grid-template-columns:minmax(0,1fr);grid-template-rows:260px 900px;height:auto}
+.gsc.w-mid .side,.gsc.w-narrow .side{grid-template-columns:minmax(0,1fr)}
 `;
 
 function el(tag, attrs, ...kids) {
@@ -1611,7 +1933,6 @@ function el(tag, attrs, ...kids) {
   for (const c of kids) if (c != null) e.append(c);
   return e;
 }
-
 // [[값, 이름], …] 로 고르기 상자
 function sel(options, value, onchange) {
   const s = el('select');
@@ -1625,41 +1946,81 @@ function num(value, min, max, onchange) {
   if (onchange) i.addEventListener('change', () => { let v = Math.round(+i.value); if (isNaN(v)) v = min; v = Math.max(min, Math.min(max, v)); i.value = v; onchange(v); });
   return i;
 }
+function check(label, on) { const c = el('input', { type: 'checkbox' }); c.checked = !!on; return [c, el('label', null, c, ' ' + label)]; }
+
+const TAB_NAMES = ['대사', '야생 포켓몬', '프렌들리숍', '선물 포켓몬', '지도 블록', 'NPC · 이벤트', '워프 · 트리거'];
+const T_TEXT = 0, T_WILD = 1, T_SHOP = 2, T_GIFT = 3, T_BLOCK = 4, T_EVENT = 5, T_WARP = 6;
 
 class App {
   constructor(host) {
     this.host = host;
-    this.rom = null; this.area = null; this.owner = null; this.tab = 'map'; this.scale = 2;
-    this.spriteCache = new Map();
+    host.gscApp = this;
+    this.rom = null; this.area = null; this.owner = null; this.tab = T_TEXT; this.scale = 2;
+    this.spriteCache = new Map(); this.undo = [];
     if (!document.getElementById('gsc-style')) document.head.append(el('style', { id: 'gsc-style', text: CSS }));
     host.classList.add('gsc');
-    host.gscApp = this;
     // 화면 크기가 아니라 블로그 글 칸 너비에 맞춰 배치를 바꿈
     const fit = () => {
       const w = host.clientWidth;
-      host.classList.toggle('w-mid', w < 1000 && w >= 560);
+      host.classList.toggle('w-mid', w < 900 && w >= 560);
       host.classList.toggle('w-narrow', w < 560);
     };
     fit();
     if (window.ResizeObserver) new ResizeObserver(fit).observe(host); else window.addEventListener('resize', fit);
-    this.showOpen();
-    document.addEventListener('keydown', e => { if (e.key === 'Escape' && host.classList.contains('gsc-full')) this.toggleFull(); });
+    document.addEventListener('keydown', e => this.onKey(e));
     window.addEventListener('beforeunload', e => { if (this.rom && this.rom.hasChanges) { e.preventDefault(); e.returnValue = ''; } });
+    this.build();
   }
 
-  // ---------------------------------------------------------------- 롬 열기
-  showOpen(msg) {
-    const file = el('input', { type: 'file', accept: '.gbc,.gb', style: 'display:none', onchange: () => file.files[0] && this.load(file.files[0]) });
-    const drop = el('div', { class: 'drop' },
-      el('b', { text: '포켓몬 금·은 (한글판) 롬 파일을 여기에 끌어다 놓거나' }), el('br'),
-      el('button', { class: 'pri', style: 'margin:10px 0', text: '롬 파일 고르기', onclick: () => file.click() }), el('br'),
-      el('span', { text: '롬 파일은 내 컴퓨터(브라우저) 안에서만 열려요. 어디에도 올라가지 않아요.' }),
-      msg ? el('div', { style: 'color:var(--warn);margin-top:10px', text: msg }) : null, file);
-    drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('over'); });
-    drop.addEventListener('dragleave', () => drop.classList.remove('over'));
-    drop.addEventListener('drop', e => { e.preventDefault(); drop.classList.remove('over'); if (e.dataTransfer.files[0]) this.load(e.dataTransfer.files[0]); });
-    this.host.replaceChildren(el('div', { class: 'top' }, el('h2', { text: '포켓몬 금은 올인원 툴' }), el('span', { class: 'sp' }), this.fullBtn()), drop, this.credit());
+  // ---------------------------------------------------------------- 큰 틀 (데스크톱 MainForm 과 같은 배치)
+  build() {
+    const B = (text, cls, fn) => { const b = el('button', { class: cls || '', text, onclick: fn }); b.disabled = true; return b; };
+    this.file = el('input', { type: 'file', accept: '.gbc,.gb', style: 'display:none', onchange: () => { if (this.file.files[0]) this.load(this.file.files[0]); this.file.value = ''; } });
+    const openBtn = el('button', { text: '롬 열기', onclick: () => { if (this.confirmDiscard()) this.file.click(); } });
+    this.saveBtn = B('저장하기', 'save', () => this.save());
+    this.toolBtns = [
+      this.playBtn = B('▶ 게임으로 확인', 'play', () => this.playTest()),
+      B('포켓몬 편집', '', () => this.dialog('포켓몬 편집', () => this.tab_dex())),
+      B('포켓몬 그림', '', () => this.notYet('포켓몬 그림')),
+      B('캐릭터 그림', '', () => this.notYet('캐릭터 그림')),
+      B('타이틀 화면', '', () => this.notYet('타이틀 화면')),
+      B('기술 편집', '', () => this.dialog('기술 편집', () => this.tab_moves())),
+      B('트레이너 편집', '', () => this.dialog('트레이너 편집', () => this.tab_trainer(), () => this.refreshArea())),
+      B('타입 상성', '', () => this.dialog('타입 상성', () => this.tab_types())),
+      B('BGM 에디터', '', () => this.dialog('BGM 에디터', () => this.bgmEditor(), () => Player.stop())),
+      B('오박사 인트로', '', () => this.dialog('오박사 인트로 포켓몬', () => this.introDialog(), null, true))
+    ];
+    this.status = el('span', { class: 'status', text: '롬 파일(.gbc)을 열거나 이 창에 끌어다 놓으세요.' });
+    const top = el('div', { class: 'top' }, openBtn, this.saveBtn, ...this.toolBtns, this.status, el('span', { class: 'sp' }), this.fullBtn(), this.file);
+
+    // 왼쪽: 대사 검색 + 지역 › 구역 › NPC 목록
+    this.search = el('input', { type: 'search', placeholder: '대사 검색 (엔터)' });
+    this.search.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); this.buildTree(); } });
+    this.search.addEventListener('search', () => { if (!this.search.value) this.buildTree(); });
+    this.tree = el('div', { class: 'tree' });
+    const left = el('div', { class: 'left' }, this.search, this.tree);
+
+    // 오른쪽 위: 지도
+    this.mapLabel = el('div', { class: 'maplabel', text: '지도' });
+    this.mapWrap = el('div', { class: 'mapwrap' }, el('div', { class: 'empty', text: '왼쪽 목록에서 구역이나 NPC 를 고르면 지도가 나와요' }));
+    this.canvas = el('canvas', { class: 'map' });
+    this.canvas.addEventListener('click', e => this.mapClick(e));
+    this.canvas.addEventListener('dblclick', e => this.mapDblClick(e));
+    const mapBox = el('div', { class: 'mapbox' }, this.mapLabel, this.mapWrap);
+
+    // 오른쪽 아래: 탭
+    this.tabBtns = TAB_NAMES.map((n, i) => el('button', { text: n, onclick: () => this.setTab(i) }));
+    this.page = el('div', { class: 'tabpage' });
+    const tabBox = el('div', { class: 'tabbox' }, el('div', { class: 'tabs' }, ...this.tabBtns), this.page);
+
+    this.mainBox = el('div', { class: 'main' }, left, el('div', { class: 'right' }, mapBox, tabBox));
+    this.host.replaceChildren(top, this.mainBox, this.credit());
+    this.host.addEventListener('dragover', e => e.preventDefault());
+    this.host.addEventListener('drop', e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f && this.confirmDiscard()) this.load(f); });
+    this.setTab(T_TEXT);
   }
+
+  credit() { return el('div', { class: 'credit', text: '포켓몬스터는 Nintendo·Creatures·GAME FREAK 의 상표예요. 이 도구는 비공식 팬 도구이고, 롬 파일은 직접 가진 것을 쓰세요. 롬은 브라우저 안에서만 열리고 어디에도 올라가지 않아요.' }); }
 
   // 블로그 글 칸이 좁으니 창 전체로 펼치기 (Esc 로 돌아옴)
   fullBtn() {
@@ -1674,116 +2035,124 @@ class App {
     else if (this.home) { this.home.replaceWith(this.host); this.home = null; }
     for (const b of this.host.querySelectorAll('.gsc-fullbtn')) b.replaceWith(this.fullBtn());
     if (!on) this.host.scrollIntoView({ block: 'start' });
-    if (this.area && this.tab === 'map') this.drawMap();
   }
 
-  credit() { return el('div', { class: 'credit', text: '포켓몬스터는 Nintendo·Creatures·GAME FREAK 의 상표예요. 이 도구는 비공식 팬 도구이고 롬 파일은 직접 가진 것을 써 주세요.' }); }
+  say(s, bad) { this.status.textContent = s; this.status.classList.toggle('bad', !!bad); }
+  confirmDiscard() { return !this.rom || !this.rom.hasChanges || confirm('저장하지 않은 수정이 있어요. 버리고 계속할까요?'); }
+  notYet(name) { alert("'" + name + "' 은(는) 웹판에 아직 옮기는 중이에요. 데스크톱 툴에서는 쓸 수 있어요."); }
 
+  onKey(e) {
+    if (!this.rom || !this.host.isConnected) return;
+    if (e.key === 'Escape') {
+      if (this.picking) { this.picking = null; this.setMapLabel(); this.say('취소했어요'); return; }
+      const dlg = this.host.querySelector('.dlg-bg');
+      if (dlg) { dlg.querySelector('.dlg-close').click(); return; }
+      if (this.host.classList.contains('gsc-full')) this.toggleFull();
+      return;
+    }
+    const t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+    if (this.host.querySelector('.dlg-bg')) return;
+    if (e.key === 'Delete' && !e.ctrlKey) { e.preventDefault(); this.deleteSelected(); }
+    else if ((e.key === 'z' || e.key === 'Z') && (e.ctrlKey || e.metaKey)) { e.preventDefault(); this.undoDelete(); }
+  }
+
+  // ---------------------------------------------------------------- 롬 열기
   load(f) {
     const r = new FileReader();
     r.onload = () => {
-      try {
-        const rom = new Rom(new Uint8Array(r.result), f.name);
-        this.rom = rom; this.area = null; this.owner = null; this.spriteCache.clear();
-        this.build();
-        const first = rom.allAreas.find(a => a.name.indexOf('연두') >= 0) || rom.allAreas[0];
-        if (first) this.selectArea(first);
-        if (/CRYSTAL/i.test(rom.title)) this.say('⚠ 크리스탈 롬이에요. 이 툴은 금·은 (한글판) 전용이라 지도·대사·음악이 틀리게 보이거나 저장하면 망가질 수 있어요.', true);
-      } catch (e) { console.error(e); this.showOpen(e.message || String(e)); }
+      let rom;
+      try { rom = new Rom(new Uint8Array(r.result), f.name); }
+      catch (e) { console.error(e); alert(e.message || String(e)); return; }
+      Player.stop();
+      this.rom = rom; this.area = null; this.owner = null; this.spriteCache.clear(); this.undo = [];
+      this.saveBtn.disabled = false; for (const b of this.toolBtns) b.disabled = false;
+      this.search.value = '';
+      this.buildTree();
+      this.mapWrap.replaceChildren(el('div', { class: 'empty', text: '왼쪽 목록에서 구역이나 NPC 를 고르면 지도가 나와요' }));
+      this.mapLabel.textContent = '지도';
+      this.setTab(this.tab);
+      this.say(rom.fileName + '  ·  대사 ' + rom.texts.size.toLocaleString() + '개');
+      if (/CRYSTAL/i.test(rom.title)) this.say('⚠ 크리스탈 롬이에요. 이 툴은 금·은 (한글판) 전용이라 지도·대사·음악이 틀리게 보이거나 저장하면 망가질 수 있어요.', true);
     };
     r.readAsArrayBuffer(f);
   }
 
-  // ---------------------------------------------------------------- 큰 틀
-  build() {
-    const rom = this.rom;
-    this.saveBtn = el('button', { class: 'pri', text: '💾 고친 롬 내려받기', onclick: () => this.save() });
-    const top = el('div', { class: 'top' },
-      el('h2', { text: '포켓몬 금은 올인원 툴' }),
-      el('span', { class: 'hint', text: rom.fileName + ' · ' + rom.title }),
-      el('span', { class: 'sp' }),
-      this.fullBtn(),
-      el('button', { text: '다른 롬 열기', onclick: () => { if (!rom.hasChanges || confirm('고친 내용을 내려받지 않았어요. 그래도 다른 롬을 열까요?')) { Player.stop(); this.showOpen(); } } }),
-      this.saveBtn);
-    this.tabBtns = {};
-    const tabs = el('div', { class: 'tabs' });
-    for (const [k, label] of [['map', '🗺 지도 · 대사'], ['wild', '🌿 야생'], ['trainer', '⚔ 트레이너'], ['mart', '🏪 상점'],
-      ['dex', '📖 포켓몬'], ['moves', '💥 기술'], ['types', '⚡ 타입 상성'], ['music', '🎵 배경음악'], ['find', '🔍 대사 찾기']]) {
-      const b = el('button', { text: label, onclick: () => this.setTab(k) });
-      this.tabBtns[k] = b; tabs.append(b);
-    }
-    this.body = el('div');
-    this.status = el('div', { class: 'status' });
-    this.host.replaceChildren(top, tabs, this.body, this.status, this.credit());
-    this.buildMapTab();
-    this.setTab('map');
-  }
-
-  setTab(k) {
-    this.tab = k;
-    for (const t in this.tabBtns) this.tabBtns[t].classList.toggle('on', t === k);
-    Player.stop();
-    if (k === 'map') { this.body.replaceChildren(this.mapTab); if (this.area) this.drawMap(); }
-    else if (k === 'music') this.body.replaceChildren(this.buildMusicTab());
-    else if (k === 'find') this.body.replaceChildren(this.buildFindTab());
-    else this.body.replaceChildren(this['tab_' + k]());
-  }
-
-  say(s, bad) { this.status.textContent = s; this.status.style.color = bad ? 'var(--warn)' : ''; }
-
-  // ---------------------------------------------------------------- 지도 · 대사 탭
-  buildMapTab() {
-    const search = el('input', { type: 'search', placeholder: '장소 이름 찾기 (예: 연두, 체육관)' });
-    this.tree = el('div', { class: 'tree' });
-    search.addEventListener('input', () => this.fillTree(search.value.trim()));
-    this.canvas = el('canvas');
-    this.canvas.addEventListener('click', e => this.mapClick(e));
-    this.areaTitle = el('div', { style: 'font-weight:bold' });
-    this.musicLine = el('div', { class: 'bar' });
-    const zoom = el('select', { onchange: () => { this.scale = +zoom.value; this.drawMap(); } },
-      ...[1, 2, 3].map(z => { const o = el('option', { value: z, text: z + '배' }); if (z === this.scale) o.selected = true; return o; }));
-    this.ownerBar = el('div', { class: 'owners' });
-    this.textBox = el('div', { class: 'texts' });
-    this.mapTab = el('div', { class: 'cols' },
-      el('div', { class: 'box c-tree' }, search, this.tree),
-      el('div', { class: 'box c-map' },
-        el('div', { class: 'bar' }, this.areaTitle, el('span', { class: 'sp', style: 'flex:1' }), el('span', { class: 'hint', text: '확대' }), zoom),
-        el('div', { class: 'mapwrap' }, this.canvas),
-        el('div', { class: 'hint', text: '지도에서 사람이나 표지판(!)을 누르면 그 대사가 오른쪽에 나와요. 흐린 사람은 대사가 없는 NPC예요.' }),
-        this.musicLine),
-      el('div', { class: 'box c-text' }, this.ownerBar, this.textBox));
-    this.fillTree('');
-  }
-
-  fillTree(q) {
+  // ---------------------------------------------------------------- 왼쪽 목록
+  ownerLabel(o) { return (o.texts.some(t => t.modified) ? '✎ ' : '') + o.name; }
+  buildTree() {
+    if (!this.rom) return;
+    const q = this.search.value.trim();
     this.tree.replaceChildren();
-    this.treeItems = new Map();
+    this.areaNodes = new Map(); this.ownerNodes = new Map();
+    let firstHit = null;
     for (const reg of this.rom.regions) {
-      const areas = q ? reg.areas.filter(a => a.name.indexOf(q) >= 0 || reg.name.indexOf(q) >= 0) : reg.areas;
-      if (!areas.length) continue;
-      const det = el('details', null, el('summary', { text: reg.name + ' (' + areas.length + ')' }));
-      if (q || (this.area && areas.includes(this.area))) det.open = true;
-      for (const a of areas) {
-        const it = el('div', { class: 'it' + (a === this.area ? ' on' : ''), text: a.name, title: a.name + ' (' + a.group + '-' + a.map + ')', onclick: () => this.selectArea(a) });
-        this.treeItems.set(a, it);
-        det.append(it);
+      const rd = el('details', null, el('summary', { text: reg.name }));
+      let any = false;
+      for (const a of reg.areas) {
+        const owners = q ? a.owners.filter(o => o.texts.some(t => t.current.includes(q))) : a.owners;
+        if (q && !owners.length) continue;
+        const sum = el('summary', { text: a.name });
+        const ad = el('details', null, sum);
+        sum.addEventListener('click', () => this.selectArea(a, null));
+        this.areaNodes.set(a, sum);
+        for (const o of owners) {
+          const it = el('div', { class: 'it', text: this.ownerLabel(o), onclick: () => this.selectOwner(a, o, true) });
+          this.ownerNodes.set(o, it);
+          ad.append(it);
+          if (!firstHit) firstHit = [a, o];
+        }
+        if (q) ad.open = true;
+        rd.append(ad); any = true;
       }
-      this.tree.append(det);
+      if (q) rd.open = true;
+      if (any) this.tree.append(rd);
+    }
+    if (q) { if (firstHit) this.selectOwner(firstHit[0], firstHit[1], true); else alert('찾는 대사가 없어요.'); }
+    else if (this.area) this.markTree();
+  }
+  markTree() {
+    for (const n of this.tree.querySelectorAll('.on')) n.classList.remove('on');
+    let node = this.owner && this.ownerNodes.get(this.owner);
+    if (!node) node = this.area && this.areaNodes.get(this.area);
+    if (!node) return;
+    node.classList.add('on');
+    for (let p = node.parentElement; p && p !== this.tree; p = p.parentElement) if (p.tagName === 'DETAILS') p.open = true;
+    node.scrollIntoView({ block: 'nearest' });
+  }
+  refreshTreeLabel(o) { const n = this.ownerNodes && this.ownerNodes.get(o); if (n) n.textContent = this.ownerLabel(o); }
+
+  // 구역·NPC 고르기 (트리 또는 지도)
+  selectArea(a, o) {
+    const changed = a !== this.area;
+    this.area = a; this.owner = o || null; this.picking = null;
+    if (changed) this.showMap();
+    else this.drawMap();
+    this.setMapLabel();
+    this.markTree();
+    this.setTab(this.tab);
+  }
+  selectOwner(a, o, fromTree) {
+    this.selectArea(a, o);
+    // 점원 → 상점, 포켓몬 주는 NPC → 선물 탭 (대사 탭을 보고 있을 때)
+    if (fromTree && this.tab === T_TEXT) {
+      if (o.mart != null) this.setTab(T_SHOP);
+      else if (this.rom.giftsOf(o).length) this.setTab(T_GIFT);
     }
   }
+  refreshArea() { if (this.area) { this.buildTree(); this.drawMap(); this.setTab(this.tab); } }
 
-  selectArea(a, owner) {
-    if (this.area && this.treeItems.get(this.area)) this.treeItems.get(this.area).classList.remove('on');
-    this.area = a;
-    const it = this.treeItems.get(a);
-    if (it) { it.classList.add('on'); it.parentElement.open = true; it.scrollIntoView({ block: 'nearest' }); }
-    this.areaTitle.textContent = a.regionName + ' › ' + a.name;
-    this.owner = owner || a.owners.find(o => o.texts.length) || null;
-    if (this.tab !== 'map') this.setTab('map');
-    this.drawMap();
-    this.fillOwners();
-    this.fillMusicLine();
+  // ---------------------------------------------------------------- 지도
+  setMapLabel(pick) {
+    const l = this.mapLabel;
+    l.classList.toggle('pick', !!pick);
+    if (pick) { l.textContent = pick; return; }
+    l.replaceChildren();
+    if (!this.area) { l.textContent = '지도'; return; }
+    const zoom = sel([[1, '1배'], [2, '2배'], [3, '3배']], this.scale, v => { this.scale = v; this.drawMap(); });
+    l.append(el('span', { text: this.area.name + '  —  클릭: 고르기 · Delete: 지우기 · Ctrl+Z: 되돌리기' }), el('span', { style: 'flex:1' }), zoom);
   }
+  showMap() { this.mapWrap.replaceChildren(this.canvas); this.drawMap(); this.mapWrap.scrollTop = this.mapWrap.scrollLeft = 0; }
 
   spriteImg(sprite, pal) {
     const k = sprite * 16 + (pal + 1);
@@ -1800,7 +2169,8 @@ class App {
     const a = this.area; if (!a) return;
     const img = this.rom.gfx.renderMap(a);
     const s = this.scale, cv = this.canvas;
-    if (!img) { cv.width = 320; cv.height = 60; const g = cv.getContext('2d'); g.fillStyle = '#fff'; g.fillText('이 구역 지도는 그릴 수 없어요', 10, 30); return; }
+    if (!img) { this.mapWrap.replaceChildren(el('div', { class: 'empty', text: '이 구역 지도는 그릴 수 없어요' })); return; }
+    if (cv.parentElement !== this.mapWrap) this.mapWrap.replaceChildren(cv);
     cv.width = img.width * s; cv.height = img.height * s;
     const g = cv.getContext('2d');
     g.imageSmoothingEnabled = false;
@@ -1818,101 +2188,103 @@ class App {
         const sp = this.spriteImg(o.sprite, o.pal);
         if (sp) g.drawImage(sp, o.x * T, o.y * T, T, T);
         else { g.fillStyle = '#e55'; g.fillRect(o.x * T + 2, o.y * T + 2, T - 4, T - 4); }
+        // 바깥 지도에서 게임에 다른 인물로 보이는 NPC
+        if (o.isObject && !this.rom.spriteShows(a, o.sprite)) {
+          g.globalAlpha = 1; g.fillStyle = '#e33'; g.font = 'bold ' + (9 * s) + 'px sans-serif'; g.textAlign = 'right'; g.fillText('?', o.x * T + T - 1, o.y * T + 9 * s);
+        }
       }
       g.globalAlpha = 1;
+      if (o.texts && o.texts.some(t => t.modified)) { g.fillStyle = '#2b8a3e'; g.beginPath(); g.arc(o.x * T + 3 * s, o.y * T + 3 * s, 2.5 * s, 0, 7); g.fill(); }
       if (o === this.owner) { g.strokeStyle = '#ff2'; g.lineWidth = 2; g.strokeRect(o.x * T + 1, o.y * T + 1, T - 2, T - 2); }
     };
     for (const o of a.extras) drawObj(o, true);
     for (const o of a.owners) drawObj(o, false);
     if (this.owner && this.owner.x >= 0) {
-      const wrap = cv.parentElement, x = this.owner.x * T, y = this.owner.y * T;
+      const wrap = this.mapWrap, x = this.owner.x * T, y = this.owner.y * T;
       if (x < wrap.scrollLeft || x > wrap.scrollLeft + wrap.clientWidth - T || y < wrap.scrollTop || y > wrap.scrollTop + wrap.clientHeight - T) {
         wrap.scrollLeft = x - wrap.clientWidth / 2; wrap.scrollTop = y - wrap.clientHeight / 2;
       }
     }
   }
 
-  mapClick(e) {
+  mapXY(e) {
     const r = this.canvas.getBoundingClientRect();
     const T = 16 * this.scale * (r.width / this.canvas.width);
-    const x = Math.floor((e.clientX - r.left) / T), y = Math.floor((e.clientY - r.top) / T);
-    if (this.moving) {
-      const o = this.moving; this.moving = null;
-      this.canvas.style.cursor = '';
-      this.rom.moveOwner(o, x, y);
-      this.drawMap(); this.fillOwners();
-      this.say(o.name + ' 을(를) (' + x + ', ' + y + ') 로 옮겼어요');
-      return;
-    }
-    const hit = this.area.owners.find(o => o.x === x && o.y === y) || this.area.extras.find(o => o.x === x && o.y === y);
-    if (!hit) { this.say('(' + x + ', ' + y + ') 칸 — 여기엔 사람이나 표지판이 없어요'); return; }
-    this.owner = hit;
-    this.drawMap(); this.fillOwners();
-    this.say(hit.name + ' (' + x + ', ' + y + ')' + (hit.texts.length ? '' : ' — 대사가 없는 NPC예요'));
+    return [Math.floor((e.clientX - r.left) / T), Math.floor((e.clientY - r.top) / T)];
+  }
+  // 지도에서 칸 고르기 (NPC 옮기기 등). act(x, y)
+  startPick(msg, act) { this.picking = act; this.setMapLabel('▶ ' + msg + ' (취소하려면 Esc)'); }
+
+  mapClick(e) {
+    if (!this.area) return;
+    const [x, y] = this.mapXY(e);
+    if (this.picking) { const act = this.picking; this.picking = null; this.setMapLabel(); act(x, y); return; }
+    const a = this.area;
+    const hit = a.owners.find(o => o.x === x && o.y === y) || a.extras.find(o => o.x === x && o.y === y);
+    if (!hit) { this.say('(' + x + ', ' + y + ') 칸'); return; }
+    this.selectArea(a, hit);
+    // 지도에서 고른 NPC 에 맞는 탭으로
+    if (this.rom.giftsOf(hit).length) this.setTab(T_GIFT);
+    else if (hit.mart != null) this.setTab(T_SHOP);
+    else if (hit.eventOff >= 0) this.setTab(T_EVENT);
+    if (hit.isObject && !this.rom.spriteShows(a, hit.sprite))
+      this.say("⚠ '" + hit.name + "' 은(는) 게임에선 다른 인물로 보여요. NPC · 이벤트 탭에서 [모습·방향 적용]을 누르면 이 지역 빈 칸에 넣어 고쳐요", true);
+    else this.say(hit.name + ' (' + x + ', ' + y + ')');
+  }
+  mapDblClick() { }
+
+  // ---------------------------------------------------------------- Delete 로 지우기 · Ctrl+Z 되돌리기
+  deleteSelected() {
+    const o = this.owner, a = this.area;
+    if (!o || !a) { this.say('지울 NPC를 먼저 고르세요'); return; }
+    if (o.eventOff < 0) { this.say("'자동 이벤트'는 지울 수 없어요"); return; }
+    const off = this.rom.off(a.scriptBank, a.eventsAddr), snap = this.rom.data.slice(off, off + this.rom.eventsSize(off));
+    const err = this.rom.deleteOwner(a, o);
+    if (err) { this.say(err, true); return; }
+    this.undo.push({ a, off, snap, name: o.name });
+    this.owner = null; this.buildTree(); this.drawMap(); this.setTab(this.tab);
+    this.say("'" + o.name + "' 을(를) 지웠어요  ·  되돌리려면 Ctrl+Z");
+  }
+  undoDelete() {
+    const u = this.undo.pop();
+    if (!u) { this.say('되돌릴 삭제가 없어요'); return; }
+    this.rom.data.set(u.snap, u.off); this.rom.dirty = true;
+    this.rom.loadArea(u.a);
+    this.area = u.a; this.owner = u.a.owners.find(x => x.name === u.name) || null;
+    this.buildTree(); this.showMap(); this.setTab(this.tab);
+    this.say("'" + u.name + "' 을(를) 되돌렸어요");
   }
 
-  fillOwners() {
-    this.ownerBar.replaceChildren();
-    for (const o of this.area.owners) {
-      if (!o.texts.length) continue;
-      const b = el('button', { class: o === this.owner ? 'on' : '', text: o.name + (o.texts.some(t => t.modified) ? ' ✎' : ''),
-        onclick: () => { this.owner = o; this.drawMap(); this.fillOwners(); } });
-      this.ownerBar.append(b);
-    }
-    this.fillTexts();
+  // ---------------------------------------------------------------- 탭
+  setTab(i) {
+    this.tab = i;
+    this.tabBtns.forEach((b, k) => b.classList.toggle('on', k === i));
+    const p = this.page;
+    p.replaceChildren();
+    if (!this.rom) { p.append(el('div', { class: 'hint', text: '롬을 열면 쓸 수 있어요.' })); return; }
+    try {
+      const fn = [this.pageText, this.pageWild, this.pageShop, this.pageGift, this.pageBlock, this.pageEvent, this.pageWarp][i];
+      p.append(fn.call(this));
+    } catch (e) { console.error(e); p.append(el('div', { class: 'bad', text: '오류: ' + e.message })); }
   }
 
-  fillTexts() {
-    const o = this.owner;
-    this.textBox.replaceChildren();
-    if (o && o.eventOff >= 0) this.textBox.append(this.npcPanel(o));
-    if (!o || !o.texts.length) { this.textBox.append(el('div', { class: 'hint', text: o ? '이 NPC 는 대사가 없어요.' : '지도에서 사람이나 표지판을 골라 주세요.' })); return; }
-    this.textBox.append(el('div', { class: 'hint', text: '빈 줄 = 다음 말풍선. {이름} 같은 표시는 지우지 마세요. 고친 대사는 초록색이에요.' }));
-    o.texts.forEach((t, i) => this.textBox.append(this.textEditor(t, (i + 1) + '번째 대사' + (this.rom.textNote.has(t) ? ' · ' + this.rom.textNote.get(t) : ''))));
-  }
-
-  // 고른 NPC·표지판의 모습 · 움직임 · 위치 · 지우기
-  npcPanel(o) {
-    const rom = this.rom, a = this.area;
-    const box = el('div', { class: 'npc' });
-    const note = el('div', { class: 'hint', style: 'white-space:pre-line' });
-    const moveBtn = el('button', { text: '📍 지도에서 옮기기', onclick: () => {
-      this.moving = o; this.canvas.style.cursor = 'crosshair';
-      this.say('지도에서 ' + o.name + ' 을(를) 옮길 칸을 누르세요');
-    } });
-    const delBtn = el('button', { text: '🗑 지우기', onclick: () => {
-      if (!confirm(o.name + ' 을(를) 지울까요?')) return;
-      const err = rom.deleteOwner(a, o);
-      if (err) { this.say(err, true); return; }
-      this.owner = null; this.drawMap(); this.fillOwners(); this.say(o.name + ' 을(를) 지웠어요');
-    } });
-    box.append(el('div', { class: 'bar' }, el('b', { text: o.name }), el('span', { class: 'hint', text: '(' + o.x + ', ' + o.y + ')' })));
-    if (!o.isSign) {
-      const sprites = Object.keys(SPRITE_NAMES).map(Number).sort((x, y) => x - y);
-      if (!sprites.includes(o.sprite)) sprites.unshift(o.sprite);
-      const allowed = rom.outdoorSprites(a);
-      const look = sel(sprites.map(s => [s, (allowed && allowed.includes(s) ? '✓ ' : '') + Names.sprite(s)]), o.sprite);
-      const MOVE_IDS = [6, 7, 8, 9, 3, 2], MOVE_NAMES = ['아래를 보고 서 있음', '위를 보고 서 있음', '왼쪽을 보고 서 있음', '오른쪽을 보고 서 있음', '제자리에서 두리번', '돌아다님'];
-      const mv = sel(MOVE_IDS.map((m, i) => [m, MOVE_NAMES[i]]).concat(MOVE_IDS.includes(o.move) ? [] : [[o.move, '특별한 움직임 (그대로)']]), o.move);
-      const pic = el('canvas', { width: 16, height: 16, style: 'width:32px;height:32px;background:#eee;border-radius:4px' });
-      const drawPic = () => { const g = pic.getContext('2d'); g.clearRect(0, 0, 16, 16); const sp = this.spriteImg(+look.value, o.pal); if (sp) g.drawImage(sp, 0, 0); };
-      look.addEventListener('change', drawPic); drawPic();
-      const apply = el('button', { class: 'pri', text: '모습 적용', onclick: () => {
-        const msg = rom.setLook(a, o, +look.value, +mv.value);
-        this.drawMap(); note.textContent = msg || ''; this.say(o.name + ' 모습을 바꿨어요');
-      } });
-      box.append(el('div', { class: 'bar' }, pic, look), el('div', { class: 'bar' }, mv, apply));
-      const region = rom.outdoorRegionText(a);
-      if (region) note.textContent = region + '\n(✓ = 이 지역 바깥 지도에서 그대로 보이는 모습)';
+  // [대사] 탭
+  pageText() {
+    const box = el('div');
+    const a = this.area, o = this.owner;
+    if (!a) { box.append(el('div', { class: 'ttl', text: '왼쪽에서 지역 → 구역 → NPC 를 고르세요' })); return box; }
+    if (!o) {
+      box.append(el('div', { class: 'ttl', text: a.regionName + '  ›  ' + a.name }), el('div', { class: 'hint', text: '왼쪽 목록이나 지도에서 NPC 를 고르면 대사가 나와요.' }));
+      return box;
     }
-    box.append(el('div', { class: 'bar' }, moveBtn, delBtn));
-    if (o.trainer) box.append(el('div', { class: 'bar' }, el('button', { text: '⚔ 이 트레이너 팀 고치기', onclick: () => { this.pick = { trainer: o.trainer }; this.setTab('trainer'); } })));
-    if (o.mart != null) box.append(el('div', { class: 'bar' }, el('button', { text: '🏪 이 상점 물건 고치기', onclick: () => { this.pick = { mart: o.mart }; this.setTab('mart'); } })));
-    box.append(note, el('hr', { style: 'border:none;border-top:1px solid var(--line);margin:8px 0' }));
+    box.append(el('div', { class: 'ttl', text: a.regionName + '  ›  ' + a.name + '  ›  ' + o.name }));
+    if (!o.texts.length) box.append(el('div', { class: 'hint', text: '이 NPC 는 대사가 없어요.' }));
+    o.texts.forEach((t, i) => box.append(this.textEditor(t, (i + 1) + '번째 대사' + (this.rom.textNote.has(t) ? ' · ' + this.rom.textNote.get(t) : ''), o)));
+    box.append(el('div', { class: 'hint', style: 'margin-top:8px', text: '엔터 = 다음 줄      빈 줄 = 다음 말풍선\n{주인공} {라이벌} 같은 중괄호는 이름 등이 들어가는 자리예요\n다 고친 뒤 [저장하기]를 누르면 새 롬 파일로 저장돼요 (원래 롬은 그대로)' }));
     return box;
   }
 
-  textEditor(t, title) {
+  textEditor(t, title, owner) {
     const box = el('div', { class: 'tx' + (t.modified ? ' mod' : '') });
     const err = el('div', { class: 'err' });
     const ta = el('textarea', { spellcheck: 'false' });
@@ -1920,33 +2292,30 @@ class App {
     ta.rows = Math.min(10, t.current.split('\n').length + 1);
     const check = () => { this.rom.validate(t); err.textContent = t.error || ''; box.classList.toggle('mod', t.modified); };
     ta.addEventListener('input', () => { t.edited = ta.value; check(); });
-    ta.addEventListener('change', () => this.fillOwnersLabelsOnly());
-    const reset = el('button', { text: '원래대로', style: 'font-size:12px;padding:1px 8px', onclick: () => { t.edited = null; ta.value = t.current; check(); } });
+    ta.addEventListener('change', () => { if (owner) this.refreshTreeLabel(owner); this.drawMap(); });
+    const reset = el('button', { text: '원래대로', style: 'font-size:12px;padding:1px 8px', onclick: () => { t.edited = null; ta.value = t.current; check(); if (owner) this.refreshTreeLabel(owner); } });
     box.append(el('div', { class: 'bar' }, el('span', { class: 'note', text: title + (t.readOnly ? ' (길게 늘릴 수 없음)' : '') }), el('span', { style: 'flex:1' }), reset), ta, err);
     check();
     return box;
   }
 
-  fillOwnersLabelsOnly() {
-    for (const b of this.ownerBar.children) {
-      const o = this.area.owners.filter(x => x.texts.length)[Array.prototype.indexOf.call(this.ownerBar.children, b)];
-      if (o) b.textContent = o.name + (o.texts.some(t => t.modified) ? ' ✎' : '');
-    }
+  pageBlock() { return el('div', { class: 'hint', text: '지도 블록 칠하기는 웹판에 아직 옮기는 중이에요. 데스크톱 툴에서는 쓸 수 있어요.' }); }
+  pageWarp() { return el('div', { class: 'hint', text: '워프 · 트리거 편집은 웹판에 아직 옮기는 중이에요. 데스크톱 툴에서는 쓸 수 있어요.' }); }
+
+  // ---------------------------------------------------------------- 창 (데스크톱의 따로 뜨는 창)
+  dialog(title, make, onClose, small) {
+    const close = () => { bg.remove(); if (onClose) onClose(); };
+    const body = el('div', { class: 'dlg-body' });
+    const bg = el('div', { class: 'dlg-bg' },
+      el('div', { class: 'dlg' + (small ? ' small' : '') },
+        el('div', { class: 'dlg-head' }, el('span', { text: title }), el('button', { class: 'dlg-close', text: '닫기', onclick: close })), body));
+    bg.addEventListener('mousedown', e => { if (e.target === bg) close(); });
+    this.host.append(bg);
+    try { body.append(make()); } catch (e) { console.error(e); body.append(el('div', { class: 'bad', text: '오류: ' + e.message })); }
+    return close;
   }
 
-  fillMusicLine() {
-    const rom = this.rom, a = this.area, cur = rom.areaMusic(a);
-    const n = RomMusic.songCount(rom.data);
-    this.musicLine.replaceChildren();
-    if (cur < 0 || !n) return;
-    const sel = el('select');
-    for (let i = 0; i < n; i++) { const o = el('option', { value: i, text: hex2(i) + ' ' + RomMusic.name(i) }); if (i === cur) o.selected = true; sel.append(o); }
-    sel.addEventListener('change', () => { rom.setAreaMusic(a, +sel.value); this.say(a.name + ' 배경음악 → ' + RomMusic.name(+sel.value)); });
-    const play = el('button', { text: '▶ 듣기', onclick: () => this.playSong(+sel.value, play) });
-    this.musicLine.append(el('span', { class: 'hint', text: '이 장소 배경음악' }), sel, play, el('button', { text: '■', onclick: () => Player.stop() }));
-  }
-
-  // ---------------------------------------------------------------- 배경음악 탭
+  // ---------------------------------------------------------------- BGM
   playSong(id, btn) {
     const old = btn ? btn.textContent : '';
     if (btn) { btn.textContent = '…'; btn.disabled = true; }
@@ -1961,56 +2330,6 @@ class App {
     }, 10);
   }
 
-  buildMusicTab() {
-    const rom = this.rom, n = RomMusic.songCount(rom.data);
-    const wrap = el('div', { class: 'box' });
-    if (!n) { wrap.append(el('div', { text: '이 롬에서 음악 표를 찾지 못했어요.' })); return wrap; }
-    wrap.append(el('div', { class: 'bar' },
-      el('button', { text: '■ 멈춤', onclick: () => Player.stop() }),
-      el('span', { class: 'hint', text: '곡을 누르면 게임 사운드 칩과 똑같은 방식으로 합성해서 들려줘요. 장소마다 음악을 바꾸려면 [지도 · 대사] 탭 지도 아래에서 고르세요.' })));
-    const done = new Set();
-    let selEl = null;
-    const item = id => {
-      done.add(id);
-      const d = el('div', { class: 'song', title: '눌러서 듣기' },
-        el('span', { class: 'n', text: hex2(id) }), el('span', { text: RomMusic.name(id) }),
-        RomMusic.isReplaced(rom.data, id) ? el('span', { class: 'chg', text: '★바뀜' }) : null);
-      d.addEventListener('click', () => { if (selEl) selEl.classList.remove('on'); selEl = d; d.classList.add('on'); this.playSong(id); });
-      return d;
-    };
-    for (const [gname, ids] of RomMusic.groups) {
-      const list = ids.filter(i => i < n);
-      if (!list.length) continue;
-      wrap.append(el('div', { class: 'grp', text: gname }), el('div', { class: 'songs' }, ...list.map(item)));
-    }
-    const rest = []; for (let i = 1; i < n; i++) if (!done.has(i)) rest.push(i);
-    if (rest.length) wrap.append(el('div', { class: 'grp', text: '기타' }), el('div', { class: 'songs' }, ...rest.map(item)));
-    return wrap;
-  }
-
-  // ---------------------------------------------------------------- 대사 찾기 탭
-  buildFindTab() {
-    const q = el('input', { type: 'search', placeholder: '대사에 들어간 말로 찾기 (예: 포켓몬, 엄마)' });
-    const out = el('div', { class: 'texts', style: 'max-height:600px' });
-    const run = () => {
-      const s = q.value.trim(); out.replaceChildren();
-      if (s.length < 1) return;
-      let n = 0;
-      for (const a of this.rom.allAreas)
-        for (const o of a.owners)
-          for (const t of o.texts) {
-            if (t.current.indexOf(s) < 0) continue;
-            if (++n > 200) continue;
-            const line = t.current.split('\n').find(l => l.indexOf(s) >= 0) || '';
-            out.append(el('div', { class: 'song', style: 'margin-bottom:4px', onclick: () => this.selectArea(a, o) },
-              el('b', { text: a.name + ' › ' + o.name }), el('span', { class: 'hint', text: line })));
-          }
-      this.say(n > 200 ? n + '개 찾음 (앞 200개만 보여요)' : n + '개 찾음');
-    };
-    q.addEventListener('input', () => { clearTimeout(this.findTimer); this.findTimer = setTimeout(run, 250); });
-    return el('div', { class: 'box' }, q, el('div', { style: 'height:8px' }), out);
-  }
-
   // ---------------------------------------------------------------- 저장
   save() {
     const rom = this.rom;
@@ -2021,11 +2340,12 @@ class App {
     document.body.append(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 5000);
     if (errors.length) { alert('이 대사들은 넣지 못했어요:\n\n' + errors.slice(0, 15).join('\n')); this.say(errors.length + '개 대사는 넣지 못했어요', true); }
-    else this.say(name + ' 내려받기 완료');
-    if (this.area) this.fillOwners();
+    else this.say(name + ' 로 저장했어요 (내려받기)');
+    this.buildTree(); this.setTab(this.tab);
   }
-}
 
+  playTest() { this.notYet('게임으로 확인 (브라우저 안 에뮬레이터)'); }
+}
 
 // ===== 95-tabs.js
 // ================================================================ 데이터 편집 탭들 (야생 · 트레이너 · 상점 · 포켓몬 · 기술 · 타입 상성)
@@ -2063,56 +2383,6 @@ Object.assign(App.prototype, {
   notFound(what) { return el('div', { class: 'box' }, el('div', { text: '이 롬에서 ' + what + ' 데이터를 찾지 못했어요.' })); },
   okMsg(box, msg, bad) { box.textContent = msg; box.className = bad ? 'bad' : 'ok'; },
   areaByGM(g, m) { return this.rom.allAreas.find(a => a.group === g && a.map === m); },
-
-  // ---------------------------------------------------------------- 야생 포켓몬
-  tab_wild() {
-    const rom = this.rom;
-    if (!rom.wild.length || !rom.pokemonNames.length) return this.notFound('야생 포켓몬');
-    const keys = [];
-    for (const t of rom.wild) { const k = t.group * 256 + t.map; if (!keys.includes(k)) keys.push(k); }
-    const order = rom.allAreas.map(a => a.group * 256 + a.map);
-    keys.sort((x, y) => (order.indexOf(x) + 1 || 9999) - (order.indexOf(y) + 1 || 9999));
-    const items = keys.map(k => { const a = this.areaByGM(k >> 8, k & 255); return { value: k, label: a ? a.name : '구역 ' + (k >> 8) + '-' + (k & 255), group: a ? a.regionName : '' }; });
-    const right = el('div', { class: 'box' });
-    const show = k => {
-      right.replaceChildren();
-      const a = this.areaByGM(k >> 8, k & 255);
-      right.append(el('div', { class: 'bar' }, el('b', { text: a ? a.regionName + ' › ' + a.name : '' }),
-        a ? el('button', { text: '🗺 지도 보기', onclick: () => this.selectArea(a) }) : null));
-      for (const t of rom.wild.filter(x => x.group * 256 + x.map === k)) {
-        right.append(el('div', { class: 'grp', text: t.water ? '🌊 물 위 (낚시 아닌 파도타기)' : '🌿 풀숲 · 동굴' }));
-        const times = t.water ? [0] : [0, 1, 2], tn = ['아침', '낮', '밤'];
-        const tbl = el('table', { class: 'grid' });
-        const head = el('tr', null, el('th', { text: '칸 (확률)' }));
-        for (const ti of times) head.append(el('th', { text: t.water ? '포켓몬 · 레벨' : tn[ti] + ' 포켓몬 · 레벨' }));
-        tbl.append(head);
-        const rate = el('tr', null, el('th', { text: '만나는 빈도' }));
-        for (const ti of times) {
-          const o = rom.wildRate(t, ti);
-          rate.append(el('td', null, num(rom.data[o], 0, 255, v => { rom.data[o] = v; rom.dirty = true; }), el('span', { class: 'hint', text: ' /255' })));
-        }
-        tbl.append(rate);
-        const chances = t.water ? WATER_CHANCE : GRASS_CHANCE;
-        const opts = this.monOptions(false);
-        for (let i = 0; i < chances.length; i++) {
-          const tr = el('tr', null, el('th', { text: (i + 1) + '번 (' + chances[i] + '%)' }));
-          for (const ti of times) {
-            const o = rom.wildSlot(t, ti, i);
-            tr.append(el('td', null,
-              sel(opts, rom.data[o + 1], v => { rom.data[o + 1] = v; rom.dirty = true; }),
-              el('span', { text: ' Lv ' }), num(rom.data[o], 1, 100, v => { rom.data[o] = v; rom.dirty = true; })));
-          }
-          tbl.append(tr);
-        }
-        right.append(el('div', { class: 'scrollx' }, tbl));
-      }
-      right.append(el('div', { class: 'hint', text: '바꾸면 바로 롬에 들어가요. [고친 롬 내려받기]로 저장하세요.' }));
-    };
-    const cur = this.area ? this.area.group * 256 + this.area.map : -1;
-    const first = keys.includes(cur) ? cur : keys[0];
-    show(first);
-    return el('div', { class: 'side' }, listPanel(items, show, '장소 찾기', first), right);
-  },
 
   // ---------------------------------------------------------------- 트레이너
   tab_trainer() {
@@ -2173,55 +2443,12 @@ Object.assign(App.prototype, {
       const where = [];
       for (const a of rom.allAreas) for (const o of a.owners.concat(a.extras)) if (o.trainer && o.trainer.cls === tc.cls && o.trainer.id === (key & 255)) where.push([a, o]);
       if (where.length) right.append(el('div', { class: 'bar' }, el('span', { class: 'hint', text: '나오는 곳:' }),
-        ...where.map(([a, o]) => el('button', { text: a.name + ' › ' + o.name, onclick: () => this.selectArea(a, o) }))));
+        ...where.map(([a, o]) => el('button', { text: a.regionName + ' › ' + a.name + ' › ' + o.name, onclick: () => this.goTo(a, o) }))));
     };
     let first = items[0].value;
     if (this.pick && this.pick.trainer) { first = this.pick.trainer.cls * 256 + this.pick.trainer.id; this.pick = null; }
     show(first);
     return el('div', { class: 'side' }, listPanel(items, show, '트레이너 · 포켓몬 찾기', first), right);
-  },
-
-  // ---------------------------------------------------------------- 상점
-  tab_mart() {
-    const rom = this.rom;
-    if (!rom.marts.length) return this.notFound('상점');
-    const spots = new Map();
-    for (const a of rom.allAreas) for (const o of a.owners.concat(a.extras)) if (o.mart != null) { if (!spots.has(o.mart)) spots.set(o.mart, []); spots.get(o.mart).push([a, o]); }
-    const items = rom.marts.map(m => ({ value: m.id, label: m.id + '번 — ' + (spots.has(m.id) ? [...new Set(spots.get(m.id).map(([a]) => a.regionName + ' ' + a.name))].join(', ') : '(쓰는 곳 없음)') }));
-    const right = el('div', { class: 'box' });
-    const itemOpts = this.itemOptions().filter(([v]) => v > 0);
-    const show = id => {
-      const m = rom.marts.find(x => x.id === id);
-      right.replaceChildren();
-      const list = m.items.slice(), msg = el('div'), tb = el('div');
-      const draw = () => {
-        const t = el('table', { class: 'grid' }, el('tr', null, el('th', { text: '물건' }), el('th', { text: '값 (모든 상점 공통)' }), el('th', { text: '' })));
-        list.forEach((it, i) => {
-          t.append(el('tr', null,
-            el('td', null, sel(itemOpts, it, v => { list[i] = v; draw(); })),
-            el('td', null, num(rom.getPrice(it), 0, 65535, v => rom.setPrice(it, v)), el('span', { text: ' 원' })),
-            el('td', null,
-              el('button', { text: '▲', onclick: () => { if (i > 0) { [list[i - 1], list[i]] = [list[i], list[i - 1]]; draw(); } } }),
-              el('button', { text: '▼', onclick: () => { if (i < list.length - 1) { [list[i + 1], list[i]] = [list[i], list[i + 1]]; draw(); } } }),
-              el('button', { text: '✕', onclick: () => { list.splice(i, 1); draw(); } }))));
-        });
-        tb.replaceChildren(t);
-        if (list.length < MAX_MART_ITEMS) tb.append(el('button', { style: 'margin-top:6px', text: '+ 물건 추가', onclick: () => { list.push(itemOpts[3] ? itemOpts[3][0] : 1); draw(); } }));
-      };
-      draw();
-      right.append(el('div', { class: 'bar' }, el('b', { text: '상점 ' + id + '번' }), el('span', { class: 'hint', text: '물건은 ' + MAX_MART_ITEMS + '개까지' })), tb,
-        el('div', { class: 'bar', style: 'margin-top:8px' }, el('button', { class: 'pri', text: '물건 목록 적용', onclick: () => {
-          const err = rom.writeMart(m, list);
-          this.okMsg(msg, err || '적용했어요', !!err);
-        } }), msg),
-        el('div', { class: 'hint', text: '값은 바꾸는 즉시 들어가요 (모든 상점에서 같은 값).' }));
-      if (spots.has(id)) right.append(el('div', { class: 'bar' }, el('span', { class: 'hint', text: '이 상점 점원:' }),
-        ...spots.get(id).map(([a, o]) => el('button', { text: a.regionName + ' ' + a.name, onclick: () => this.selectArea(a, o) }))));
-    };
-    let first = rom.marts[0].id;
-    if (this.pick && this.pick.mart != null) { first = this.pick.mart; this.pick = null; }
-    show(first);
-    return el('div', { class: 'side' }, listPanel(items, show, '상점 · 장소 찾기', first), right);
   },
 
   // ---------------------------------------------------------------- 포켓몬 (도감 능력치 · 진화 · 기술)
@@ -2419,6 +2646,355 @@ function moveEffects() {
   });
   return moveEffects.list;
 }
+
+// ===== 96-panels.js
+// ================================================================ 아래 탭들 (Panels.cs · ShopPanel.cs · GiftPanel.cs · EventPanel.cs) · 오박사 인트로 · BGM 에디터
+Object.assign(App.prototype, {
+  goTo(a, o) { for (const d of this.host.querySelectorAll('.dlg-bg')) d.remove(); Player.stop(); this.selectArea(a, o || null); },
+
+  // ---------------------------------------------------------------- [야생 포켓몬] 탭 (WildPanel)
+  pageWild() {
+    const rom = this.rom, a = this.area, box = el('div');
+    const note = s => el('div', { class: 'hint', text: s });
+    if (!a) { box.append(note('왼쪽에서 구역을 고르세요.')); return box; }
+    const tables = rom.wildFor(a);
+    if (!tables.length) { box.append(note('이 구역에는 야생 포켓몬이 나오지 않아요.')); return box; }
+    if (rom.pokemonNames.length < 252) { box.append(note('포켓몬 이름표를 찾지 못해서 편집할 수 없어요.')); return box; }
+    const changed = () => { rom.dirty = true; this.say('야생 포켓몬을 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.'); };
+    const opts = this.monOptions(false);
+    for (const t of tables) {
+      const times = t.water ? ['모든 시간'] : ['아침', '낮', '밤'];
+      const tbl = el('table', { class: 'grid' });
+      tbl.append(el('tr', null, el('th', { text: '' }), ...times.map(s => el('th', { text: s, style: 'font-weight:bold;color:var(--ink)' }))));
+      const rate = el('tr', null, el('th', { text: '만날 확률' }));
+      times.forEach((_, ti) => {
+        const off = rom.wildRate(t, ti);
+        rate.append(el('td', null, num(Math.min(100, Math.round(rom.data[off] * 100 / 255)), 0, 100, v => { rom.data[off] = Math.min(255, Math.round(v * 255 / 100)); changed(); }), ' %'));
+      });
+      tbl.append(rate);
+      const chance = t.water ? WATER_CHANCE : GRASS_CHANCE;
+      for (let i = 0; i < chance.length; i++) {
+        const tr = el('tr', null, el('th', { text: '칸 ' + (i + 1) + ' (' + chance[i] + '%)' }));
+        times.forEach((_, ti) => {
+          const off = rom.wildSlot(t, ti, i);
+          tr.append(el('td', null, sel(opts, rom.data[off + 1], v => { rom.data[off + 1] = v; changed(); }), ' Lv ',
+            num(Math.max(1, Math.min(100, rom.data[off])), 1, 100, v => { rom.data[off] = v; changed(); })));
+        });
+        tbl.append(tr);
+      }
+      box.append(el('fieldset', null, el('legend', { text: t.water ? '물 위 (파도타기)' : '풀숲 · 동굴' }), el('div', { class: 'scrollx' }, tbl)));
+    }
+    return box;
+  },
+
+  // ---------------------------------------------------------------- [프렌들리숍] 탭 (ShopPanel)
+  martSpots() {
+    const spots = new Map();
+    for (const a of this.rom.allAreas) for (const o of a.owners.concat(a.extras)) if (o.mart != null) { if (!spots.has(o.mart)) spots.set(o.mart, []); spots.get(o.mart).push([a, o]); }
+    return spots;
+  },
+  pageShop() {
+    const rom = this.rom, box = el('div');
+    if (!rom.marts.length || rom.itemAttrOff < 0) { box.append(el('div', { class: 'hint', text: '이 롬에서 상점 데이터를 찾지 못했어요' })); return box; }
+    const spots = this.martSpots();
+    let cur = null;
+    if (this.owner && this.owner.mart != null) cur = rom.marts.find(m => m.id === this.owner.mart);
+    if (!cur && this.area) for (const [id, l] of spots) if (l.some(([a]) => a === this.area)) { cur = rom.marts.find(m => m.id === id); break; }
+    if (!cur && this.martSel != null) cur = rom.marts.find(m => m.id === this.martSel);
+    const label = m => { const s = spots.get(m.id); return s ? s[0][0].regionName + ' › ' + s[0][0].name + ' › ' + s[0][1].name : '상점 ' + (m.id + 1) + ' (위치 모름)'; };
+    const shopBox = sel([[-1, '(상점을 고르세요)']].concat(rom.marts.map(m => [m.id, label(m)])), cur ? cur.id : -1, id => {
+      this.martSel = id;
+      const s = spots.get(id);
+      if (s) this.selectArea(s[0][0], s[0][1]); else this.setTab(T_SHOP);
+    });
+    shopBox.style.width = '460px';
+    box.append(el('div', { class: 'bar' }, el('span', { text: '상점' }), shopBox));
+    if (!cur) { box.append(el('div', { class: 'hint', text: '지도에서 점원을 클릭하거나 위에서 상점을 고르세요' })); return box; }
+    const places = (spots.get(cur.id) || []).length;
+    box.append(el('div', { class: 'hint', text: '물건 ' + cur.items.length + '개' + (places > 1 ? '  ·  이 목록은 ' + places + '곳에서 같이 써요' : '') }));
+    const itemOpts = this.itemOptions().slice(1).map(([v, t]) => [v, pad3(v) + ' ' + t]);
+    const rows = el('div'), err = el('div');
+    const list = cur.items.map(it => ({ item: it, price: rom.getPrice(it) }));
+    const draw = () => {
+      rows.replaceChildren();
+      list.forEach((r, i) => {
+        const sell = el('span', { class: 'hint', text: '원   (되팔 때 ' + Math.floor(r.price / 2) + '원)' });
+        const price = num(Math.min(65535, r.price), 0, 65535, v => { r.price = v; sell.textContent = '원   (되팔 때 ' + Math.floor(v / 2) + '원)'; });
+        rows.append(el('div', { class: 'bar' },
+          sel(itemOpts, r.item, v => { r.item = v; r.price = rom.getPrice(v); draw(); }), el('span', { text: '가격' }), price, sell,
+          el('button', { text: '▲', onclick: () => { if (i > 0) { [list[i - 1], list[i]] = [list[i], list[i - 1]]; draw(); } } }),
+          el('button', { text: '빼기', onclick: () => { list.splice(i, 1); draw(); } })));
+      });
+      add.disabled = list.length >= MAX_MART_ITEMS;
+    };
+    const add = el('button', { text: '물건 추가', onclick: () => { if (list.length < MAX_MART_ITEMS) { list.push({ item: 18, price: rom.getPrice(18) }); draw(); } } });
+    draw();
+    const apply = el('button', { class: 'apply', text: '적용', style: 'margin-top:10px', onclick: () => {
+      const e = rom.writeMart(cur, list.map(r => r.item));
+      if (e) { this.okMsg(err, e, true); return; }
+      for (const r of list) if (rom.getPrice(r.item) !== r.price) rom.setPrice(r.item, r.price);
+      this.martSel = cur.id; this.setTab(T_SHOP);
+      this.say('상점을 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.');
+    } });
+    box.append(rows, add, el('div', null, apply), err,
+      el('div', { class: 'hint', style: 'margin-top:8px', text: '· 지도에서 점원을 클릭하면 그 상점이 열려요\n· 가격은 아이템마다 하나라서, 바꾸면 다른 상점과 되팔 때 값(절반)도 같이 바뀌어요\n· 적용한 뒤 [저장하기]를 눌러야 롬 파일에 기록돼요' }));
+    return box;
+  },
+
+  // ---------------------------------------------------------------- [선물 포켓몬] 탭 (GiftPanel)
+  pageGift() {
+    const rom = this.rom, box = el('div');
+    if (!rom.gifts.length) { box.append(el('div', { class: 'hint', text: '이 롬에서 선물 포켓몬을 찾지 못했어요' })); return box; }
+    let list = this.owner ? rom.giftsOf(this.owner) : [];
+    if (!list.length && this.area) list = rom.giftsIn(this.area);
+    if (!list.length && this.giftSel) list = [this.giftSel];
+    const label = g => rom.giftWhere(g) + '  —  ' + rom.monName(rom.giftSpecies(g)) + ' Lv' + rom.giftLevel(g) + (g.egg ? ' (알)' : '');
+    const giftBox = sel([[-1, '(선물 포켓몬을 고르세요)']].concat(rom.gifts.map((g, i) => [i, label(g)])), list.length ? rom.gifts.indexOf(list[0]) : -1, i => {
+      const g = rom.gifts[i]; if (!g) return;
+      this.giftSel = g; this.selectArea(g.area, g.owner); this.setTab(T_GIFT);
+    });
+    giftBox.style.width = '520px';
+    box.append(el('div', { class: 'bar' }, el('span', { text: '선물 포켓몬' }), giftBox));
+    if (!list.length) { box.append(el('div', { class: 'hint', text: '지도에서 몬스터볼이나 NPC를 클릭하거나 위에서 고르세요' })); }
+    if (list.length > 1) box.append(el('div', { class: 'hint', text: '이 구역의 선물 포켓몬 ' + list.length + '마리' }));
+    const monOpts = this.monOptions(false), moveOpts = this.moveOptions(), itemOpts = this.itemOptions();
+    const err = el('div'), applies = [];
+    for (const g of list) {
+      const ed = { mon: rom.giftSpecies(g), lv: Math.max(1, Math.min(100, rom.giftLevel(g))), item: rom.giftItem(g) };
+      const custom0 = rom.giftMoves(g);
+      const defaults = () => rom.defaultMoves(ed.mon, ed.lv);
+      let moves = (custom0 || defaults()).slice();
+      const preview = el('div', { class: 'hint' });
+      const [own, ownL] = check('이 포켓몬만 기술 직접 정하기', custom0 != null);
+      own.disabled = g.egg;
+      const mvBoxes = el('span');
+      const drawMoves = () => {
+        mvBoxes.replaceChildren(...[0, 1, 2, 3].map(i => { const s = sel(moveOpts, moves[i] || 0, v => moves[i] = v); s.disabled = !own.checked; s.style.width = '150px'; return s; }));
+        if (!own.checked) preview.textContent = '받을 때 기술 (그 레벨까지 배운 기본 기술): ' + defaults().filter(x => x > 0).map(x => rom.moveName(x)).join(', ');
+        else preview.textContent = '이 선물 포켓몬만 위 기술 4개를 가지고 와요 (다른 곳의 같은 포켓몬은 그대로)';
+      };
+      const upd = () => { if (!own.checked) moves = defaults(); drawMoves(); picUpd(); };
+      own.addEventListener('change', () => { if (own.checked) moves = (rom.giftMoves(g) || defaults()).slice(); drawMoves(); });
+      const monSel = sel(monOpts, ed.mon, v => { ed.mon = v; upd(); });
+      const lvIn = num(ed.lv, 1, 100, v => { ed.lv = v; upd(); });
+      const row = el('div', { class: 'bar' }, el('span', { text: '포켓몬' }), monSel, el('span', { text: '레벨' }), lvIn);
+      if (!g.egg) row.append(el('span', { text: '지닌 도구' }), sel(itemOpts, ed.item, v => ed.item = v));
+      // 고를 때 보이는 그림·울음소리
+      const hasPic = rom.giftHasPic(g), hasCry = rom.giftHasCry(g);
+      const pc = { pic: hasPic ? rom.giftPic(g) : ed.mon, cry: hasCry ? rom.giftCry(g) : ed.mon };
+      const [same, sameL] = check('그림·울음소리도 받는 포켓몬과 같게', (!hasPic || rom.giftPic(g) === ed.mon) && (!hasCry || rom.giftCry(g) === ed.mon));
+      const picImg = el('span');
+      const picSel = sel(monOpts, pc.pic, v => { pc.pic = v; showPic(); }), crySel = sel(monOpts, pc.cry, v => pc.cry = v);
+      const showPic = () => { const c = rom.monPicture(pc.pic, 1); picImg.replaceChildren(c || ''); };
+      const picUpd = () => {
+        if (!hasPic && !hasCry) return;
+        if (same.checked) { pc.pic = pc.cry = ed.mon; picSel.value = crySel.value = ed.mon; }
+        picSel.disabled = !hasPic || same.checked; crySel.disabled = !hasCry || same.checked;
+        showPic();
+      };
+      same.addEventListener('change', picUpd);
+      const picRow = el('div', { class: 'bar' }, sameL);
+      if (hasPic) picRow.append(el('span', { text: '고를 때 그림' }), picSel);
+      if (hasCry) picRow.append(el('span', { text: '울음소리' }), crySel);
+      if (hasPic) picRow.append(picImg);
+      const [textChk, textL] = check('포켓몬을 바꾸면 이 NPC 대사 속 이름·타입도 같이 바꾸기', true);
+      const sync = el('button', { text: '🔁 대사를 지금 포켓몬에 맞추기', onclick: () => this.syncGiftTexts(g, err) });
+      const fs = el('fieldset', null, el('legend', { text: rom.giftWhere(g) + (g.egg ? '  (알로 줌)' : '') }), row, el('div', { class: 'bar' }, textL, sync));
+      if (hasPic || hasCry) fs.append(picRow);
+      if (!g.egg) fs.append(el('div', { class: 'bar' }, ownL, mvBoxes));
+      fs.append(preview);
+      box.append(fs);
+      drawMoves(); picUpd();
+      applies.push(changes => {
+        const oldMon = rom.giftSpecies(g), newMon = ed.mon;
+        if (textChk.checked) { changes.texts += rom.updateGiftTexts(g, oldMon, newMon); if (oldMon !== newMon) changes.mons.push([oldMon, newMon]); }
+        rom.setGift(g, newMon, ed.lv, ed.item);
+        if (hasPic || hasCry) rom.setGiftPicCry(g, pc.pic, pc.cry);
+        return rom.setGiftMoves(g, own.checked ? moves.map(m => m || 0) : null);
+      });
+    }
+    if (list.length) {
+      box.append(el('button', { class: 'apply', text: '적용', onclick: () => {
+        const changes = { texts: 0, mons: [] };
+        const errs = applies.map(f => f(changes)).filter(x => x);
+        if (errs.length) { this.okMsg(err, errs.join('\n'), true); return; }
+        let msg = '적용했어요. [저장하기]를 눌러야 롬 파일에 기록돼요';
+        if (changes.texts) msg += '\n대사 ' + changes.texts + '개에서 포켓몬 이름·타입도 바꿨어요 ([대사] 탭에서 확인)';
+        this.buildTree(); this.drawMap();
+        this.setTab(T_GIFT);
+        this.say(msg.split('\n')[0]);
+        // 라이벌·공박사 등 다른 대사에서도 옛 이름이 나오면 골라서 바꾸게
+        const next = () => {
+          const mc = changes.mons.shift();
+          if (!mc) return;
+          const found = rom.textsMentioning(mc[0]);
+          if (found.length) this.monTextDialog(found, mc[0], mc[1], next); else next();
+        };
+        next();
+      } }), err);
+    }
+    box.append(el('div', { class: 'hint', style: 'margin-top:8px', text:
+      '· 지도에서 공박사 연구소의 몬스터볼(스타팅 포켓몬)이나 포켓몬을 주는 NPC를 클릭하세요\n' +
+      '· [이 포켓몬만 기술 직접 정하기]를 켜면 이 선물 포켓몬만 고른 기술 4개를 가지고 와요 (포켓몬 전체 데이터는 안 바뀜)\n' +
+      '   끄면 원래처럼 그 레벨까지 배우는 기술을 가져요\n' +
+      '· 고를 때 나오는 그림·울음소리는 따로 정할 수 있어요 (끄면 받는 포켓몬과 같게)\n' +
+      '· 새 게임 때 오박사가 보여주는 포켓몬은 위쪽 [오박사 인트로] 버튼에서 바꿔요\n' +
+      '· 라이벌이 고르는 포켓몬은 [트레이너 편집]의 라이벌 팀에서 바꿀 수 있어요' }));
+    return box;
+  },
+
+  syncGiftTexts(g, err) {
+    const rom = this.rom, cur = rom.giftSpecies(g), old = rom.mentionedOtherMon(g);
+    if (!old) { this.okMsg(err, '이 NPC 대사에는 다른 포켓몬 이름이 없어요 (이미 맞아요)'); return; }
+    const n = rom.updateGiftTexts(g, old, cur);
+    this.buildTree();
+    this.okMsg(err, '이 NPC 대사 ' + n + "개에서 '" + rom.monName(old) + "' → '" + rom.monName(cur) + "' 로 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요");
+    const found = rom.textsMentioning(old);
+    if (found.length) this.monTextDialog(found, old, cur);
+  },
+
+  // 다른 대사에서도 옛 포켓몬 이름 바꾸기 (MonTextForm)
+  monTextDialog(found, oldMon, newMon, after) {
+    const rom = this.rom;
+    const checks = found.map(() => { const c = el('input', { type: 'checkbox' }); c.checked = true; return c; });
+    const before = el('textarea', { readonly: '', style: 'width:100%;height:100px' }), aft = el('textarea', { readonly: '', style: 'width:100%;height:100px' });
+    const tbl = el('table', { class: 'grid', style: 'width:100%' }, el('tr', null, el('th', { text: '바꾸기' }), el('th', { text: '어디서 나오는 대사' }), el('th', { text: '바뀐 뒤 대사' })));
+    found.forEach(([t, where], i) => {
+      const tr = el('tr', { style: 'cursor:pointer' }, el('td', null, checks[i]), el('td', { text: where }), el('td', { text: rom.replaceMonInText(t.current, oldMon, newMon).replace(/\n/g, ' / ') }));
+      tr.addEventListener('click', e => { if (e.target !== checks[i]) { before.value = t.current; aft.value = rom.replaceMonInText(t.current, oldMon, newMon); } });
+      tbl.append(tr);
+    });
+    if (found.length) { before.value = found[0][0].current; aft.value = rom.replaceMonInText(found[0][0].current, oldMon, newMon); }
+    let close;
+    const ok = el('button', { class: 'apply', text: '✅ 체크한 대사 바꾸기', onclick: () => {
+      let n = 0;
+      found.forEach(([t], i) => {
+        if (!checks[i].checked) return;
+        const s = rom.replaceMonInText(t.current, oldMon, newMon);
+        if (s !== t.current) { rom.setTextChecked(t, s); n++; }
+      });
+      close();
+      if (n) { this.buildTree(); this.say('다른 대사 ' + n + '개에서도 포켓몬 이름을 바꿨어요 ([대사] 탭에서 확인)'); }
+    } });
+    close = this.dialog("다른 대사에서도 '" + rom.monName(oldMon) + "' → '" + rom.monName(newMon) + "' 로 바꾸기", () => el('div', null,
+      el('div', { class: 'hint', style: 'color:#334;margin-bottom:6px', text: "게임 대사 중 '" + rom.monName(oldMon) + "' 이(가) 나오는 곳 " + found.length + '개를 찾았어요. 바꿀 대사만 체크하세요 (이름·조사·타입 표현을 같이 바꿔요).\n예: 라이벌·공박사가 그 포켓몬을 말하는 대사는 체크, 다른 뜻으로 쓰인 곳은 체크 해제' }),
+      el('div', { style: 'max-height:340px;overflow:auto' }, tbl),
+      el('div', { class: 'side', style: 'grid-template-columns:1fr 1fr;margin-top:8px' }, el('div', null, el('b', { text: '지금 대사' }), before), el('div', null, el('b', { text: '바뀐 뒤' }), aft)),
+      el('div', { class: 'bar', style: 'margin-top:8px;justify-content:flex-end' },
+        el('button', { text: '모두 체크', onclick: () => checks.forEach(c => c.checked = true) }),
+        el('button', { text: '모두 해제', onclick: () => checks.forEach(c => c.checked = false) }),
+        el('button', { text: '안 바꾸기', onclick: () => close() }), ok)), after);
+  },
+
+  // ---------------------------------------------------------------- [NPC · 이벤트] 탭
+  pageEvent() {
+    const rom = this.rom, a = this.area, o = this.owner, box = el('div');
+    if (!a) { box.append(el('div', { class: 'hint', text: '왼쪽에서 구역을 고르세요.' })); return box; }
+    if (!o || o.eventOff < 0) {
+      box.append(el('div', { class: 'ttl', text: a.regionName + '  ›  ' + a.name }), el('div', { class: 'hint', text: '지도에서 NPC 나 표지판을 클릭하면 모습·자리를 바꿀 수 있어요.' }));
+      const region = rom.outdoorRegionText(a);
+      if (region) box.append(el('div', { class: 'hint', style: 'margin-top:6px', text: region }));
+      return box;
+    }
+    const note = el('div', { class: 'hint', style: 'margin-top:6px' });
+    const idx = o.isSign ? '표지판' : 'NPC';
+    box.append(el('div', { class: 'ttl', text: o.name }),
+      el('div', { class: 'hint', text: idx + ' · 위치 (' + o.x + ', ' + o.y + ')' + (o.trainer ? ' · 트레이너 ' + rom.trainerLabel(o.trainer.cls, o.trainer.id) : '') + (o.mart != null ? ' · 상점 ' + (o.mart + 1) + '번' : '') }));
+    if (!o.isSign) {
+      const sprites = Object.keys(SPRITE_NAMES).map(Number).sort((x, y) => x - y);
+      if (!sprites.includes(o.sprite)) sprites.unshift(o.sprite);
+      const allowed = rom.outdoorSprites(a);
+      const look = sel(sprites.map(s => [s, (allowed && allowed.includes(s) ? '✓ ' : '') + Names.sprite(s)]), o.sprite);
+      const MOVE_IDS = [6, 7, 8, 9, 3, 2], MOVE_NAMES = ['아래를 보고 서 있음', '위를 보고 서 있음', '왼쪽을 보고 서 있음', '오른쪽을 보고 서 있음', '제자리에서 두리번', '돌아다님'];
+      const mv = sel(MOVE_IDS.map((m, i) => [m, MOVE_NAMES[i]]).concat(MOVE_IDS.includes(o.move) ? [] : [[o.move, '특별한 움직임 (그대로)']]), o.move);
+      const pic = el('canvas', { width: 16, height: 16, style: 'width:32px;height:32px;background:#eee;border-radius:4px;image-rendering:pixelated' });
+      const drawPic = () => { const g = pic.getContext('2d'); g.clearRect(0, 0, 16, 16); const sp = this.spriteImg(+look.value, o.pal); if (sp) g.drawImage(sp, 0, 0); };
+      look.addEventListener('change', drawPic); drawPic();
+      const apply = el('button', { class: 'apply', text: '모습·방향 적용', onclick: () => {
+        const msg = rom.setLook(a, o, +look.value, +mv.value);
+        this.drawMap(); this.setTab(T_EVENT);
+        this.say('NPC를 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.');
+        if (msg) alert(msg);
+      } });
+      box.append(el('div', { class: 'bar' }, el('span', { text: '모습' }), pic, look, el('span', { text: '방향' }), mv, apply));
+      const region = rom.outdoorRegionText(a);
+      if (region) note.textContent = region + '\n(✓ = 이 지역 바깥 지도에서 그대로 보이는 모습)';
+    }
+    box.append(el('div', { class: 'bar' },
+      el('button', { text: '📍 지도에서 자리 옮기기', onclick: () => this.startPick('지도에서 자리를 클릭하세요', (x, y) => {
+        rom.moveOwner(o, x, y); this.drawMap(); this.setTab(T_EVENT);
+        this.say("'" + o.name + "' 을(를) (" + x + ', ' + y + ') 로 옮겼어요. [저장하기]를 눌러야 롬 파일에 기록돼요.');
+      }) }),
+      el('button', { text: '🗑 지우기 (Delete)', onclick: () => this.deleteSelected() }),
+      o.trainer ? el('button', { text: '⚔ 이 트레이너 팀 고치기', onclick: () => { this.pick = { trainer: o.trainer }; this.dialog('트레이너 편집', () => this.tab_trainer(), () => this.refreshArea()); } }) : null,
+      o.mart != null ? el('button', { text: '🏪 상점 탭', onclick: () => this.setTab(T_SHOP) }) : null,
+      rom.giftsOf(o).length ? el('button', { text: '🎁 선물 포켓몬 탭', onclick: () => this.setTab(T_GIFT) }) : null),
+      note,
+      el('div', { class: 'hint', style: 'margin-top:8px', text: '새 NPC 추가 · 이벤트 종류 바꾸기는 웹판에 옮기는 중이에요.' }));
+    return box;
+  },
+
+  // ---------------------------------------------------------------- 오박사 인트로 (IntroForm)
+  introDialog() {
+    const rom = this.rom, box = el('div');
+    box.append(el('div', { class: 'hint', text: '새 게임을 시작하면 오박사가 "이 세계에는 포켓몬이라는 생물이…" 하며 보여주는 포켓몬이에요.' }));
+    const monOpts = this.monOptions(false);
+    const st = { pic: Math.max(1, Math.min(251, rom.introPic)), cry: Math.max(1, Math.min(251, rom.introCry)) };
+    const preview = el('div', { style: 'width:140px;height:140px;border:1px solid var(--line);background:#fff;display:flex;align-items:center;justify-content:center' });
+    const show = () => { const c = rom.monPicture(st.pic, 2); preview.replaceChildren(c || ''); };
+    const cry = sel(monOpts, st.cry, v => st.cry = v);
+    const pic = sel(monOpts, st.pic, v => { st.pic = v; if (same.checked) { st.cry = v; cry.value = v; } show(); });
+    const [same, sameL] = check('울음소리도 같은 포켓몬으로', st.pic === st.cry);
+    cry.disabled = same.checked;
+    same.addEventListener('change', () => { cry.disabled = same.checked; if (same.checked) { st.cry = st.pic; cry.value = st.pic; } });
+    box.append(el('div', { class: 'bar', style: 'margin-top:12px;align-items:flex-start;gap:24px' },
+      el('div', null, el('div', { text: '포켓몬 그림:' }), pic, el('div', { style: 'margin-top:8px' }, sameL), el('div', { text: '포켓몬 울음소리:', style: 'margin-top:6px' }), cry),
+      preview));
+    if (!rom.hasIntro) box.append(el('div', { class: 'bad', text: '이 롬에서는 오박사 인트로 위치를 찾지 못했어요.' }));
+    const ok = el('button', { class: 'apply', text: '적용', onclick: () => {
+      rom.setIntro(st.pic, st.cry);
+      alert('오박사 인트로: 그림 ' + rom.monName(st.pic) + ', 울음소리 ' + rom.monName(st.cry) + '\n[저장하기]를 눌러야 롬 파일에 기록돼요.');
+      this.say('오박사 인트로 포켓몬을 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.');
+      for (const d of this.host.querySelectorAll('.dlg-bg')) d.remove();
+    } });
+    ok.disabled = !rom.hasIntro;
+    box.append(el('div', { class: 'bar', style: 'margin-top:12px;justify-content:flex-end' }, ok));
+    show();
+    return box;
+  },
+
+  // ---------------------------------------------------------------- BGM 에디터 (원곡 듣기 · 구역 음악 바꾸기)
+  bgmEditor() {
+    const rom = this.rom, n = RomMusic.songCount(rom.data), box = el('div');
+    if (!n) { box.append(el('div', { text: '이 롬에서 음악 표를 찾지 못했어요.' })); return box; }
+    const a = this.area;
+    if (a) {
+      const cur = rom.areaMusic(a);
+      const s = sel(Array.from({ length: n }, (_, i) => [i, hex2(i) + ' ' + RomMusic.name(i)]), cur, v => { rom.setAreaMusic(a, v); this.say(a.name + ' 배경음악 → ' + RomMusic.name(v) + '. [저장하기]를 눌러야 롬 파일에 기록돼요.'); });
+      const play = el('button', { text: '▶ 듣기', onclick: () => this.playSong(+s.value, play) });
+      box.append(el('fieldset', null, el('legend', { text: '지금 구역: ' + a.regionName + ' › ' + a.name }),
+        el('div', { class: 'bar' }, el('span', { text: '이 구역 배경음악' }), s, play, el('button', { text: '■', onclick: () => Player.stop() }))));
+    }
+    box.append(el('div', { class: 'bar' }, el('button', { text: '■ 멈춤', onclick: () => Player.stop() }),
+      el('span', { class: 'hint', text: '곡을 누르면 게임 사운드 칩과 똑같은 방식으로 합성해서 들려줘요. (음악 파일 변환·게임에 넣기는 웹판에 옮기는 중)' })));
+    const done = new Set();
+    let selEl = null;
+    const item = id => {
+      done.add(id);
+      const d = el('div', { class: 'song', title: '눌러서 듣기' }, el('span', { class: 'n', text: hex2(id) }), el('span', { text: RomMusic.name(id) }),
+        RomMusic.isReplaced(rom.data, id) ? el('span', { class: 'chg', text: '★바뀜' }) : null);
+      d.addEventListener('click', () => { if (selEl) selEl.classList.remove('on'); selEl = d; d.classList.add('on'); this.playSong(id); });
+      return d;
+    };
+    for (const [gname, ids] of RomMusic.groups) {
+      const list = ids.filter(i => i < n);
+      if (list.length) box.append(el('div', { class: 'grp', text: gname }), el('div', { class: 'songs' }, ...list.map(item)));
+    }
+    const rest = []; for (let i = 1; i < n; i++) if (!done.has(i)) rest.push(i);
+    if (rest.length) box.append(el('div', { class: 'grp', text: '기타' }), el('div', { class: 'songs' }, ...rest.map(item)));
+    return box;
+  }
+});
 
 // ===== 99-mount.js
 // ================================================================ 블로그 글에 붙이기 (모든 조각이 정의된 뒤 마지막에)
