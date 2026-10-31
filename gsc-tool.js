@@ -162,6 +162,7 @@ const I18N = (() => {
     '개를 찾았어요. 바꿀 대사만 체크하세요 (이름·조사·타입 표현을 같이 바꿔요).\n예: 라이벌·공박사가 그 포켓몬을 말하는 대사는 체크, 다른 뜻으로 쓰인 곳은 체크 해제': ' lines. Check only the ones to replace (name, particles and type words change together).\nE.g. check lines where the rival or Prof. Elm mention that Pokémon; uncheck other uses',
     "개에서 '": " lines: '", '개에서 포켓몬 이름·타입도 바꿨어요 ([대사] 탭에서 확인)': ' lines also had the Pokémon name/type changed (check the [Dialogue] tab)', '개에서도 포켓몬 이름을 바꿨어요 ([대사] 탭에서 확인)': ' other lines also had the Pokémon name changed (check the [Dialogue] tab)',
     '고를 때 그림': 'Picture when choosing', '곳에서 같이 써요': ' places', '그림·울음소리도 받는 포켓몬과 같게': 'Picture & cry same as the received Pokémon', '다른 대사 ': 'Other lines: ', "다른 대사에서도 '": "Also replace in other dialogue: '",
+    '🎲 랜덤 포켓몬으로 바꾸기': '🎲 Randomize Pokémon', '전설·환상 포켓몬 포함': 'Include legendary / mythical',
     '마리': '', '만날 확률': 'Encounter rate', '모두 체크': 'Check all', '모두 해제': 'Uncheck all', '모든 시간': 'Any time', '물 위 (파도타기)': 'On water (Surf)', '물건 ': 'Items: ', '물건 추가': 'Add item', '바꾸기': 'Replace',
     '바뀐 뒤': 'After', '바뀐 뒤 대사': 'Text after change', '받을 때 기술 (그 레벨까지 배운 기본 기술): ': 'Moves when received (default moves at that level): ', '빼기': 'Remove', '상점 ': 'Mart ',
     '상점을 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.': 'Mart changed. Press [Save] to write it to the ROM file.',
@@ -5568,6 +5569,24 @@ Object.assign(App.prototype, {
     if (rom.pokemonNames.length < 252) { box.append(note('포켓몬 이름표를 찾지 못해서 편집할 수 없어요.')); return box; }
     const changed = () => { rom.dirty = true; this.say('야생 포켓몬을 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.'); };
     const opts = this.monOptions(false);
+    // 칸마다 포켓몬을 무작위로 (레벨은 그대로, 같은 칸은 아침·낮·밤 모두 같은 포켓몬)
+    const LEGEND = [144, 145, 146, 150, 151, 243, 244, 245, 249, 250, 251];
+    const legendChk = el('input', { type: 'checkbox' });
+    const randomize = () => {
+      const pool = [];
+      for (let n = 1; n <= 251; n++) if (legendChk.checked || !LEGEND.includes(n)) pool.push(n);
+      for (const t of tables) {
+        const times = t.water ? 1 : 3, slots = (t.water ? WATER_CHANCE : GRASS_CHANCE).length;
+        for (let i = 0; i < slots; i++) {
+          const mon = pool[Math.floor(Math.random() * pool.length)];
+          for (let ti = 0; ti < times; ti++) rom.data[rom.wildSlot(t, ti, i) + 1] = mon;
+        }
+      }
+      changed();
+      this.setTab(T_WILD);
+    };
+    box.append(el('div', { class: 'bar' }, el('button', { text: '🎲 랜덤 포켓몬으로 바꾸기', onclick: randomize }),
+      el('label', null, legendChk, ' 전설·환상 포켓몬 포함')));
     for (const t of tables) {
       const times = t.water ? ['모든 시간'] : ['아침', '낮', '밤'];
       const tbl = el('table', { class: 'grid' });
