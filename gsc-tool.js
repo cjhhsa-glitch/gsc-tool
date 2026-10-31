@@ -162,7 +162,16 @@ const I18N = (() => {
     '개를 찾았어요. 바꿀 대사만 체크하세요 (이름·조사·타입 표현을 같이 바꿔요).\n예: 라이벌·공박사가 그 포켓몬을 말하는 대사는 체크, 다른 뜻으로 쓰인 곳은 체크 해제': ' lines. Check only the ones to replace (name, particles and type words change together).\nE.g. check lines where the rival or Prof. Elm mention that Pokémon; uncheck other uses',
     "개에서 '": " lines: '", '개에서 포켓몬 이름·타입도 바꿨어요 ([대사] 탭에서 확인)': ' lines also had the Pokémon name/type changed (check the [Dialogue] tab)', '개에서도 포켓몬 이름을 바꿨어요 ([대사] 탭에서 확인)': ' other lines also had the Pokémon name changed (check the [Dialogue] tab)',
     '고를 때 그림': 'Picture when choosing', '곳에서 같이 써요': ' places', '그림·울음소리도 받는 포켓몬과 같게': 'Picture & cry same as the received Pokémon', '다른 대사 ': 'Other lines: ', "다른 대사에서도 '": "Also replace in other dialogue: '",
-    '🎲 랜덤 포켓몬으로 바꾸기': '🎲 Randomize Pokémon', '전설·환상 포켓몬 포함': 'Include legendary / mythical', '🎲 레벨 랜덤으로 바꾸기': '🎲 Randomize levels', '검색 (이름·번호)': 'Search (name / number)', '찾는 게 없어요': 'No matches',
+    '🎲 랜덤 포켓몬으로 바꾸기': '🎲 Randomize Pokémon', '전설·환상 포켓몬 포함': 'Include legendary / mythical', '🎲 레벨 랜덤으로 바꾸기': '🎲 Randomize levels', '검색 (이름·번호)': 'Search (name / number)',
+    '트레이너 그림': 'Trainer Pics', '트레이너 그림 편집': 'Trainer Picture Editor', '트레이너 찾기': 'Find trainer', '주인공': 'Player', '트레이너 직업': 'Trainer classes',
+    '★ 주인공 — 트레이너 카드': '★ Player — Trainer Card', ' ★ 주인공': ' ★ Player', '밝은색': 'Light', '어두운색': 'Dark', '사진 가져오기…': 'Import picture…',
+    '사진의 색으로 트레이너 색도 바꾸기': "Also take the trainer's colors from the picture",
+    '이 롬에서는 트레이너 그림을 바꿀 수 없어요 (지금은 금·은만 돼요).': "This ROM's trainer pictures can't be edited (Gold/Silver only for now).",
+    '트레이너 그림을 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.': 'Trainer picture changed. Press [Save] to write it to the ROM file.',
+    '메뉴에서 내 이름(트레이너 카드)을 열면 나오는 주인공 그림이에요. 40×56 픽셀 (5×7 칸). 색은 게임이 정해 둔 색을 써요.': 'The player picture shown on the Trainer Card (your name in the menu). 40×56 pixels (5×7 tiles). Its colors are fixed by the game.',
+    '게임을 처음 시작할 때 오박사가 이름을 물어볼 때, 그리고 명예의 전당에 나오는 주인공 그림이에요. 56×56 픽셀 (7×7 칸).': 'The player picture shown when Prof. Oak asks your name at the start, and in the Hall of Fame. 56×56 pixels (7×7 tiles).',
+    '배틀할 때 나오는 이 직업의 트레이너 그림이에요. 56×56 픽셀 (7×7 칸). 같은 직업 트레이너가 모두 같이 바뀌어요.': 'The battle picture for this trainer class. 56×56 pixels (7×7 tiles). Every trainer of this class changes together.',
+    '· 배경이 투명한 PNG가 제일 좋아요\n· 트레이너 카드 그림은 가로 40픽셀이라 사진 가운데 부분을 써요': '· A PNG with a transparent background works best\n· The Trainer Card picture is 40 pixels wide, so the middle of the picture is used', '찾는 게 없어요': 'No matches',
     '마리': '', '만날 확률': 'Encounter rate', '모두 체크': 'Check all', '모두 해제': 'Uncheck all', '모든 시간': 'Any time', '물 위 (파도타기)': 'On water (Surf)', '물건 ': 'Items: ', '물건 추가': 'Add item', '바꾸기': 'Replace',
     '바뀐 뒤': 'After', '바뀐 뒤 대사': 'Text after change', '받을 때 기술 (그 레벨까지 배운 기본 기술): ': 'Moves when received (default moves at that level): ', '빼기': 'Remove', '상점 ': 'Mart ',
     '상점을 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.': 'Mart changed. Press [Save] to write it to the ROM file.',
@@ -3833,15 +3842,19 @@ mixin(Rom.prototype, {
   },
   readPicP(mon, back) { const r = this.readPic(mon, back); return { w: r.tiles * 8, h: r.tiles * 8, px: r.img, tiles: r.tiles }; },
   // 그림을 압축해서 빈 공간에 쓰고 주소를 바꿈. 실패하면 이유
-  writePic(mon, back, pic, tiles) {
-    const comp = Lz.compress(picToTiles(pic, true));
-    let p = -1;
+  // 압축한 그림을 넣을 빈 자리 (없으면 -1)
+  allocPic(len) {
     for (const r of this.free) {
       const bank = Math.floor(r[0] / 0x4000);
-      if (this.picBankFix.has(bank) || r[1] - r[0] < comp.length) continue;   // FixPicBank 이 바꾸는 뱅크에는 안 씀
+      if (this.picBankFix.has(bank) || r[1] - r[0] < len) continue;   // FixPicBank 이 바꾸는 뱅크에는 안 씀
       if (this.picBanks && (bank < this.picBanks[0] || bank > this.picBanks[1])) continue;   // 크리스탈은 그림 뱅크만
-      p = r[0]; r[0] += comp.length; break;
+      const p = r[0]; r[0] += len; return p;
     }
+    return -1;
+  },
+  writePic(mon, back, pic, tiles) {
+    const comp = Lz.compress(picToTiles(pic, true));
+    const p = this.allocPic(comp.length);
     if (p < 0) return '롬에 그림을 넣을 빈 공간이 부족해요';
     this.data.set(comp, p);
     const e = this.picPtrOff + (mon - 1) * 6 + (back ? 3 : 0), addr = 0x4000 + p % 0x4000;
@@ -4937,6 +4950,7 @@ class App {
       this.playBtn = B('▶ 게임으로 확인', 'play', () => this.playTest()),
       B('포켓몬 편집', '', () => this.dialog('포켓몬 편집', () => this.tab_dex())),
       B('포켓몬 그림', '', () => this.spriteDialog()),
+      B('트레이너 그림', '', () => this.trainerPicDialog()),
       B('캐릭터 그림', '', () => this.owDialog()),
       B('타이틀 화면', '', () => this.titleDialog()),
       B('기술 편집', '', () => this.dialog('기술 편집', () => this.tab_moves())),
@@ -7653,6 +7667,158 @@ Object.assign(App.prototype, {
     dirty = false;
     setTimeout(() => pc.fit(), 0);
     showColors(); pc.changed(); dirty = false;
+  }
+});
+
+// ===== 99-trainerpic.js
+// ================================================================ 트레이너 그림 · 주인공 그림 (금·은)
+// 금·은은 게임 시작(오박사 이야기)과 명예의 전당에서 주인공 그림으로 트레이너 직업 '칼(CAL)' 의 그림을 씀.
+// 트레이너 카드의 주인공 그림은 따로 있는 5×7 칸 그림 (압축 안 함)
+const CAL_CLASS = 0x0C;
+mixin(Rom.prototype, {
+  loadTrainerPics() {
+    if (this._tpic !== undefined) return this._tpic;
+    this._tpic = null;
+    this.loadSprites();
+    const d = this.data;
+    // GetTrainerPic: ld hl, TrainerPicPointers / ld a, [wTrainerClass] / dec a / ld bc, 3 / call AddNTimes / ld a, BANK / call GetFarByte
+    const p = this.findPattern([0x21, -1, -1, 0xFA, -1, -1, 0x3D, 0x01, 0x03, 0x00, 0xCD, -1, -1, 0x3E, -1, 0xCD], 0x4000, d.length);
+    if (p < 0 || this.version.crystal) return null;
+    let n = 0;
+    for (let q = Math.max(0, p - 0x20); q < p; q++) if (d[q] === 0xA7 && d[q + 1] === 0xC8 && d[q + 2] === 0xFE && d[q + 4] === 0xD0) n = d[q + 3];
+    if (n < 2 || n > 100) n = Math.max(2, Math.min(100, this.classNames.length));
+    const t = { tab: this.off(d[p + 14], this.w(p + 1)), count: n - 1, pal: -1, card: -1 };
+    // GetTrainerPalettePointer: ld l, a / ld h, 0 / add hl, hl ×2 / ld bc, TrainerPalettes / add hl, bc / ret
+    const g = this.findPattern([0x6F, 0x26, 0x00, 0x29, 0x29, 0x01, -1, -1, 0x09, 0xC9], 0x4000, d.length);
+    if (g >= 0) t.pal = this.off(Math.floor(g / 0x4000), this.w(g + 6));
+    // 트레이너 카드: ld hl, ChrisPicAndTrainerCardGFX / ld de, vTiles2 / ld bc, (35 + 6) tiles / ld a, BANK
+    const c = this.findPattern([0x21, -1, -1, 0x11, 0x00, 0x90, 0x01, 0x90, 0x02, 0x3E, -1, 0xCD], 0x4000, d.length);
+    if (c >= 0) t.card = this.off(d[c + 10], this.w(c + 1));
+    return this._tpic = t;
+  },
+  trainerPicOff(cls) {
+    const t = this.loadTrainerPics(), e = t.tab + (cls - 1) * 3;
+    let bank = this.data[e];
+    if (this.picBankFix.has(bank)) bank = this.picBankFix.get(bank);
+    return this.off(bank, this.w(e + 1));
+  },
+  readTrainerPic(cls) {
+    if (cls === 0) {   // 트레이너 카드 그림 (5×7 칸, 가로줄 순서)
+      const o = this.loadTrainerPics().card;
+      return tilesToPic(this.data.subarray(o, o + 35 * 16), 5, 7, false);
+    }
+    return tilesToPic(this.gfx.decompress(this.trainerPicOff(cls)), 7, 7, true);
+  },
+  writeTrainerPic(cls, pic) {
+    const t = this.loadTrainerPics();
+    if (cls === 0) { this.data.set(picToTiles(pic, false), t.card); this.dirty = true; return null; }
+    const comp = Lz.compress(picToTiles(pic, true));
+    const p = this.allocPic(comp.length);
+    if (p < 0) return '롬에 그림을 넣을 빈 공간이 부족해요';
+    this.data.set(comp, p);
+    const e = t.tab + (cls - 1) * 3, addr = 0x4000 + p % 0x4000;
+    this.data[e] = Math.floor(p / 0x4000); this.data[e + 1] = addr & 0xff; this.data[e + 2] = addr >> 8;
+    this.gfx.gfxCache.delete(p);
+    this.dirty = true;
+    return null;
+  },
+  // 트레이너 색 2개 (흰색·검정은 고정). 카드 그림은 칼의 색으로 보여 줌
+  trainerPaletteRGB(cls) {
+    const o = this.loadTrainerPics().pal + (cls || CAL_CLASS) * 4;
+    return [WHITE, C555(this.w(o)), C555(this.w(o + 2)), BLACK];
+  },
+  setTrainerPalette(cls, c1, c2) {
+    const o = this.loadTrainerPics().pal + cls * 4, a = TO555(c1), b = TO555(c2);
+    this.data[o] = a & 0xff; this.data[o + 1] = a >> 8; this.data[o + 2] = b & 0xff; this.data[o + 3] = b >> 8;
+    this.dirty = true;
+  }
+});
+
+Object.assign(App.prototype, {
+  trainerPicDialog() {
+    const rom = this.rom, t = rom.loadTrainerPics();
+    if (!t) { alert('이 롬에서는 트레이너 그림을 바꿀 수 없어요 (지금은 금·은만 돼요).'); return; }
+    const Z = 3, hasPal = t.pal >= 0;
+    const st = { cls: -1, pic: null, pal: null, dirty: false, palDirty: false, outline: true, takeColors: true };
+    const W = () => st.cls === 0 ? 40 : 56;
+    const box = el('div', { style: 'width:' + (56 * Z + 4) + 'px;height:' + (56 * Z + 4) + 'px;border:1px solid #888;background:#fff;position:relative' });
+    const note = el('div', { style: 'color:#e8590c;font-size:12.5px;min-height:18px' });
+    const title = el('b'), info = el('div', { class: 'hint' }), err = el('div');
+    const swatches = [1, 2].map(k => { const i = el('input', { type: 'color', style: 'width:44px;height:28px' }); i.addEventListener('input', () => {
+      st.pal = st.pal.slice(); st.pal[k] = SNAP(hexRgb(i.value)); st.palDirty = true; note.textContent = '(아직 적용 안 함)'; redraw();
+    }); return i; });
+    const palBox = el('div', { class: 'bar' }, el('span', { text: '밝은색' }), swatches[0], el('span', { text: '어두운색' }), swatches[1]);
+    const redraw = () => {
+      box.replaceChildren();
+      swatches.forEach((s, i) => { s.value = rgbHex(st.pal[i + 1]); s.disabled = st.cls === 0 || !hasPal; });
+      if (!st.pic) return;
+      const c = picCanvas(st.pic, st.pal, false, Z);
+      c.style.cssText = 'position:absolute;left:' + ((56 - W()) / 2 * Z + 1) + 'px;top:1px';
+      box.append(c);
+    };
+    const label = c => c === 0 ? '★ 주인공 — 트레이너 카드' : pad3(c) + ' ' + (rom.classNames[c] || '트레이너 ' + c) + (c === CAL_CLASS ? ' ★ 주인공' : '');
+    const load = c => {
+      st.cls = c; st.dirty = st.palDirty = false; err.textContent = note.textContent = '';
+      st.pic = rom.readTrainerPic(c);
+      st.pal = hasPal ? rom.trainerPaletteRGB(c) : [WHITE, [170, 170, 170], [85, 85, 85], BLACK];
+      title.textContent = label(c);
+      info.textContent = c === 0 ? '메뉴에서 내 이름(트레이너 카드)을 열면 나오는 주인공 그림이에요. 40×56 픽셀 (5×7 칸). 색은 게임이 정해 둔 색을 써요.'
+        : c === CAL_CLASS ? '게임을 처음 시작할 때 오박사가 이름을 물어볼 때, 그리고 명예의 전당에 나오는 주인공 그림이에요. 56×56 픽셀 (7×7 칸).'
+          : '배틀할 때 나오는 이 직업의 트레이너 그림이에요. 56×56 픽셀 (7×7 칸). 같은 직업 트레이너가 모두 같이 바뀌어요.';
+      redraw();
+    };
+    const changed = () => { st.dirty = true; note.textContent = '(아직 적용 안 함)'; redraw(); };
+    const draw = () => this.pixelEditor({ title: label(st.cls), pic: st.pic, pal: st.pal, editable: [false, st.cls !== 0 && hasPal, st.cls !== 0 && hasPal, false],
+      note: W() + '×56 픽셀. 1번 흰색·4번 검정은 고정' + (st.cls === 0 ? '이고 2·3번 색도 게임이 정해 둔 색이에요.' : '이고, 2·3번 색은 마음대로 바꿀 수 있어요.') + ' 숫자키 1~4 = 색 고르기',
+      onOk: (p, pl, palChanged) => { st.pic = p; if (palChanged) { st.pal = pl; st.palDirty = true; } changed(); } });
+    const importPic = async () => {
+      let src;
+      try { src = await pickImageFile(); } catch (e) { alert('그림을 열 수 없어요: ' + e.message); return; }
+      if (!src) return;
+      try {
+        const take = st.takeColors && st.cls !== 0 && hasPal;
+        const res = SpriteConvert.convert(src, 7, take ? null : st.pal, st.outline);
+        if (take) { st.pal = [WHITE, res.c1, res.c2, BLACK]; st.palDirty = true; }
+        if (st.cls === 0) { const p = newPic(40, 56); for (let y = 0; y < 56; y++) for (let x = 0; x < 40; x++) p.px[y * 40 + x] = res.img.px[y * 56 + x + 8]; st.pic = p; }
+        else st.pic = res.img;
+        changed();
+      } catch (e) { this.okMsg(err, e.message, true); }
+    };
+    const apply = () => {
+      try {
+        if (st.dirty) { const e = rom.writeTrainerPic(st.cls, st.pic); if (e) { this.okMsg(err, e, true); return; } }
+        if (st.palDirty && st.cls !== 0) rom.setTrainerPalette(st.cls, st.pal[1], st.pal[2]);
+        st.dirty = st.palDirty = false; note.textContent = '';
+        this.okMsg(err, '적용했어요');
+        this.say('트레이너 그림을 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.');
+      } catch (e) { this.okMsg(err, e.message, true); }
+    };
+    const opt = (text, key) => { const [c, l] = check(text, st[key]); c.addEventListener('change', () => { st[key] = c.checked; }); return l; };
+    const items = [];
+    if (t.card >= 0) items.push({ value: 0, label: label(0), group: '주인공' });
+    items.push({ value: CAL_CLASS, label: label(CAL_CLASS), group: '주인공' });
+    for (let c = 1; c <= t.count; c++) if (c !== CAL_CLASS) items.push({ value: c, label: label(c), group: '트레이너 직업' });
+    const list = listPanel(items, c => {
+      if (c === st.cls) return;
+      if ((st.dirty || st.palDirty) && !confirm('적용하지 않은 변경이 있어요. 버릴까요?')) return;
+      load(c);
+    }, '트레이너 찾기', CAL_CLASS);
+    const body = el('div', null,
+      el('div', { style: 'margin-bottom:6px' }, title), info,
+      el('div', { class: 'bar', style: 'align-items:flex-start;gap:12px;margin-top:6px' },
+        el('div', null, box, note),
+        el('div', null,
+          el('div', { class: 'bar' }, el('button', { text: '도트로 그리기…', style: 'background:#c8e6ff', onclick: draw })),
+          el('div', { class: 'bar' }, el('button', { text: '사진 가져오기…', onclick: importPic })),
+          el('div', { class: 'bar' }, el('button', { text: 'PNG로 저장', onclick: () => downloadCanvas(picCanvas(st.pic, st.pal, false), label(st.cls).replace(/[★ —]+/g, '_') + '.png') })),
+          hasPal ? palBox : null)),
+      el('fieldset', null, el('legend', { text: '사진 바꾸기 설정' }),
+        el('div', null, opt('검은 테두리 자동으로 넣기 (큰 사진·그림일 때 추천)', 'outline')), el('div', null, opt('사진의 색으로 트레이너 색도 바꾸기', 'takeColors')),
+        el('div', { class: 'hint', text: '· 배경이 투명한 PNG가 제일 좋아요\n· 트레이너 카드 그림은 가로 40픽셀이라 사진 가운데 부분을 써요' })),
+      el('div', { class: 'bar' }, el('button', { class: 'apply', text: '적용', onclick: apply }), err),
+      el('div', { class: 'hint', text: '적용한 뒤 메인 화면에서 [저장하기]를 눌러야 롬 파일에 기록돼요' }));
+    load(CAL_CLASS);
+    this.dialog('트레이너 그림 편집', () => el('div', { class: 'side', style: 'grid-template-columns:240px minmax(0,1fr)' }, list, body));
   }
 });
 
