@@ -317,6 +317,9 @@ const I18N = (() => {
     '🔄 다시 켜기': '🔄 Restart', '개 있어요 (빨간 글씨). 먼저 고쳐주세요.': ' lines need fixing (red text). Please fix them first.', '고쳐야 할 대사가 ': 'Dialogue lines to fix: ', '넣지 못한 대사가 있어요:\n\n': 'Some dialogue could not be written:\n\n', '테스트용 세이브를 새로 시작할까요? (원래 게임 세이브와는 상관없어요)': 'Start a fresh test save? (your real game save is not affected)',
     // 이름 붙은 묶음 (곡 분류 등)
     '🏘 마을 · 도시': '🏘 Towns · Cities', '🌳 도로 · 이동': '🌳 Routes · Travel', '🏠 건물 · 동굴 · 탑': '🏠 Buildings · Caves · Towers', '⚔ 배틀 · 승리': '⚔ Battles · Victory', '👀 트레이너 마주침': '👀 Trainer Encounters', '🎬 이벤트 · 기타': '🎬 Events · Other', '기타': 'Other',
+    '엔터 = 다음 줄, 빈 줄 = 다음 말풍선, 한 줄 18자까지. {PLAYER} {RIVAL} 사용 가능': 'Enter = next line, blank line = next text box, 18 characters per line. {PLAYER} and {RIVAL} can be used',
+    '엔터 = 다음 줄      빈 줄 = 다음 말풍선\n{PLAYER} {RIVAL} 같은 중괄호는 이름 등이 들어가는 자리예요\n다 고친 뒤 [저장하기]를 누르면 새 롬 파일로 저장돼요 (원래 롬은 그대로)':
+      'Enter = next line      Blank line = next text box\nBraces like {PLAYER} and {RIVAL} are placeholders for names — keep them as they are\nWhen done, press [Save] to download a new ROM file (your original ROM stays unchanged)',
     '한글판': 'Korean', '영문판': 'English', '일본판': 'Japanese', '금·은': 'Gold/Silver', '크리스탈': 'Crystal', '이 버전에는 없는 스크립트 명령이에요': 'This script command does not exist in this version',
     '벽': 'Wall', '물': 'Water', '문': 'Door', '턱': 'Ledge', '위': 'Up', '옆': 'Side', '칸': 'tiles', '번': '#', '개': '', '곳': '', '초': 's'
   };
@@ -4135,11 +4138,18 @@ mixin(Rom.prototype, {
       for (let i = 0; i < raw.length / 16 && i < 128; i++) t.tiles[first + i] = raw.slice(i * 16, i * 16 + 16);
     }
     let p = t.mapOff, n = 0;
-    while (n < t.map.length && d[p] !== 0xFF) {
-      const b = d[p++], v = d[p++];
-      for (let i = 0; i < (b & 0x7F) && n < t.map.length; i++) t.map[n++] = (b & 0x80) ? (v + i) & 0xFF : v;
+    // 영문판 금·은: 배치표가 압축 없이 FF 까지 그대로 (jr z / inc hl / ld [de],a / inc de)
+    t.raw = d[m + 13] === 0x28 && d[m + 15] === 0x23 && d[m + 16] === 0x12 && d[m + 17] === 0x13;
+    if (t.raw) {
+      while (n < t.map.length && d[p] !== 0xFF) t.map[n++] = d[p++];
+      if (n < TITLE_W * 12) return null;
+    } else {
+      while (n < t.map.length && d[p] !== 0xFF) {
+        const b = d[p++], v = d[p++];
+        for (let i = 0; i < (b & 0x7F) && n < t.map.length; i++) t.map[n++] = (b & 0x80) ? (v + i) & 0xFF : v;
+      }
+      if (n !== t.map.length) return null;
     }
-    if (n !== t.map.length) return null;
     this.readTitleAttr(call - 0x80, t);
     for (let g = 0; ; g++) {
       g = this.findPattern([0x21, -1, -1, 0x11, -1, -1, 0x01, 0x28, 0x00, 0xCD, -1, -1, 0x21, -1, -1], g, d.length);
@@ -4232,7 +4242,8 @@ mixin(Rom.prototype, {
     }
     // 배치표: 같은 타일 반복(0~127) / 1씩 늘어나는 타일(128+) 묶음
     const enc = [];
-    for (let i = 0; i < map.length;) {
+    if (t.raw) enc.push(...map);
+    else for (let i = 0; i < map.length;) {
       let inc = 1; while (i + inc < map.length && inc < 127 && map[i + inc] === map[i] + inc) inc++;
       let rep = 1; while (i + rep < map.length && rep < 127 && map[i + rep] === map[i]) rep++;
       if (inc >= rep && inc > 1) { enc.push(0x80 | inc, map[i]); i += inc; } else { enc.push(rep, map[i]); i += rep; }
@@ -5179,7 +5190,7 @@ class App {
     box.append(el('div', { class: 'ttl', text: a.regionName + '  ›  ' + a.name + '  ›  ' + o.name }));
     if (!o.texts.length) box.append(el('div', { class: 'hint', text: '이 NPC 는 대사가 없어요.' }));
     o.texts.forEach((t, i) => box.append(this.textEditor(t, (i + 1) + '번째 대사' + (this.rom.textNote.has(t) ? ' · ' + this.rom.textNote.get(t) : ''), o)));
-    box.append(el('div', { class: 'hint', style: 'margin-top:8px', text: '엔터 = 다음 줄      빈 줄 = 다음 말풍선\n{주인공} {라이벌} 같은 중괄호는 이름 등이 들어가는 자리예요\n다 고친 뒤 [저장하기]를 누르면 새 롬 파일로 저장돼요 (원래 롬은 그대로)' }));
+    box.append(el('div', { class: 'hint', style: 'margin-top:8px', text: '엔터 = 다음 줄      빈 줄 = 다음 말풍선\n' + nameHint(this.rom) + ' 같은 중괄호는 이름 등이 들어가는 자리예요\n다 고친 뒤 [저장하기]를 누르면 새 롬 파일로 저장돼요 (원래 롬은 그대로)' }));
     return box;
   }
 
@@ -5827,7 +5838,35 @@ const EV_SAMPLES = [
   [], [],
   ['다른 곳으로\n데려다줄까?', '필요하면\n언제든 말해!'],
   ['눈이 마주쳤다!\n승부다!', '으윽 졌다…', '너 정말 강하구나!']];
-const EV_SPRITE_FOR = [0x27, 0x2F, 0x28, 0x40, 0x2B, 0x10, 0x9E, 0x35, 0x39, 0x37, 0x3F, 0x25];
+// 영문판·일본판 롬에 넣을 예시 대사 (게임 글자로 들어가는 말이라 롬 언어를 따름)
+const EV_SAMPLES_EN = [
+  ['Hi! Nice weather\ntoday, huh?'],
+  ["We haven't met\nbefore, have we?\n\nI've lived here\nfor a long time.", 'Back again?\nHow are you?'],
+  ['Do you like\nPOKéMON?', 'Me too!\nI love them!', "Oh…\nThat's too bad…"],
+  ['This should help\non your journey!\nTake it!', 'Is it useful?'],
+  ["Give me that item\nand I'll give you\nsomething good!\nTrade?", "Thanks!\nI'll treasure it!", 'Oh? Too bad…'],
+  ['Could you raise\nthis POKéMON\nfor me?', 'Take good care\nof it!'],
+  ['Gyaoo!'],
+  ["Let's battle!", 'I lost…!', "I won't lose\nnext time!"],
+  [], [],
+  ['Want me to take\nyou somewhere?', 'Just ask if you\nneed me!'],
+  ["Our eyes met!\nLet's battle!", 'Ugh, I lost…', "You're really\nstrong!"]];
+const EV_SAMPLES_JP = [
+  ['こんにちは！\nきょうは　いい\nてんきだね！'],
+  ['はじめて　みる\nかおだね！\n\nわたしは　この\nまちに　ながく\nすんでいるのよ', 'また　きたのね！\nげんき？'],
+  ['ポケモンは\nすき？', 'そうなんだ！\nわたしも　だいすき！', 'そう…\nざんねん…'],
+  ['たびに　やくだつ\nものだよ！\nうけとって！', 'つかってる？'],
+  ['その　どうぐを\nくれたら\nいいものを　あげる！\nこうかんする？', 'ありがとう！\nたいせつに　するね！', 'そう？　ざんねん…'],
+  ['この　ポケモンを\nそだてて\nくれない？', 'だいじに\nそだててね！'],
+  ['ギャオーッ！'],
+  ['しょうぶだ！', 'まけた…！', 'つぎは　まけないぞ！'],
+  [], [],
+  ['ほかの　ばしょへ\nつれて　いこうか？', 'ようが　あったら\nいつでも　いってね！'],
+  ['めが　あったら\nしょうぶだ！', 'うう　まけた…', 'きみ　つよいね！']];
+// 롬 언어에 맞는 예시 대사 묶음 · 이름 표시 ({주인공} / {PLAYER})
+function romSamples(rom) { const k = rom && rom.cs.kind; return k === 'en' ? EV_SAMPLES_EN : k === 'jp' ? EV_SAMPLES_JP : EV_SAMPLES; }
+function nameHint(rom) { return rom && !Object.values(rom.cs.TOKENS).includes('주인공') ? '{PLAYER} {RIVAL}' : '{주인공} {라이벌}'; }
+const EV_SPRITE_FOR =[0x27, 0x2F, 0x28, 0x40, 0x2B, 0x10, 0x9E, 0x35, 0x39, 0x37, 0x3F, 0x25];
 const EV_DESCS = [
   '말 걸면 대사를 해요.',
   '처음 말 걸 때와 그 다음부터 대사가 달라요.',
@@ -5856,7 +5895,7 @@ Object.assign(App.prototype, {
   evSetKind(k) {
     const st = this.evSt;
     st.kind = k;
-    const s = EV_SAMPLES[k];
+    const s = romSamples(this.rom)[k];
     st.t = [s[0] || '', s[1] || '', s[2] || ''];
     if (k === EV.Wild) st.level = 30; else if (k === EV.Pokemon) st.level = 5;
     if (k === EV.EyeTrainer && st.move > 3) st.move = 0;
@@ -5982,7 +6021,7 @@ Object.assign(App.prototype, {
       ta.addEventListener('input', () => st.t[i] = ta.value);
       col.append(el('div', { style: 'margin-top:6px' }, el('div', { text: l }), ta));
     });
-    if (labels.length) col.append(el('div', { class: 'hint', text: '엔터 = 다음 줄, 빈 줄 = 다음 말풍선, 한 줄 18자까지. {주인공} {라이벌} 사용 가능' }));
+    if (labels.length) col.append(el('div', { class: 'hint', text: '엔터 = 다음 줄, 빈 줄 = 다음 말풍선, 한 줄 18자까지. ' + nameHint(rom) + ' 사용 가능' }));
     if (evCanRepeat(k)) { const [c, l] = check('여러 번 할 수 있게 (체크 안 하면 한 번만)', st.repeat); c.addEventListener('change', () => { st.repeat = c.checked; rerender(); }); col.append(el('div', null, l)); }
     if (evCanVanish(k) && k !== EV.Wild) { const [c, l] = check('이벤트가 끝나면 NPC가 사라짐 (다시 와도 없음)', st.vanish); c.disabled = st.repeat; c.addEventListener('change', () => st.vanish = c.checked); col.append(el('div', null, l)); }
 
@@ -6397,7 +6436,7 @@ Object.assign(App.prototype, {
         // 가장 가까운 NPC 를 '다가올 NPC' 로 미리 골라 둠
         const near = wt.objects.filter(o => o.canApproach && o.x >= 0).sort((p, q) => (Math.abs(p.x - x) + Math.abs(p.y - y)) - (Math.abs(q.x - x) + Math.abs(q.y - y)))[0];
         wt.coords.push(newCoord({ x, y, sceneId: 0xFF, kind: near ? TK.Approach : TK.Talk, targetObj: near ? near.index : -1, targetName: near ? near.name : '',
-          text: '잠깐 기다려!', warpGroup: a.group, warpMap: a.map, dirty: true }));
+          text: { en: 'Wait a moment!', jp: 'ちょっと　まって！' }[this.rom.cs.kind] || '잠깐 기다려!', warpGroup: a.group, warpMap: a.map, dirty: true }));
         wt.coordsDirty = true; wt.selC = wt.coords.length - 1; wt.sub = 'trig';
         this.wtStatus('(' + x + ',' + y + ') 에 트리거를 놓았어요 · 동작·대사를 정하고 [💾 트리거 저장]');
         rerender();
