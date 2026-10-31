@@ -162,7 +162,7 @@ const I18N = (() => {
     '개를 찾았어요. 바꿀 대사만 체크하세요 (이름·조사·타입 표현을 같이 바꿔요).\n예: 라이벌·공박사가 그 포켓몬을 말하는 대사는 체크, 다른 뜻으로 쓰인 곳은 체크 해제': ' lines. Check only the ones to replace (name, particles and type words change together).\nE.g. check lines where the rival or Prof. Elm mention that Pokémon; uncheck other uses',
     "개에서 '": " lines: '", '개에서 포켓몬 이름·타입도 바꿨어요 ([대사] 탭에서 확인)': ' lines also had the Pokémon name/type changed (check the [Dialogue] tab)', '개에서도 포켓몬 이름을 바꿨어요 ([대사] 탭에서 확인)': ' other lines also had the Pokémon name changed (check the [Dialogue] tab)',
     '고를 때 그림': 'Picture when choosing', '곳에서 같이 써요': ' places', '그림·울음소리도 받는 포켓몬과 같게': 'Picture & cry same as the received Pokémon', '다른 대사 ': 'Other lines: ', "다른 대사에서도 '": "Also replace in other dialogue: '",
-    '🎲 랜덤 포켓몬으로 바꾸기': '🎲 Randomize Pokémon', '전설·환상 포켓몬 포함': 'Include legendary / mythical', '🎲 레벨 랜덤으로 바꾸기': '🎲 Randomize levels',
+    '🎲 랜덤 포켓몬으로 바꾸기': '🎲 Randomize Pokémon', '전설·환상 포켓몬 포함': 'Include legendary / mythical', '🎲 레벨 랜덤으로 바꾸기': '🎲 Randomize levels', '검색 (이름·번호)': 'Search (name / number)', '찾는 게 없어요': 'No matches',
     '마리': '', '만날 확률': 'Encounter rate', '모두 체크': 'Check all', '모두 해제': 'Uncheck all', '모든 시간': 'Any time', '물 위 (파도타기)': 'On water (Surf)', '물건 ': 'Items: ', '물건 추가': 'Add item', '바꾸기': 'Replace',
     '바뀐 뒤': 'After', '바뀐 뒤 대사': 'Text after change', '받을 때 기술 (그 레벨까지 배운 기본 기술): ': 'Moves when received (default moves at that level): ', '빼기': 'Remove', '상점 ': 'Mart ',
     '상점을 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.': 'Mart changed. Press [Save] to write it to the ROM file.',
@@ -4697,6 +4697,13 @@ const CSS = `
 .gsc input[type=search],.gsc select,.gsc textarea{font:inherit;border:1px solid var(--line);border-radius:4px;padding:4px 8px;background:var(--panel);color:var(--ink)}
 .gsc input[type=search]{width:100%}
 .gsc select{max-width:100%}
+.gsc .pick{position:fixed;z-index:2147483200;background:var(--panel);border:1px solid var(--accent);border-radius:6px;box-shadow:0 6px 20px rgba(0,0,0,.25);padding:6px;max-width:calc(100vw - 8px)}
+.gsc .pick input[type=search]{margin-bottom:4px}
+.gsc .pick-list{overflow:auto}
+.gsc .pick-opt{padding:3px 8px;border-radius:3px;cursor:pointer;white-space:nowrap}
+.gsc .pick-opt.cur{font-weight:bold}
+.gsc .pick-opt.on{background:var(--accent);color:var(--accent-ink)}
+.gsc .pick-none{padding:6px 8px;color:var(--sub)}
 .gsc .drop{border:2px dashed var(--line);border-radius:10px;padding:40px 16px;text-align:center;color:var(--sub);background:var(--panel)}
 .gsc .drop.over{border-color:var(--accent);background:#eef3ff}
 .gsc .drop b{color:var(--ink);font-size:16px}
@@ -4795,6 +4802,77 @@ function num(value, min, max, onchange) {
   if (onchange) i.addEventListener('change', () => { let v = Math.round(+i.value); if (isNaN(v)) v = min; v = Math.max(min, Math.min(max, v)); i.value = v; onchange(v); });
   return i;
 }
+// 고를 게 많은 칸(포켓몬·기술·물건 등)은 누르면 검색창이 달린 목록이 열림. 고르면 원래 select 값이 바뀌고 change 가 일어남
+const PICK_MIN = 15;
+function searchableSelects(host) {
+  let cur = null;
+  const close = () => { if (cur) { cur.box.remove(); cur = null; } };
+  const open = (s, typed) => {
+    close();
+    const r = s.getBoundingClientRect();
+    const q = el('input', { type: 'search', placeholder: '검색 (이름·번호)' });
+    const list = el('div', { class: 'pick-list' });
+    const box = el('div', { class: 'pick' }, q, list);
+    box.style.left = Math.max(4, Math.min(r.left, innerWidth - 284)) + 'px';
+    box.style.minWidth = Math.max(r.width, 280) + 'px';
+    const below = innerHeight - r.bottom;
+    if (below < 260 && r.top > below) box.style.bottom = (innerHeight - r.top + 2) + 'px';
+    else box.style.top = (r.bottom + 2) + 'px';
+    list.style.maxHeight = Math.max(160, Math.min(340, Math.max(below, r.top) - 60)) + 'px';
+    let shown = [], hi = 0;
+    const mark = () => shown.forEach((d, i) => d.classList.toggle('on', i === hi));
+    const choose = d => {
+      s.value = d.dataset.v; close(); s.focus();
+      s.dispatchEvent(new Event('input', { bubbles: true })); s.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+    const fill = () => {
+      const words = q.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+      list.replaceChildren(); shown = []; hi = 0;
+      for (const o of s.options) {
+        const t = o.textContent;
+        if (o.disabled || !words.every(w => t.toLowerCase().includes(w))) continue;
+        const d = el('div', { class: 'pick-opt', text: t, 'data-raw': '1' });
+        d.dataset.v = o.value;
+        if (o.selected) { hi = shown.length; d.classList.add('cur'); }
+        d.addEventListener('mousedown', e => { e.preventDefault(); choose(d); });
+        d.addEventListener('mousemove', () => { if (shown[hi] !== d) { hi = shown.indexOf(d); mark(); } });
+        list.append(d); shown.push(d);
+      }
+      if (words.length) hi = 0;
+      if (!shown.length) list.append(el('div', { class: 'pick-none', text: '찾는 게 없어요' }));
+      mark();
+      if (shown[hi]) shown[hi].scrollIntoView({ block: 'nearest' });
+    };
+    q.addEventListener('input', fill);
+    q.addEventListener('keydown', e => {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); if (!shown.length) return; hi = (hi + (e.key === 'ArrowDown' ? 1 : shown.length - 1)) % shown.length; mark(); shown[hi].scrollIntoView({ block: 'nearest' }); }
+      else if (e.key === 'Enter') { e.preventDefault(); if (shown[hi]) choose(shown[hi]); }
+      else if (e.key === 'Escape' || e.key === 'Tab') { e.preventDefault(); close(); s.focus(); }
+      e.stopPropagation();
+    });
+    (s.closest('.dlg-bg') || host).append(box);
+    cur = { box, s };
+    q.value = typed || '';
+    fill();
+    q.focus();
+  };
+  const want = s => s && s.tagName === 'SELECT' && !s.disabled && !s.multiple && s.options.length >= PICK_MIN;
+  host.addEventListener('mousedown', e => {
+    if (cur && cur.box.contains(e.target)) return;
+    if (want(e.target) && e.button === 0) { e.preventDefault(); if (cur && cur.s === e.target) close(); else { e.target.focus(); open(e.target); } return; }
+    close();
+  }, true);
+  host.addEventListener('keydown', e => {
+    const s = e.target;
+    if (!want(s) || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key === 'Enter' || e.key === ' ' || e.key === 'F4') { e.preventDefault(); open(s); }
+    else if (e.key.length === 1) { e.preventDefault(); open(s, e.key); }
+    else if (e.key === 'Process') open(s);
+  }, true);
+  document.addEventListener('mousedown', e => { if (cur && !host.contains(e.target)) close(); }, true);
+  window.addEventListener('resize', close);
+  document.addEventListener('scroll', e => { if (cur && !cur.box.contains(e.target)) close(); }, true);
+}
 function check(label, on) { const c = el('input', { type: 'checkbox' }); c.checked = !!on; return [c, el('label', null, c, ' ' + label)]; }
 
 const TAB_NAMES = ['대사', '야생 포켓몬', '프렌들리숍', '선물 포켓몬', '지도 블록', 'NPC · 이벤트', '워프 · 트리거'];
@@ -4821,6 +4899,7 @@ class App {
     host.addEventListener('dragover', e => e.preventDefault());
     host.addEventListener('drop', e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f && this.confirmDiscard()) this.load(f); });
     I18N.watch(host);
+    searchableSelects(host);
     this.build();
   }
 
