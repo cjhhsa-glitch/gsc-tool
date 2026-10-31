@@ -373,6 +373,7 @@ class Rom {
       const o = { name: '표지판·조사 ' + (++signNo), y: d[e], x: d[e + 1], isSign: true, eventOff: e, texts: [] };
       if (type <= 4) this.walk(o, bank, ptr);
       else if ((type === 5 || type === 6) && Rom.banked(ptr)) { this.usedFlags.add(this.w(this.off(bank, ptr))); this.walk(o, bank, this.w(this.off(bank, ptr) + 2)); }
+      else if (type === 7 && Rom.banked(ptr)) this.usedFlags.add(this.w(this.off(bank, ptr)));
       signs.push(o);
     }
     const nObj = d[e++];
@@ -462,21 +463,6 @@ class Rom {
     if (!m.get(o).includes(off)) m.get(o).push(off);
     if (!this.ownerPicCry.has(o)) this.ownerPicCry.set(o, []);
     if (!this.ownerPicCry.get(o).includes(off)) this.ownerPicCry.get(o).push(off);
-  }
-
-  // 스크립트 명령들을 차례로 (분기는 따라가지 않음) → [[명령, 인자…], …]
-  scriptOps(bank, addr) {
-    const d = this.data, res = [];
-    let pc = this.off(bank, addr);
-    for (let n = 0; n < 300 && this.inRom(pc); n++) {
-      const op = d[pc];
-      const len = op === 0x2D ? (d[pc + 4] !== 0 ? 9 : 5) : SCRIPT_LEN[op];
-      if (len <= 0) break;
-      res.push(Array.from(d.subarray(pc, pc + len)));
-      if ([0x03, 0x04, 0x05, 0x0C, 0x52, 0x53, 0x8F, 0x90, 0x91, 0x92, 0x93, 0xA0, 0xA1].includes(op)) break;
-      pc += len;
-    }
-    return res;
   }
 
   addText(o, bank, addr) {
@@ -879,7 +865,8 @@ const RomMusic = (() => {
     for (let i = 0; i < n; i++) { const id = d[hdr + i * 3] & 3; ch[id].pc = W(d, hdr + i * 3 + 1); ch[id].active = true; }
     const st = { masterVol: 0x77, noiseSet: 0 };
     const maxFrames = Math.floor((maxSeconds || 240) * FRAME_RATE);
-    let stopFrame = maxFrames, loopEndFrame = 0;
+    let stopFrame = maxFrames, loopEndFrame = 0, firstUnit = 0;
+    const events = [];
     const out = new Float32Array(Math.ceil(maxFrames * SAMPLE_RATE / FRAME_RATE) + 1000);
     let ns = 0, acc = 0, hpIn = 0, hpOut = 0;
     const spf = SAMPLE_RATE / FRAME_RATE;
@@ -913,15 +900,20 @@ const RomMusic = (() => {
           const a = (len * c.noteLength) & 0xFF;
           const r = a * c.tempo + c.frac;
           c.frac = r & 0xFF; c.duration = (r >> 8) & 0xFF;
+          // 편집 표 1칸 = 첫 채널의 음표 길이 단위
+          if ((c.index === 0 || (!ch[0].active && c.index === 1)) && !firstUnit) firstUnit = c.noteLength * c.tempo / 256;
           if (pitch === 0) { c.rest = true; return; }
-          if (c.index === 3) startDrum(c, pitch);
+          let ev;
+          if (c.index === 3) { startDrum(c, pitch); ev = { ch: 3, frame, frames: Math.max(1, c.duration), drum: pitch, volume: 12 }; }
           else {
             c.baseFreq = (getFrequency(c, pitch) + c.pitchOffset) & 0x7FF;
             c.freq = c.baseFreq; c.rest = false;
             c.vibDelayCnt = c.vibDelay; c.vibRateCnt = c.vibRate;
             if (c.index === 2) { c.waveIdx = c.envelope & 0xF; c.waveVol = (c.envelope >> 4) & 3; c.phase = 0; }
             else { c.vol = c.envelope >> 4; c.envUp = (c.envelope & 8) !== 0; c.envPeriod = c.envelope & 7; c.envTimer = 0; }
+            ev = { ch: c.index, frame, frames: Math.max(1, c.duration), freq: c.baseFreq, volume: c.index === 2 ? 15 >> Math.max(0, c.waveVol - 1) : c.envelope >> 4 };
           }
+          if (!loopEndFrame) events.push(ev);
           return;
         }
         switch (cmd) {
@@ -1050,24 +1042,195 @@ const RomMusic = (() => {
         out[ns++] = Math.max(-1, Math.min(1, y * 680 * master / 32768));
       }
     }
-    return { samples: out.subarray(0, ns), loopEndFrame: loopEndFrame || stopFrame, seconds: ns / SAMPLE_RATE };
+    return { samples: out.subarray(0, ns), loopEndFrame: loopEndFrame || stopFrame, seconds: ns / SAMPLE_RATE, events, unitFrames: Math.max(1, firstUnit > 0 ? firstUnit : 6) };
+  }
+
+  // ---------------------------------------------------------------- 원곡 표 · 곡 번호
+  function originalTable(d) { const t = find(d); if (!t) return new Uint8Array(0); originalOffset(d, 1); return origCache.get(d); }
+  function songTableOffset(d) { const t = find(d); return t ? t.music : -1; }
+  // 음악 번호 slot 이 가리키는 곳을 바꿈
+  function setSongPointer(d, slot, offset) {
+    const t = find(d);
+    if (!t || slot < 1 || slot >= t.count) return false;
+    originalOffset(d, 1);   // 바꾸기 전에 원곡 표를 기억
+    const e = t.music + slot * 3, a = 0x4000 + offset % 0x4000;
+    d[e] = Math.floor(offset / 0x4000); d[e + 1] = a & 0xFF; d[e + 2] = a >> 8;
+    return true;
+  }
+
+  // ---------------------------------------------------------------- 편집 표(track) ↔ 롬 음악 데이터
+  // track = { title, bpm, totalSteps, romSongId, edited, romOriginal, channels: [[{ pitch, octave, duration, volume }] ×4] }
+  // pitch: 0 쉼표, 1=C … 12=B (드럼 채널은 1 킥, 2 스네어, 3 하이햇, 4 크래시)
+  function newTrack(title, steps, bpm) {
+    const t = { title: title || '새 BGM', bpm: bpm || 130, totalSteps: steps || 32, romSongId: -1, edited: false, romOriginal: false, channels: [] };
+    for (let ch = 0; ch < 4; ch++) { const l = []; for (let i = 0; i < t.totalSteps; i++) l.push({ pitch: 0, octave: ch === 2 ? 3 : 4, duration: 1, volume: 12 }); t.channels.push(l); }
+    return t;
+  }
+  // 드럼 번호 → 킥/스네어/하이햇/크래시 (표 표시용)
+  function drumKindOf(drum) {
+    if ([1, 5, 6, 7, 8].includes(drum)) return 2;
+    if ([2, 3, 9, 10].includes(drum)) return 3;
+    if (drum === 4 || drum === 11) return 4;
+    return 1;
+  }
+  function toTrack(r, songId) {
+    const unit = r.unitFrames;
+    const steps = Math.min(4000, Math.max(16, Math.round(r.loopEndFrame / unit) + 1));
+    const track = newTrack(name(songId), steps, Math.round(60 * FRAME_RATE / (4 * unit)));
+    track.romSongId = songId;
+    for (const e of r.events) {
+      const s = Math.round(e.frame / unit);
+      if (s < 0 || s >= steps) continue;
+      const n = track.channels[e.ch][s];
+      n.duration = Math.max(1, Math.round(e.frames / unit));
+      n.volume = Math.max(1, Math.min(15, e.volume));
+      if (e.ch === 3) { n.pitch = drumKindOf(e.drum); n.octave = 0; }
+      else {
+        const hz = (e.ch === 2 ? 65536 : 131072) / (2048 - e.freq);
+        const midi = Math.round(69 + 12 * Math.log2(hz / 440));
+        n.pitch = ((midi % 12) + 12) % 12 + 1; n.octave = Math.max(1, Math.min(7, Math.floor(midi / 12) - 1));
+      }
+    }
+    return track;
+  }
+  const NOTE_SPEED = 12;   // note_type 속도 (1칸 = 16분음표)
+  // 이 롬의 드럼킷에서 킥·스네어·하이햇·크래시에 가장 가까운 드럼 번호 고르기 (소리 데이터의 높이·길이로 판단)
+  function drumMap(d) {
+    let kit = 0, idx = [0, 1, 2, 3, 4];
+    const t = find(d);
+    if (!t || !t.drumkits) return { kit, idx };
+    const bank = Math.floor(t.drumkits / 0x4000);
+    let bestScore = -Infinity;
+    for (let k = 0; k < 6; k++) {
+      const kp = Off(bank, W(d, t.drumkits + k * 2));
+      const shift = new Array(13).fill(0), frames = new Array(13).fill(0), ok = new Array(13).fill(false);
+      for (let i = 1; i <= 12; i++) {
+        let p = Off(bank, W(d, kp + i * 2)), n = 0, f = 0, sh = 0;
+        while (n < 16 && p + 2 < d.length && d[p] !== 0xFF && (d[p] & 0xF0) === 0x20) { f += (d[p] & 0xF) + 2; if (n === 0) sh = d[p + 2] >> 4; p += 3; n++; }
+        ok[i] = n > 0; shift[i] = sh; frames[i] = f;
+      }
+      const pick = score => { let bi = 1, bv = -Infinity; for (let i = 1; i <= 12; i++) if (ok[i] && score(i) > bv) { bv = score(i); bi = i; } return bi; };
+      const kick = pick(i => shift[i] * 2 - Math.abs(frames[i] - 8) * 0.2);
+      const snare = pick(i => -Math.abs(shift[i] - 3) * 2 + Math.min(frames[i], 20) * 0.1 - (i === kick ? 99 : 0));
+      const hat = pick(i => -shift[i] * 2 - frames[i] * 0.3 - (i === kick || i === snare ? 99 : 0));
+      const crash = pick(i => -shift[i] + frames[i] * 0.3 - (i === kick || i === snare || i === hat ? 99 : 0));
+      const total = (shift[kick] - shift[hat]) + (frames[crash] - frames[hat]) * 0.1;
+      if (total > bestScore) { bestScore = total; kit = k; idx = [0, kick, snare, hat, crash]; }
+    }
+    return { kit, idx };
+  }
+  // track 을 금·은 사운드 엔진 데이터로 (baseAddr = 놓일 뱅크 안 주소). 곡은 끝나면 처음부터 반복
+  function encode(d, track, baseAddr) {
+    const { kit, idx: drum } = drumMap(d);
+    const framesPerStep = FRAME_RATE * 15 / Math.max(30, Math.min(400, track.bpm));
+    const tempo = Math.max(1, Math.min(0xFFFF, Math.round(framesPerStep * 256 / NOTE_SPEED)));
+    const chans = [], loops = [];
+    for (let ch = 0; ch < 4; ch++) {
+      const b = [];
+      if (ch === 0) b.push(0xDA, tempo >> 8, tempo & 0xFF, 0xE5, 0x77, 0xDB, 2, 0xE1, 0x10, 0x23);   // 템포, 볼륨, 50% 사각파 + 살짝 비브라토
+      if (ch === 1) b.push(0xDB, 1);                                                                 // 25% 사각파
+      if (ch === 3) b.push(0xE3, kit, 0xD8, NOTE_SPEED);                                             // 드럼킷, 드럼 속도
+      let env = ch === 2 ? 0x10 : 0xC0;
+      if (ch !== 3) b.push(0xD8, NOTE_SPEED, env);
+      loops[ch] = b.length;
+      const notes = track.channels[ch], steps = Math.min(track.totalSteps, notes.length);
+      let octave = -1, s = 0, rest = 0;
+      const flushRest = () => { while (rest > 0) { const n = Math.min(16, rest); b.push(n - 1); rest -= n; } };
+      while (s < steps) {
+        const n = notes[s];
+        if (n.pitch <= 0) { rest++; s++; continue; }
+        let len = Math.max(1, Math.min(16, n.duration));
+        for (let k = s + 1; k < s + len && k < steps; k++) if (notes[k].pitch > 0) { len = k - s; break; }
+        len = Math.min(len, steps - s);
+        flushRest();
+        if (ch === 3) { const di = n.pitch >= 1 && n.pitch <= 4 ? drum[n.pitch] : drum[3]; b.push((di << 4) | (len - 1)); }
+        else {
+          const vol = Math.max(1, Math.min(15, n.volume));
+          const e2 = ch === 2 ? ((vol >= 10 ? 1 : vol >= 6 ? 2 : 3) << 4) : (vol << 4) | (len <= 2 ? 2 : len <= 4 ? 3 : len <= 8 ? 5 : 0);
+          if (e2 !== env) { b.push(0xDC, e2); env = e2; }
+          // 사각파: 엔진 옥타브 n 의 도 = 과학 표기 n+1 / 웨이브는 한 옥타브 낮게 나옴
+          const o = Math.max(1, Math.min(8, ch === 2 ? n.octave : n.octave - 1));
+          if (o !== octave) { b.push(0xD8 - o); octave = o; }
+          b.push((Math.max(1, Math.min(12, n.pitch)) << 4) | (len - 1));
+        }
+        rest = 0; s += len;
+        while (s < steps && notes[s].pitch <= 0) { rest++; s++; }
+      }
+      flushRest();
+      if (b.length === loops[ch]) b.push(0x0F);   // 빈 채널도 한 칸 쉼표는 있어야 무한 반복이 안 멈춤
+      chans.push(b);
+    }
+    const out = [], starts = [];
+    let pos = baseAddr + 12;
+    for (let ch = 0; ch < 4; ch++) { starts.push(pos); pos += chans[ch].length + 4; }
+    for (let ch = 0; ch < 4; ch++) out.push((ch === 0 ? 0xC0 : 0) | ch, starts[ch] & 0xFF, starts[ch] >> 8);
+    for (let ch = 0; ch < 4; ch++) { out.push(...chans[ch]); const at = starts[ch] + loops[ch]; out.push(0xFD, 0x00, at & 0xFF, at >> 8); }
+    return out;
+  }
+
+  // ---------------------------------------------------------------- 편집한 곡 미리듣기 (간단한 칩튠 합성, BgmForm.cs ChiptuneSynth)
+  const noteHz = (pitch, octave) => pitch <= 0 ? 0 : 440 * Math.pow(2, ((octave - 1) * 12 + (pitch - 1) - 45) / 12);
+  function synthTone(buf, start, count, ch, freq, vol) {
+    if (freq <= 0) return;
+    const period = SAMPLE_RATE / freq, duty = ch === 1 ? 0.25 : 0.5, maxAmp = vol / 15 * 8000 / 32768;
+    for (let i = 0; i < count && start + i < buf.length; i++) {
+      const pos = (i % period) / period;
+      const v = ch === 2 ? (pos < 0.5 ? pos * 4 - 1 : 3 - pos * 4) * maxAmp * 1.3 : (pos < duty ? maxAmp : -maxAmp);
+      buf[start + i] = Math.max(-1, Math.min(1, buf[start + i] + v * (1 - i / count * 0.4)));
+    }
+  }
+  function synthDrum(buf, start, count, type, vol) {
+    let seed = start * 9301 + 49297;
+    const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+    const maxAmp = vol / 15 * 9000 / 32768;
+    for (let i = 0; i < count && start + i < buf.length; i++) {
+      const p = i / count;
+      let v = 0;
+      if (type === 1) v = Math.sin(2 * Math.PI * Math.max(40, 150 * (1 - p * 0.9)) * i / SAMPLE_RATE) * maxAmp * 1.4;
+      else if (type === 2) v = ((rnd() * 2 - 1) * 0.7 + Math.sin(2 * Math.PI * 220 * i / SAMPLE_RATE) * 0.3) * maxAmp * (1 - p) ** 2;
+      else if (type === 3) { if (p < 0.35) v = (rnd() * 2 - 1) * maxAmp * 0.6 * (1 - p / 0.35); }
+      else if (type === 4) v = (rnd() * 2 - 1) * maxAmp * 0.8 * (1 - p) ** 1.5;
+      buf[start + i] = Math.max(-1, Math.min(1, buf[start + i] + v));
+    }
+  }
+  function renderTrack(track, mute) {
+    const bpm = Math.max(30, Math.min(400, track.bpm)), stepDur = 60 / bpm / 4;
+    const buf = new Float32Array(Math.floor(track.totalSteps * stepDur * SAMPLE_RATE) + 1);
+    for (let ch = 0; ch < 4; ch++) {
+      if (mute && mute[ch]) continue;
+      const notes = track.channels[ch];
+      for (let s = 0; s < track.totalSteps && s < notes.length; s++) {
+        const n = notes[s];
+        if (!n.pitch) continue;
+        const start = Math.floor(s * stepDur * SAMPLE_RATE), cnt = Math.floor(n.duration * stepDur * SAMPLE_RATE * 0.92);
+        if (ch === 3) synthDrum(buf, start, cnt, n.pitch, n.volume); else synthTone(buf, start, cnt, ch, noteHz(n.pitch, n.octave), n.volume);
+      }
+    }
+    return buf;
+  }
+  function previewNote(ch, pitch, octave) {
+    const n = Math.floor(SAMPLE_RATE * (ch === 3 ? 0.12 : 0.18)), buf = new Float32Array(n);
+    if (ch === 3) synthDrum(buf, 0, n, pitch, 14); else synthTone(buf, 0, n, ch, noteHz(pitch, octave), 14);
+    return buf;
   }
 
   const name = id => id >= 0 && id < SONG_NAMES.length ? SONG_NAMES[id] : '곡 0x' + hex2(id);
-  return { SAMPLE_RATE, songCount, render, name, isReplaced, groups: SONG_GROUPS };
+  return { SAMPLE_RATE, FRAME_RATE, songCount, render, name, isReplaced, groups: SONG_GROUPS, songOffset, originalOffset, originalTable, findBackup, songTableOffset,
+    setSongPointer, newTrack, toTrack, encode, renderTrack, previewNote, BACKUP_SIG };
 })();
 
 // 브라우저에서 곡 재생 (한 번에 하나)
 const Player = {
   ctx: null, src: null, onEnd: null,
-  play(samples) {
-    this.stop();
+  play(samples, once) {
+    if (!once) this.stop();
     if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (!samples.length) return;
     const buf = this.ctx.createBuffer(1, samples.length, RomMusic.SAMPLE_RATE);
     buf.copyToChannel(samples, 0);
     const s = this.ctx.createBufferSource();
-    s.buffer = buf; s.loop = true; s.connect(this.ctx.destination); s.start();
-    this.src = s;
+    s.buffer = buf; s.loop = !once; s.connect(this.ctx.destination); s.start();
+    if (!once) this.src = s;
   },
   stop() { if (this.src) { try { this.src.stop(); } catch (e) { } this.src = null; } }
 };
@@ -1538,6 +1701,9 @@ Object.assign(Rom.prototype, {
     if (o.isSign) { d[o.eventOff] = y; d[o.eventOff + 1] = x; }
     else { d[o.eventOff + 1] = y + 4; d[o.eventOff + 2] = x + 4; }
     o.x = x; o.y = y; this.dirty = true;
+    // 이 NPC 가 다가오는 트리거가 있으면 새 자리에서 걸어오도록 길을 다시 만듦 → 안내 글
+    const area = o.isSign ? null : this.areaOf(o);
+    return area ? this.fixApproachTriggersNote(area) : null;
   },
   setLook(a, o, sprite, move) {
     this.data[o.eventOff] = sprite; this.data[o.eventOff + 3] = move;
@@ -1829,6 +1995,2012 @@ function replaceWord(text, oldW, newW) {
   return out;
 }
 
+// ===== 60-events.js
+// ================================================================ NPC 이벤트 만들기·읽기 (RomEvents.cs · RomEventRead.cs · RomAi.cs 와 같음)
+// 명령 번호는 한글판 금·은 (롬 안의 실제 스크립트로 확인한 것만 씀)
+const EV = { Talk: 0, TalkOnce: 1, Choice: 2, Item: 3, Trade: 4, Pokemon: 5, Wild: 6, Trainer: 7, Shop: 8, Heal: 9, Warp: 10, EyeTrainer: 11 };
+const EV_NAMES = ['말하기', '처음·다음 대사가 다른 NPC', '예/아니요 선택지', '아이템 주기', '아이템 교환',
+  '포켓몬 주기', '야생 포켓몬 배틀', '말 걸면 트레이너 배틀', '상점', '포켓몬 회복 (간호순)', '순간이동 (예를 고르면)', '눈 마주치면 배틀하는 트레이너'];
+const EV_TEXTS = [
+  ['대사'], ['처음 말 걸 때 대사', '그 다음부터 대사'], ['질문 (예/아니요가 나옴)', '예를 골랐을 때 대사', '아니요를 골랐을 때 대사'],
+  ['아이템 주기 전 대사', '받은 뒤 다시 말 걸면 대사'], ['교환하자는 질문 (예/아니요)', '교환한 뒤 대사', '거절하거나 아이템이 없을 때 대사'],
+  ['포켓몬 주기 전 대사', '준 뒤 다시 말 걸면 대사'], ['배틀 전 대사 (울음소리 뒤 배틀)'], ['배틀 전 대사', '배틀에서 이겼을 때 상대 대사', '배틀 후 다시 말 걸면 대사'],
+  [], [], ['데려다줄까? 질문 (예/아니요)', '아니요를 골랐을 때 대사'], ['눈 마주쳤을 때 대사', '배틀에서 이겼을 때 상대 대사', '배틀 후 말 걸면 대사']];
+const evCanRepeat = k => k === EV.Item || k === EV.Trade || k === EV.Pokemon || k === EV.Wild || k === EV.Trainer;
+const evCanVanish = k => k === EV.Pokemon || k === EV.Trainer || k === EV.Wild || k === EV.EyeTrainer;
+// 대사 칸 이름. 여러 번 하는 아이템 주기·트레이너는 "끝난 뒤 대사"가 없음
+function evTextLabels(k, repeat) { const l = EV_TEXTS[k]; return repeat && (k === EV.Item || k === EV.Trainer) ? l.slice(0, l.length - 1) : l; }
+function newEvent(k) { return { kind: k || 0, t1: '', t2: '', t3: '', item: 0, qty: 1, item2: 0, qty2: 1, species: 0, level: 5, trainerClass: 0, trainerId: 0, mart: 0, warpGroup: 0, warpMap: 0, warpX: 0, warpY: 0, vanish: false, repeat: false, moves: null, sight: 3 }; }
+const evNeedsFlag = e => e.kind === EV.TalkOnce || e.kind === EV.EyeTrainer || (evCanRepeat(e.kind) && !e.repeat);
+const evHides = e => !e.repeat && (e.kind === EV.Wild || (e.vanish && evCanVanish(e.kind)));
+
+// 스크립트 조립기: 이름표(라벨)로 점프하고, 대사는 스크립트 뒤에 붙임
+class ScriptBuilder {
+  constructor() { this.code = []; this.labels = new Map(); this.fixes = []; this.texts = []; }
+  op(...b) { this.code.push(...b.map(x => x & 0xff)); return this; }
+  w16(v) { this.code.push(v & 0xff, (v >> 8) & 0xff); return this; }
+  to(op, label) { this.code.push(op); this.fixes.push([this.code.length, label]); this.code.push(0, 0); return this; }
+  label(name) { this.labels.set(name, this.code.length); return this; }
+  ref(label) { this.fixes.push([this.code.length, label]); this.code.push(0, 0); return this; }
+  textRef(name, bytes) { if (!this.texts.some(t => t[0] === name)) this.texts.push([name, bytes]); return this.ref(name); }
+  text(op, name, bytes) { if (!this.texts.some(t => t[0] === name)) this.texts.push([name, bytes]); return this.to(op, name); }
+  get length() { return this.code.length + this.texts.reduce((s, t) => s + t[1].length, 0); }
+  // baseAddr: 이 스크립트가 놓일 뱅크 안 주소 ($4000~$7FFF)
+  build(baseAddr) {
+    const all = this.code.slice(), pos = new Map(this.labels);
+    for (const [name, b] of this.texts) { pos.set(name, all.length); all.push(...b); }
+    for (const [at, name] of this.fixes) { const a = baseAddr + pos.get(name); all[at] = a & 0xff; all[at + 1] = a >> 8; }
+    return all;
+  }
+}
+
+mixin(Rom.prototype, {
+  // 스크립트를 모든 갈래로 따라가며 명령 목록을 모음 (주소 순서) → [[명령, 인자…], …]
+  scriptOps(bank, addr) {
+    const d = this.data, res = new Map(), todo = [];
+    if (Rom.banked(addr)) todo.push(this.off(bank, addr));
+    while (todo.length && res.size < 300) {
+      let pc = todo.pop();
+      for (let n = 0; n < 120 && this.inRom(pc + 8); n++) {
+        if (res.has(pc)) break;
+        const op = d[pc], len = op === 0x2D ? (d[pc + 4] !== 0 ? 9 : 5) : SCRIPT_LEN[op];
+        if (len <= 0) break;
+        res.set(pc, Array.from(d.subarray(pc, pc + len)));
+        if (op === 0x08 || op === 0x09 || op === 0x03 || op === 0x00) { const t = this.w(pc + 1); if (Rom.banked(t)) todo.push(this.off(bank, t)); }
+        if (op === 0x06 || op === 0x07 || op === 0x0A || op === 0x0B) { const t = this.w(pc + 2); if (Rom.banked(t)) todo.push(this.off(bank, t)); }
+        if ([0x03, 0x91, 0x90, 0x92, 0x93, 0x52, 0x53, 0x0C, 0x3C, 0x8F].includes(op)) break;
+        pc += len;
+      }
+    }
+    return [...res.keys()].sort((a, b) => a - b).map(k => res.get(k));
+  },
+  eventStarts(a) {
+    const d = this.data;
+    let p = this.off(a.scriptBank, a.eventsAddr) + 2;
+    p += 1 + d[p] * 5; p += 1 + d[p] * 8;
+    const bg = p + 1;
+    p += 1 + d[p] * 5;
+    return { bg, obj: p + 1 };
+  },
+  // 이벤트 표 안의 순번 (NPC 끼리, 표지판 끼리)
+  eventIndex(a, o) { if (o.eventOff < 0) return -1; const s = this.eventStarts(a); return o.isSign ? (o.eventOff - s.bg) / 5 : (o.eventOff - s.obj) / 13; },
+  ownerAt(a, sign, idx) { return a.owners.concat(a.extras).find(o => o.eventOff >= 0 && !!o.isSign === sign && this.eventIndex(a, o) === idx) || null; },
+  warps(a) {
+    const d = this.data, res = [];
+    let e = this.off(a.scriptBank, a.eventsAddr) + 2;
+    const n = d[e++];
+    for (let i = 0; i < n && i < 64; i++, e += 5) res.push([d[e + 1], d[e]]);
+    return res;
+  },
+  collisionOff(a) {
+    const g = this.gfx;
+    if (!g.ok) return -1;
+    const ts = g.off(g.tilesetBank, g.tilesetPtr + a.tileset * 15);
+    return this.off(this.data[ts + 6], this.w(ts + 7));
+  },
+  getBlock(a, bx, by) { return this.data[this.off(a.blocksBank, a.blocksAddr) + by * a.width + bx]; },
+  collisionAt(a, cx, cy) {
+    if (cx < 0 || cy < 0 || cx >= a.width * 2 || cy >= a.height * 2) return -1;
+    const c = this.collisionOff(a);
+    if (c < 0) return -1;
+    const p = c + this.getBlock(a, cx >> 1, cy >> 1) * 4 + (cy & 1) * 2 + (cx & 1);
+    return p < this.data.length ? this.data[p] : -1;
+  },
+  allocFlag() {
+    // 원본에서 쓰지 않는 마지막 이벤트 번호들(1932~2047) 중 롬 어디에서도 안 쓰는 것
+    for (let f = 2047; f >= 1932; f--) if (!this.usedFlags.has(f)) { this.usedFlags.add(f); return f; }
+    return -1;
+  },
+  textBytes(text) { return [0x00, ...this.cs.encode(text, { firstBreak: true }, true), 0x5E]; },
+
+  // 새 트레이너 팀을 직업 목록 맨 뒤에 추가하고 번호를 돌려줌 (실패하면 오류)
+  addTrainerParty(cls, p) {
+    const tc = this.trainerClasses.find(c => c.cls === cls);
+    if (!tc) throw new Error('트레이너 직업을 찾지 못했어요');
+    if (tc.tail.length) throw new Error('이 직업은 데이터 형식이 달라서 새 트레이너를 넣을 수 없어요. 다른 직업을 골라주세요');
+    tc.parties.push(p);
+    const err = this.writeTrainerClass(tc);
+    if (err) { tc.parties.pop(); throw new Error(err); }
+    return tc.parties.length;
+  },
+  trainerList() {
+    const l = [];
+    for (const tc of this.trainerClasses) tc.parties.forEach((p, i) => l.push({ cls: tc.cls, id: i + 1, label: this.trainerLabel(tc.cls, i + 1) }));
+    return l;
+  },
+
+  // ------------------------------------------------ 이벤트 검사 · 조립
+  checkEventText(t, what) {
+    if (!t.trim()) return what + ' 칸이 비어 있어요';
+    try { this.cs.encode(t, { firstBreak: true }, true); } catch (e) { return what + ': ' + e.message; }
+    const long = t.replace(/\r/g, '').split('\n').find(l => l.length > 18);
+    if (long != null) return what + ': 한 줄이 너무 길어요 (18자 이하) — "' + long + '"';
+    return null;
+  },
+  checkEvent(ev) {
+    const labels = evTextLabels(ev.kind, ev.repeat && evCanRepeat(ev.kind)), ts = [ev.t1, ev.t2, ev.t3];
+    for (let i = 0; i < labels.length; i++) { const e = this.checkEventText(ts[i], labels[i]); if (e) return e; }
+    const hasTeam = () => this.trainerList().some(t => t.cls === ev.trainerClass && t.id === ev.trainerId);
+    switch (ev.kind) {
+      case EV.Item: if (ev.item < 1 || ev.item >= this.itemNames.length) return '줄 아이템을 고르세요'; break;
+      case EV.Trade: if (ev.item < 1 || ev.item2 < 1) return '받을 아이템과 줄 아이템을 고르세요'; if (ev.item === ev.item2) return '같은 아이템끼리는 교환할 수 없어요'; break;
+      case EV.Pokemon: case EV.Wild:
+        if (ev.species < 1 || ev.species > 251) return '포켓몬을 고르세요';
+        if (ev.level < 1 || ev.level > 100) return '레벨은 1~100'; break;
+      case EV.Trainer: if (!hasTeam()) return '트레이너 팀을 고르세요'; break;
+      case EV.EyeTrainer: if (!hasTeam()) return '트레이너 팀을 고르세요'; if (ev.sight < 1 || ev.sight > 5) return '시야는 1~5칸'; break;
+      case EV.Shop: if (!this.marts.some(m => m.id === ev.mart)) return '상점 물건 목록을 고르세요'; break;
+      case EV.Warp: {
+        const dest = this.allAreas.find(x => x.group === ev.warpGroup && x.map === ev.warpMap);
+        if (!dest) return '도착할 구역을 고르세요';
+        if (ev.warpX < 0 || ev.warpY < 0 || ev.warpX >= dest.width * 2 || ev.warpY >= dest.height * 2) return '도착 좌표가 그 지도 밖이에요 (걸음 칸 가로 0~' + (dest.width * 2 - 1) + ', 세로 0~' + (dest.height * 2 - 1) + ')';
+        break;
+      }
+    }
+    return null;
+  },
+  customMoves(e) {
+    if (e.kind !== EV.Pokemon || !e.moves) return false;
+    const d = this.defaultMoves(e.species, e.level);
+    return e.moves.some((m, i) => m !== d[i]);
+  },
+  // 이벤트 스크립트 조립. objId = 이 NPC 의 오브젝트 번호(사라지기용), flag = 한 번만 하는 이벤트용 번호(-1 = 여러 번), asm = 기술 코드 위치
+  buildEvent(ev, objId, flag, asm) {
+    const s = new ScriptBuilder(), T = t => this.textBytes(t);
+    const check = label => { if (flag >= 0) { s.op(0x31).w16(flag); s.to(0x09, label); } };   // checkevent, iftrue
+    const set = () => { if (flag >= 0) s.op(0x33).w16(flag); };                                // setevent
+    const vanish = evHides(ev) && flag >= 0;
+    switch (ev.kind) {
+      case EV.Talk: s.text(0x52, 't1', T(ev.t1)); break;                                        // jumptextfaceplayer
+      case EV.TalkOnce:
+        s.op(0x6B, 0x48); check('after');
+        s.text(0x4D, 't1', T(ev.t1)).op(0x54, 0x4A); set(); s.op(0x91);
+        s.label('after').text(0x4D, 't2', T(ev.t2)).op(0x54, 0x4A, 0x91);
+        break;
+      case EV.Choice:
+        s.op(0x6B, 0x48).text(0x4D, 't1', T(ev.t1)).op(0x4F).to(0x08, 'no');
+        s.text(0x4D, 't2', T(ev.t2)).op(0x54, 0x4A, 0x91);
+        s.label('no').text(0x4D, 't3', T(ev.t3)).op(0x54, 0x4A, 0x91);
+        break;
+      case EV.Item:
+        s.op(0x6B, 0x48); check('after');
+        s.text(0x4D, 't1', T(ev.t1)).op(0x55).op(0x9E, ev.item, Math.max(1, ev.qty)).to(0x08, 'end');
+        set();
+        if (flag >= 0) s.label('after').text(0x4D, 't2', T(ev.t2)).op(0x54);
+        s.label('end').op(0x4A, 0x91);
+        break;
+      case EV.Trade:
+        s.op(0x6B, 0x48); check('done');
+        s.text(0x4D, 't1', T(ev.t1)).op(0x4F).to(0x08, 'no');
+        s.op(0x21, ev.item).to(0x08, 'no');                       // checkitem
+        s.op(0x9E, ev.item2, Math.max(1, ev.qty2)).to(0x08, 'end');
+        s.op(0x20, ev.item, 1); set();                              // takeitem
+        s.label('done').text(0x4D, 't2', T(ev.t2)).op(0x54).to(0x03, 'end');
+        s.label('no').text(0x4D, 't3', T(ev.t3)).op(0x54);
+        s.label('end').op(0x4A, 0x91);
+        break;
+      case EV.Pokemon:
+        s.op(0x6B, 0x48); check('after');
+        s.text(0x4D, 't1', T(ev.t1)).op(0x55);
+        s.op(0x2D, ev.species, ev.level, 0, 0);                    // givepoke
+        if (asm >= 0) s.op(0x0E, Math.floor(asm / 0x4000)).w16(0x4000 + asm % 0x4000);   // callasm
+        set();
+        if (vanish) s.op(0x4A, 0x6E, objId, 0x91);                  // closetext, disappear
+        s.label('after').text(0x4D, 't2', T(ev.t2)).op(0x54, 0x4A, 0x91);
+        break;
+      case EV.Wild:
+        s.op(0x6B, 0x48).text(0x4D, 't1', T(ev.t1)).op(0x84).w16(ev.species).op(0x86, 0x54, 0x4A);
+        s.op(0x5D, ev.species, ev.level, 0x5F);                    // loadwildmon, startbattle
+        if (vanish) s.op(0x6E, objId);
+        set(); s.op(0x60, 0x91);
+        break;
+      case EV.Trainer:
+        s.op(0x6B, 0x48); check('after');
+        s.text(0x4D, 't1', T(ev.t1)).op(0x54, 0x4A);
+        s.text(0x64, 't2', T(ev.t2)).w16(0);                       // winlosstext
+        s.op(0x5E, ev.trainerClass, ev.trainerId, 0x5F, 0x60);     // loadtrainer, startbattle, reloadmapafterbattle
+        set();
+        if (vanish) s.op(0x6E, objId);
+        s.op(0x91);
+        if (flag >= 0) s.label('after').text(0x4D, 't3', T(ev.t3)).op(0x54, 0x4A, 0x91);
+        break;
+      case EV.Shop: s.op(0x6B, 0x48, 0x94, 0).w16(ev.mart).op(0x4A, 0x91); break;
+      case EV.Heal: s.op(0x0C, 0x00, 0x00); break;                 // jumpstd 0 = 간호순
+      case EV.EyeTrainer:
+        s.w16(flag).op(ev.trainerClass, ev.trainerId).textRef('t1', T(ev.t1)).textRef('t2', T(ev.t2)).w16(0).ref('after');
+        s.label('after').op(0x66, 0x48).text(0x4D, 't3', T(ev.t3)).op(0x54, 0x4A, 0x91);
+        break;
+      case EV.Warp:
+        s.op(0x6B, 0x48).text(0x4D, 't1', T(ev.t1)).op(0x4F).to(0x08, 'no');
+        s.op(0x4A, 0x3C, ev.warpGroup, ev.warpMap, ev.warpX, ev.warpY, 0x91);
+        s.label('no').text(0x4D, 't2', T(ev.t2)).op(0x54, 0x4A, 0x91);
+        break;
+    }
+    return s;
+  },
+  // 이벤트 번호·기술 코드 준비 → { flag, asm } (실패하면 오류)
+  prepareEvent(e, reuseFlag) {
+    let flag = -1, asm = -1;
+    if (evNeedsFlag(e) && reuseFlag >= 1932 && reuseFlag <= 2047) flag = reuseFlag;
+    else if (evNeedsFlag(e)) { flag = this.allocFlag(); if (flag < 0) throw new Error('쓸 수 있는 이벤트 번호가 없어요'); }
+    if (this.customMoves(e)) {
+      try {
+        const c = this.movesAsmBytes(e.species, e.moves);
+        const a = this.alloc(c.length + 1);
+        if (!a) throw new Error('롬에 남은 빈 공간이 부족해요');
+        this.data.set(c, a.p); this.data[a.p + c.length] = a.fill === 0xFF ? 0 : 0xFF;
+        asm = a.p;
+      } catch (err) { if (flag >= 0) this.usedFlags.delete(flag); throw err; }
+    }
+    return { flag, asm };
+  },
+
+  // 새 NPC 를 이벤트와 함께 놓기. 실패하면 이유, 안내가 있으면 { note }
+  addEventNpc(a, e, x, y, sprite, move) {
+    const err = this.checkEvent(e);
+    if (err) return err;
+    const d = this.data, ev = this.off(a.scriptBank, a.eventsAddr), size = this.eventsSize(ev);
+    const pcount = this.eventStarts(a).obj - 1, nObj = d[pcount];
+    if (nObj >= 15) return '이 구역은 NPC가 너무 많아서 더 넣을 수 없어요 (최대 15명)';
+    let prep;
+    try { prep = this.prepareEvent(e, -1); } catch (x) { return x.message; }
+    const { flag, asm } = prep;
+    const sb = this.buildEvent(e, nObj + 2, flag, asm);
+    const p = this.allocInBank(a.scriptBank, size + 13 + sb.length);
+    if (p < 0) { if (flag >= 0) this.usedFlags.delete(flag); return '이 구역의 데이터 공간이 부족해서 NPC를 더 넣을 수 없어요'; }
+    const A = off => 0x4000 + off % 0x4000;
+    d.copyWithin(p, ev, ev + size);
+    d[p + (pcount - ev)] = nObj + 1;
+    const obj = p + size, script = obj + 13, eye = e.kind === EV.EyeTrainer;
+    const hide = evHides(e) && flag >= 0 ? flag : 0xFFFF;
+    d.set([sprite, y + 4, x + 4, move, move === 0x02 ? 0x11 : 0x00, 0xFF, 0xFF, eye ? 2 : 0, eye ? e.sight : 0, A(script) & 0xff, A(script) >> 8, hide & 0xff, hide >> 8], obj);
+    d.set(sb.build(A(script)), script);
+    a.eventsAddr = A(p);
+    d[a.attrOff + 9] = a.eventsAddr & 0xff; d[a.attrOff + 10] = a.eventsAddr >> 8;
+    this.dirty = true;
+    this.loadArea(a);
+    const note = this.ensureOutdoorSprite(a, sprite);
+    return note ? { note } : null;
+  },
+
+  // 이미 있는 NPC 의 말 걸었을 때 이벤트를 새 것으로 (모습·위치·움직임은 그대로)
+  setNpcEvent(a, o, e, reuseFlag) {
+    if (!o || !o.isObject) return 'NPC 를 먼저 고르세요 (표지판은 안 돼요)';
+    const err = this.checkEvent(e);
+    if (err) return err;
+    const idx = this.eventIndex(a, o);
+    let prep;
+    try { prep = this.prepareEvent(e, reuseFlag); } catch (x) { return x.message; }
+    const { flag, asm } = prep;
+    const sb = this.buildEvent(e, idx + 2, flag, asm);
+    const p = this.allocInBank(a.scriptBank, sb.length);
+    if (p < 0) { if (flag >= 0) this.usedFlags.delete(flag); return '이 구역의 데이터 공간이 부족해요'; }
+    const d = this.data, addr = 0x4000 + p % 0x4000;
+    d.set(sb.build(addr), p);
+    const ob = o.eventOff, eye = e.kind === EV.EyeTrainer;
+    d[ob + 7] = (d[ob + 7] & 0xF0) | (eye ? 2 : 0);
+    d[ob + 8] = eye ? e.sight : 0;
+    d[ob + 9] = addr & 0xff; d[ob + 10] = addr >> 8;
+    if (evHides(e) && flag >= 0) { d[ob + 11] = flag & 0xff; d[ob + 12] = flag >> 8; }
+    this.dirty = true;
+    this.loadArea(a);
+    return null;
+  },
+
+  // ------------------------------------------------ NPC 가 지금 무슨 이벤트를 하는지
+  textAt(bank, addr) { if (!Rom.banked(addr)) return ''; const t = this.parseText(this.off(bank, addr), 0); return t ? t.current : ''; },
+  readMovesAsm(p) {
+    const d = this.data;
+    for (let i = p; i < p + 40 && i + 12 < d.length; i++)
+      if (d[i] === 0x36 && d[i + 2] === 0x23 && d[i + 3] === 0x36 && d[i + 5] === 0x23 && d[i + 6] === 0x36 && d[i + 8] === 0x23 && d[i + 9] === 0x36 && d[i - 1] === 0xFA)
+        return [d[i + 1], d[i + 4], d[i + 7], d[i + 10]];
+    return null;
+  },
+  readNpcEvent(a, o) {
+    const info = { ev: null, summary: '', lines: [], flag: -1 };
+    const short1 = s => { s = s.replace(/\n/g, ' '); return s.length > 40 ? s.substring(0, 40) + '…' : s; };
+    if (!o || o.eventOff < 0) { info.summary = '자동 이벤트'; return info; }
+    if (o.isSign) { info.summary = '표지판·조사하는 곳'; info.lines.push(...o.texts.map(t => '대사: ' + short1(t.current))); return info; }
+    const d = this.data, e = o.eventOff, bank = a.scriptBank;
+    const type = d[e + 7] & 0x0F, ptr = this.w(e + 9), hide = this.w(e + 11);
+    const T = x => this.textAt(bank, x);
+    const opText = ops => ops.filter(v => v[0] === 0x4D || v[0] === 0x52 || v[0] === 0x53).map(v => T(v[1] | v[2] << 8)).filter(s => s);
+    if (type === 1) { info.summary = '아이템 볼'; return info; }
+    if (type === 2) {
+      const h = this.off(bank, ptr), tflag = this.w(h), cls = d[h + 2], id = d[h + 3];
+      const after = this.scriptOps(bank, this.w(h + 10)), at = opText(after);
+      const tev = Object.assign(newEvent(EV.EyeTrainer), { trainerClass: cls, trainerId: id, sight: Math.max(1, Math.min(5, d[e + 8])),
+        t1: T(this.w(h + 4)), t2: T(this.w(h + 6)), t3: at[0] || '', vanish: hide === tflag });
+      if (!tev.t3) tev.t3 = tev.t2;
+      info.ev = tev; info.flag = tflag;
+      info.summary = '눈 마주치면 배틀하는 트레이너';
+      info.lines.push('팀: ' + this.trainerLabel(cls, id));
+      info.lines.push('시야: ' + d[e + 8] + '칸' + (tev.vanish ? ' · 이기면 사라짐' : ''));
+      for (const t of [...new Set([tev.t1, tev.t2, tev.t3].filter(x => x))]) info.lines.push('대사: ' + short1(t));
+      if (after.length > 6) info.lines.push('⚠ 배틀 후 스크립트에 다른 동작도 있어요. 이벤트 탭으로 바꾸면 그 동작은 없어져요');
+      return info;
+    }
+    const ops = this.scriptOps(bank, ptr);
+    const has = op => ops.some(v => v[0] === op), first = op => ops.find(v => v[0] === op);
+    const texts = [...new Set(ops.filter(v => v[0] === 0x4D || v[0] === 0x52 || v[0] === 0x53 || v[0] === 0x64).map(v => T(v[1] | v[2] << 8)).filter(s => s))];
+    const chk = first(0x31), st = first(0x33);
+    const flag = chk ? (chk[1] | chk[2] << 8) : st && (st[1] | st[2] << 8) === hide ? hide : -1;
+    const once = flag >= 0 && ops.some(v => v[0] === 0x33 && (v[1] | v[2] << 8) === flag);
+    const vanish = has(0x6E) || (once && hide === flag);
+    let ev = Object.assign(newEvent(0), { repeat: !once, vanish });
+    if (texts[0]) ev.t1 = texts[0]; if (texts[1]) ev.t2 = texts[1]; if (texts[2]) ev.t3 = texts[2];
+    info.flag = once ? flag : -1;
+    const story = ops.some(v => [0x69, 0x6A, 0x12, 0x14, 0x0F, 0x01, 0x04, 0x6F, 0x7A, 0x79].includes(v[0]));
+    if (ops.length === 1 && ops[0][0] === 0x0C && ops[0][1] === 0 && ops[0][2] === 0) { ev.kind = EV.Heal; info.summary = '포켓몬 회복 (간호순)'; }
+    else if (has(0x94)) { const m = first(0x94); ev.kind = EV.Shop; ev.mart = m[2] | m[3] << 8; info.summary = '상점'; info.lines.push('물건 목록 ' + ev.mart + '번'); }
+    else if (has(0x3C)) {
+      const w = first(0x3C); Object.assign(ev, { kind: EV.Warp, warpGroup: w[1], warpMap: w[2], warpX: w[3], warpY: w[4] });
+      const dd = this.allAreas.find(x => x.group === w[1] && x.map === w[2]);
+      info.summary = '순간이동'; info.lines.push('도착: ' + (dd ? dd.regionName + ' ' + dd.name : w[1] + '-' + w[2]) + ' (' + w[3] + ', ' + w[4] + ')');
+    }
+    else if (has(0x5D)) { const w = first(0x5D); Object.assign(ev, { kind: EV.Wild, species: w[1], level: w[2] }); info.summary = '야생 포켓몬 배틀'; info.lines.push(this.monName(w[1]) + ' Lv' + w[2]); }
+    else if (has(0x5E)) { const w = first(0x5E); Object.assign(ev, { kind: EV.Trainer, trainerClass: w[1], trainerId: w[2] }); info.summary = '말 걸면 트레이너 배틀'; info.lines.push('팀: ' + this.trainerLabel(w[1], w[2])); }
+    else if (has(0x2D)) {
+      const w = first(0x2D); Object.assign(ev, { kind: EV.Pokemon, species: w[1], level: w[2] });
+      ev.moves = this.defaultMoves(w[1], w[2]);
+      const ca = first(0x0E);
+      if (ca) { const mv = this.readMovesAsm(this.off(ca[1], ca[2] | ca[3] << 8)); if (mv) ev.moves = mv; }
+      info.summary = '포켓몬 주기'; info.lines.push(this.monName(w[1]) + ' Lv' + w[2]);
+      info.lines.push('기술: ' + ev.moves.filter(m => m > 0).map(m => this.moveName(m)).join(', '));
+    }
+    else if (has(0x21) && has(0x20) && (has(0x9E) || has(0x1F))) {
+      const c = first(0x21), g = first(0x9E) || first(0x1F);
+      Object.assign(ev, { kind: EV.Trade, item: c[1], item2: g[1], qty2: Math.max(1, g[2]) });
+      info.summary = '아이템 교환'; info.lines.push(this.itemName(c[1]) + ' → ' + this.itemName(g[1]) + ' ' + ev.qty2 + '개');
+    }
+    else if (has(0x9E) || has(0x1F)) { const g = first(0x9E) || first(0x1F); Object.assign(ev, { kind: EV.Item, item: g[1], qty: Math.max(1, g[2]) }); info.summary = '아이템 주기'; info.lines.push(this.itemName(g[1]) + ' ' + ev.qty + '개'); }
+    else if (has(0x4F)) { ev.kind = EV.Choice; info.summary = '예/아니요 선택지'; }
+    else if (flag >= 0 && once && texts.length >= 2) { ev.kind = EV.TalkOnce; info.summary = '처음·다음 대사가 다른 NPC'; }
+    else if (texts.length >= 1) { ev.kind = EV.Talk; info.summary = '말하기'; }
+    else { info.summary = '알 수 없는 이벤트'; ev = null; }
+    if (ev && evCanRepeat(ev.kind)) info.lines.push(once ? '한 번만' + (vanish ? ' (끝나면 사라짐)' : '') : '여러 번');
+    for (const t of texts.slice(0, 4)) info.lines.push('대사: ' + short1(t));
+    if (story) { info.summary += ' + 스토리 진행 (움직이기·장면 바꾸기 등)'; info.lines.push('⚠ 원래 게임 스토리용 동작이 섞여 있어요. 이벤트 탭으로 바꾸면 그 동작은 없어져요'); }
+    if (ev) {
+      const need = evTextLabels(ev.kind, ev.repeat && evCanRepeat(ev.kind)).length;
+      if (need >= 2 && !ev.t2) ev.t2 = ev.t1;
+      if (need >= 3 && !ev.t3) ev.t3 = ev.t2;
+    }
+    info.ev = ev;
+    return info;
+  }
+});
+
+function collKind(c) {
+  if (c < 0) return '?';
+  if (c === 0x07 || c === 0x12 || c === 0x15 || c === 0x1A || c === 0xFF || (c >= 0x90 && c <= 0x9F) || (c >= 0xB0 && c <= 0xBF)) return '벽';
+  if (c >= 0x20 && c <= 0x3F) return '물';
+  if (c === 0x14 || c === 0x18 || c === 0x1C) return '풀숲';
+  if (c >= 0x60 && c <= 0x7F) return '문';
+  if (c >= 0xA0 && c <= 0xAF) return '턱';
+  return '바닥';
+}
+
+// ===== 62-warpcoord.js
+// ================================================================ 워프 · 타일 밟기 트리거 (RomWarpCoord.cs 와 같음)
+const TK = { Approach: 0, Talk: 1, Push: 2, Warp: 3, Original: 4, Battle: 5, GiveItem: 6, GivePokemon: 7 };
+const TK_NAMES = ['🚶 NPC가 다가와서 말걸기', '💬 대사만 띄우기', '🚧 대사 후 한 칸 밀어내기 (길 막기)', '🚀 다른 곳으로 순간이동', '📜 지금 들어있는 동작 그대로 두기',
+  '⚔ NPC가 다가와서 포켓몬 배틀', '🎁 NPC가 다가와서 도구 주기', '🥚 NPC가 다가와서 포켓몬 주기'];
+const TK_MENU = [TK.Approach, TK.Battle, TK.GiveItem, TK.GivePokemon, TK.Talk, TK.Push, TK.Warp, TK.Original];
+const DIR_NAMES = ['아래', '위', '왼쪽', '오른쪽'];
+// 게임이 NPC 를 불러와 두는 범위 (주인공 기준 왼쪽 5칸 ~ 오른쪽 6칸, 위아래 5칸)
+const RANGE_L = 5, RANGE_R = 6, RANGE_U = 5, RANGE_D = 5;
+const tkApproaches = k => k === TK.Approach || k === TK.Battle || k === TK.GiveItem || k === TK.GivePokemon;
+
+function tooFar(o, c) {
+  const dx = o.x - c.x, dy = o.y - c.y;
+  if (dx >= -RANGE_L && dx <= RANGE_R && dy >= -RANGE_U && dy <= RANGE_D) return null;
+  return 'NPC #' + (o.index + 1) + ' ' + o.name + ' 이(가) 트리거 칸에서 너무 멀어요 (' + (dx < 0 ? '왼쪽' : '오른쪽') + ' ' + Math.abs(dx) + '칸, ' + (dy < 0 ? '위' : '아래') + ' ' + Math.abs(dy) +
+    '칸). 게임은 화면 둘레까지만 NPC를 불러와서, 그보다 멀면 걸어오지 못하고 대사·배틀만 바로 나와요.\n트리거 칸 기준 왼쪽 ' + RANGE_L + '칸 · 오른쪽 ' + RANGE_R + '칸 · 위아래 ' + RANGE_U + '칸 안의 NPC를 고르거나 NPC를 가까이 옮기세요';
+}
+function newCoord(o) {
+  return Object.assign({ sceneId: 0xFF, x: 0, y: 0, scriptPtr: 0, varId: 0, kind: TK.Original, origKind: TK.Talk, text: '', textRef: null, targetObj: -1, targetName: '',
+    pushDir: 1, warpGroup: 0, warpMap: 0, warpX: 0, warpY: 0, dirty: false, trainerClass: 0, trainerId: 0, winText: '', item: 1, qty: 1, species: 1, level: 5, once: false, flag: -1 }, o || {});
+}
+function coordActionType(c) {
+  const k = c.kind === TK.Original ? c.origKind : c.kind, who = c.targetName ? c.targetName + ' 이(가)' : 'NPC가';
+  if (k === TK.Approach) return who + ' 다가와 말걸기';
+  if (k === TK.Battle) return who + ' 다가와 배틀';
+  if (k === TK.GiveItem) return who + ' 다가와 도구 주기';
+  if (k === TK.GivePokemon) return who + ' 다가와 포켓몬 주기';
+  if (k === TK.Push) return '막고 밀어내기';
+  if (k === TK.Warp) return '순간이동';
+  return '대사';
+}
+function coordText(c) {
+  let t = (c.text || '').replace(/\r/g, '').replace(/\n/g, ' ');
+  if (t.length > 18) t = t.substring(0, 18) + '…';
+  return '(' + c.x + ',' + c.y + ')  [' + coordActionType(c) + ']' + (c.once ? ' (한 번만)' : '') + '  ' + t;
+}
+
+mixin(Rom.prototype, {
+  areaOf(o) { return this.allAreas.find(a => a.owners.includes(o) || a.extras.includes(o)) || null; },
+  areaName(g, m) { const d = this.allAreas.find(x => x.group === g && x.map === m); return d ? d.regionName + ' ' + d.name : '구역 ' + g + '-' + m; },
+
+  getAreaWarps(a) {
+    const d = this.data, list = [];
+    let e = this.off(a.scriptBank, a.eventsAddr) + 2;
+    const n = d[e++];
+    for (let i = 0; i < n && i < 64; i++, e += 5) list.push({ y: d[e], x: d[e + 1], destWarpId: d[e + 2], destGroup: d[e + 3], destMap: d[e + 4] });
+    return list;
+  },
+  getAreaObjects(a) {
+    const d = this.data, list = [];
+    let e = this.off(a.scriptBank, a.eventsAddr) + 2;
+    e += 1 + d[e] * 5; e += 1 + d[e] * 8; e += 1 + d[e] * 5;
+    const n = d[e++];
+    for (let i = 0; i < n && i < 32; i++, e += 13) {
+      const off = e, owner = a.owners.concat(a.extras).find(o => o.eventOff === off) || null;
+      const type = d[e + 7] & 0x0F, hidden = d[e + 5] === 0xFF && d[e + 6] === 0x00;
+      const name = owner ? owner.name : (type === 1 ? '아이템 볼' : Names.sprite(d[e]));
+      list.push({ index: i, sprite: d[e], y: d[e + 1] - 4, x: d[e + 2] - 4, type, name: hidden ? '(지운 NPC)' : name, owner, hidden, off,
+        get canApproach() { return !this.hidden && this.type !== 1; }, get scriptId() { return this.index + 2; } });
+    }
+    return list;
+  },
+  getAreaCoords(a) {
+    const d = this.data, list = [];
+    let e = this.off(a.scriptBank, a.eventsAddr) + 2;
+    e += 1 + d[e] * 5;
+    const n = d[e++];
+    const objs = this.getAreaObjects(a);
+    for (let i = 0; i < n && i < 64; i++, e += 8) {
+      const c = newCoord({ sceneId: d[e], y: d[e + 1], x: d[e + 2], scriptPtr: this.w(e + 4), varId: this.w(e + 6) });
+      if (Rom.banked(c.scriptPtr)) this.analyzeTrigger(a, c, objs);
+      list.push(c);
+    }
+    return list;
+  },
+  // 트리거 스크립트에서 대사, 다가오는 NPC, 순간이동 등을 읽음
+  analyzeTrigger(a, c, objs) {
+    c.origKind = TK.Talk;
+    const bank = a.scriptBank;
+    for (const v of this.scriptOps(bank, c.scriptPtr)) {
+      const code = v[0];
+      if ((code === 0x4D || code === 0x52 || code === 0x53) && !c.text) {
+        const tp = v[1] | v[2] << 8;
+        if (Rom.banked(tp)) c.textRef = this.texts.get(this.off(bank, tp)) || this.parseText(this.off(bank, tp), 0);
+        c.text = c.textRef ? c.textRef.current : this.textAt(bank, tp);
+      }
+      if (code === 0x69 && c.targetObj < 0 && v.length > 1 && v[1] >= 2) {
+        const idx = v[1] - 2;
+        if (idx < objs.length) { c.targetObj = idx; c.targetName = objs[idx].name; if (c.origKind === TK.Talk) c.origKind = TK.Approach; }
+      }
+      if (code === 0x31 && !c.once) { c.once = true; c.flag = v[1] | v[2] << 8; }
+      if (code === 0x5E) { c.origKind = TK.Battle; c.trainerClass = v[1]; c.trainerId = v[2]; }
+      if (code === 0x64) c.winText = this.textAt(bank, v[1] | v[2] << 8);
+      if (code === 0x9E) { c.origKind = TK.GiveItem; c.item = v[1]; c.qty = v[2]; }
+      if (code === 0x2D && v.length > 2) { c.origKind = TK.GivePokemon; c.species = v[1]; c.level = v[2]; }
+      if (code === 0x3C && c.origKind !== TK.Approach) { c.origKind = TK.Warp; c.warpGroup = v[1]; c.warpMap = v[2]; c.warpX = v[3]; c.warpY = v[4]; }
+    }
+  },
+
+  // NPC 가 걸을 수 있는 칸인지
+  npcCanWalk(a, x, y) {
+    const col = this.collisionAt(a, x, y);
+    if (col < 0) return false;
+    if (col === 0x07 || col === 0x12 || col === 0x15 || col === 0x1A || col === 0xFF) return false;
+    if (col >= 0x20 && col <= 0x3F) return false;
+    if (col >= 0x60 && col <= 0x7F) return false;
+    if (col >= 0x90 && col <= 0xBF) return false;
+    return true;
+  },
+  // 이 편집기가 만든 다가오기 스크립트의 걸어오는 길이 지금 NPC 자리와 안 맞는지
+  approachPathStale(a, c, objs) {
+    if (!Rom.banked(c.scriptPtr) || c.targetObj < 0 || c.targetObj >= objs.length) return false;
+    const d = this.data, o = objs[c.targetObj];
+    let p = this.off(a.scriptBank, c.scriptPtr);
+    if (d[p] === 0x31 && d[p + 3] === 0x09) p += 6;
+    let x = o.x, y = o.y;
+    if (d[p] === 0x69 && d[p + 1] === o.scriptId && d[p + 4] === 0x76 && d[p + 5] === 0x00) {
+      const m = this.off(a.scriptBank, this.w(p + 2));
+      for (let k = 0; k < 64 && this.inRom(m + k); k++) {
+        const b = d[m + k];
+        if (b === 0x47) break;
+        if (b < 0x08 || b > 0x13) continue;
+        const dir = (b - 0x08) & 3;
+        if (dir === 0) y++; else if (dir === 1) y--; else if (dir === 2) x--; else x++;
+        if (!this.npcCanWalk(a, x, y)) return true;
+      }
+    } else if (!(d[p] === 0x76 && d[p + 1] === 0x00 && d[p + 3] === 0x76 && d[p + 4] === o.scriptId)) return false;
+    return Math.abs(x - c.x) + Math.abs(y - c.y) !== 1;
+  },
+  staleApproachTriggers(a, coords) {
+    const objs = this.getAreaObjects(a), res = [];
+    coords.forEach((c, i) => { if (c.kind === TK.Original && tkApproaches(c.origKind) && this.approachPathStale(a, c, objs)) res.push(i); });
+    return res;
+  },
+  markForRebuild(c) { c.kind = c.origKind; c.sceneId = 0xFF; if (c.textRef) c.text = c.textRef.current; c.dirty = true; },
+  // NPC 를 옮긴 직후: 그 구역의 다가오기 트리거 길을 다시 만듦. 안내 글 (없으면 null)
+  fixApproachTriggersNote(a) {
+    const coords = this.getAreaCoords(a), stale = this.staleApproachTriggers(a, coords);
+    if (!stale.length) return null;
+    for (const i of stale) this.markForRebuild(coords[i]);
+    const err = this.saveAreaCoords(a, coords), which = stale.map(i => 'T' + (i + 1)).join(', ');
+    if (err) return '⚠ 이 NPC가 다가오는 트리거 ' + which + ' 의 걸어오는 길을 다시 만들지 못했어요: ' + err;
+    return '이 NPC가 다가오는 트리거 ' + which + ' 의 걸어오는 길도 새 자리에 맞게 다시 만들었어요.';
+  },
+  // 장면 변수가 있는 지도인지
+  hasSceneVar(a) {
+    if (!this._sceneMaps) {
+      const d = this.data, s = new Set();
+      const rec = j => d[j] >= 1 && d[j] <= 40 && d[j + 1] >= 1 && d[j + 1] <= 120 && (d[j + 3] & 0xF0) === 0xD0;
+      for (let i = 0; i < d.length - 120; i++) {
+        let k = 0;
+        while (k < 200 && rec(i + k * 4)) k++;
+        if (k >= 20 && d[i + k * 4] === 0xFF) { for (let j = 0; j < k; j++) s.add(d[i + j * 4] << 8 | d[i + j * 4 + 1]); break; }
+        if (k > 0) i += k * 4 - 1;
+      }
+      this._sceneMaps = s;
+    }
+    return this._sceneMaps.has(a.group << 8 | a.map);
+  },
+  // 이 편집기가 만든 다가오기 트리거인데 장면 번호에 묶여서 스토리가 진행되면 안 켜지는 것
+  sceneLockedTriggers(a, coords) {
+    const objs = this.getAreaObjects(a), res = [], d = this.data;
+    if (!this.hasSceneVar(a)) return res;
+    coords.forEach((c, i) => {
+      if (c.sceneId === 0xFF || c.kind !== TK.Original || !tkApproaches(c.origKind)) return;
+      if (c.targetObj < 0 || c.targetObj >= objs.length || !Rom.banked(c.scriptPtr)) return;
+      let p = this.off(a.scriptBank, c.scriptPtr); const id = objs[c.targetObj].scriptId;
+      if (d[p] === 0x31 && d[p + 3] === 0x09) p += 6;
+      if ((d[p] === 0x69 && d[p + 1] === id && d[p + 4] === 0x76 && d[p + 5] === 0x00) || (d[p] === 0x76 && d[p + 1] === 0x00 && d[p + 3] === 0x76 && d[p + 4] === id)) res.push(i);
+    });
+    return res;
+  },
+  // 너비 우선 탐색: NPC 자리에서 트리거 칸 옆 칸까지 (벽·물·다른 NPC 를 피해서). → { path: [step…], ex, ey } 또는 null
+  findWalk(a, o, c, objs) {
+    const minX = c.x - RANGE_L, maxX = c.x + RANGE_R, minY = c.y - RANGE_U, maxY = c.y + RANGE_D;
+    const K = (x, y) => x * 65536 + y;
+    const blocked = new Set();
+    for (const other of objs) if (other !== o && !other.hidden) blocked.add(K(other.x, other.y));
+    blocked.add(K(c.x, c.y));
+    const goal = (x, y) => Math.abs(x - c.x) + Math.abs(y - c.y) === 1;
+    if (goal(o.x, o.y)) return { path: [], ex: o.x, ey: o.y };
+    const ddx = [0, 0, -1, 1], ddy = [1, -1, 0, 0];
+    const prev = new Map(), prevDir = new Map(), q = [K(o.x, o.y)];
+    prev.set(q[0], -1);
+    for (let qi = 0; qi < q.length; qi++) {
+      const cur = q[qi], cx = Math.floor(cur / 65536), cy = cur % 65536;
+      const last = prevDir.has(cur) ? prevDir.get(cur) : 0;
+      const order = prev.get(cur) === -1 ? [0, 1, 2, 3] : [last, ...[0, 1, 2, 3].filter(x => x !== last)];
+      for (const dd of order) {
+        const nx = cx + ddx[dd], ny = cy + ddy[dd];
+        if (nx < minX || nx > maxX || ny < minY || ny > maxY || nx < 0 || ny < 0) continue;
+        const key = K(nx, ny);
+        if (prev.has(key) || blocked.has(key) || !this.npcCanWalk(a, nx, ny)) continue;
+        prev.set(key, cur); prevDir.set(key, dd);
+        if (goal(nx, ny)) {
+          const path = [];
+          for (let k = key; prev.get(k) !== -1; k = prev.get(k)) path.unshift(0x0C + prevDir.get(k));
+          return { path, ex: nx, ey: ny };
+        }
+        q.push(key);
+      }
+    }
+    return null;
+  },
+  // 트리거 스크립트 조립 → ScriptBuilder (실패하면 오류)
+  buildTriggerScript(a, c, objs) {
+    const s = new ScriptBuilder(), T = t => this.textBytes(t), at = '트리거 (' + c.x + ',' + c.y + ')';
+    const hasText = (c.text || '').trim().length > 0;
+    if (hasText) { const e = this.checkEventText(c.text, at + ' 대사'); if (e) throw new Error(e); }
+    const once = c.once && c.kind !== TK.Push;
+    if (once) { s.op(0x31).w16(Math.max(0, c.flag)); s.to(0x09, 'skip'); }
+    const setFlag = () => { if (once) s.op(0x33).w16(Math.max(0, c.flag)); };
+    if (tkApproaches(c.kind)) {
+      if (c.targetObj < 0 || c.targetObj >= objs.length) throw new Error(at + ': 다가올 NPC를 고르세요');
+      if (c.kind === TK.Battle) {
+        if (!this.trainerList().some(t => t.cls === c.trainerClass && t.id === c.trainerId)) throw new Error(at + ': 배틀할 트레이너를 고르세요');
+        if ((c.winText || '').trim()) { const we = this.checkEventText(c.winText, at + ' 이긴 뒤 대사'); if (we) throw new Error(we); }
+      }
+      if (c.kind === TK.GiveItem && (c.item < 1 || c.item >= this.itemNames.length)) throw new Error(at + ': 줄 도구를 고르세요');
+      if (c.kind === TK.GivePokemon && (c.species < 1 || c.species > 251)) throw new Error(at + ': 줄 포켓몬을 고르세요');
+      const o = objs[c.targetObj];
+      if (!o.canApproach) throw new Error(at + ': 다가올 NPC #' + (o.index + 1) + ' 는 지워졌거나 아이템 볼이에요. 다른 NPC를 고르세요');
+      const far = tooFar(o, c);
+      if (far) throw new Error(at + ': ' + far);
+      const w = this.findWalk(a, o, c, objs);
+      if (!w) throw new Error(at + ': NPC #' + (o.index + 1) + ' 가 주인공 옆까지 걸어올 길이 없어요 (벽·물·건물·다른 NPC 에 막힘). 다른 NPC를 고르거나 트리거·NPC 위치를 바꾸세요');
+      const go = w.path, back = go.slice().reverse().map(b => b ^ 1);
+      const face = w.ex > c.x ? 3 : w.ex < c.x ? 2 : w.ey > c.y ? 0 : 1, id = o.scriptId;
+      if (go.length) s.op(0x69, id).ref('go');
+      s.op(0x76, 0x00, face);
+      s.op(0x76, id, face ^ 1);
+      if (c.kind === TK.Approach) { if (hasText) s.op(0x48).text(0x4D, 't', T(c.text)).op(0x54, 0x4A); setFlag(); }
+      else if (c.kind === TK.Battle) {
+        if (hasText) s.op(0x48).text(0x4D, 't', T(c.text)).op(0x54, 0x4A);
+        if ((c.winText || '').trim()) s.text(0x64, 'w', T(c.winText)).w16(0);
+        s.op(0x5E, c.trainerClass, c.trainerId, 0x5F, 0x60);
+        setFlag();
+      } else if (c.kind === TK.GiveItem) {
+        s.op(0x48);
+        if (hasText) s.text(0x4D, 't', T(c.text)).op(0x55);
+        s.op(0x9E, c.item, Math.max(1, Math.min(99, c.qty))).to(0x08, 'full');
+        setFlag();
+        s.label('full').op(0x4A);
+      } else {
+        s.op(0x48);
+        if (hasText) s.text(0x4D, 't', T(c.text)).op(0x55);
+        s.op(0x2D, c.species, Math.max(1, Math.min(100, c.level)), 0, 0).to(0x08, 'full');
+        setFlag();
+        s.label('full').op(0x4A);
+      }
+      if (back.length) s.op(0x69, id).ref('back');
+      s.op(0x91);
+      if (once) s.label('skip').op(0x91);
+      if (go.length) { s.label('go'); s.op(...go, 0x47); }
+      if (back.length) { s.label('back'); s.op(...back, 0x47); }
+      return s;
+    }
+    if (c.kind === TK.Talk) {
+      if (!hasText) throw new Error(at + ': 대사를 적어 주세요');
+      s.op(0x48).text(0x4D, 't', T(c.text)).op(0x54, 0x4A);
+      setFlag(); s.op(0x91);
+      if (once) s.label('skip').op(0x91);
+    } else if (c.kind === TK.Push) {
+      if (hasText) s.op(0x48).text(0x4D, 't', T(c.text)).op(0x54, 0x4A);
+      s.op(0x69, 0x00).ref('push').op(0x91);
+      s.label('push').op(0x0C + (c.pushDir & 3), 0x47);
+    } else if (c.kind === TK.Warp) {
+      const dest = this.allAreas.find(x => x.group === c.warpGroup && x.map === c.warpMap);
+      if (!dest) throw new Error(at + ': 이동할 구역을 고르세요');
+      if (c.warpX >= dest.width * 2 || c.warpY >= dest.height * 2) throw new Error(at + ': 도착 좌표가 그 지도 밖이에요 (가로 0~' + (dest.width * 2 - 1) + ', 세로 0~' + (dest.height * 2 - 1) + ')');
+      if (hasText) s.op(0x48).text(0x4D, 't', T(c.text)).op(0x54, 0x4A);
+      setFlag();
+      s.op(0x3C, c.warpGroup, c.warpMap, c.warpX, c.warpY, 0x91);
+      if (once) s.label('skip').op(0x91);
+    }
+    return s;
+  },
+
+  // 이벤트 표의 한 부분(워프 또는 트리거)을 바꿔 씀. 들어가면 그 자리, 아니면 같은 뱅크 빈 곳으로 옮김
+  rewriteEvents(a, part, bytes) {
+    const d = this.data, ev = this.off(a.scriptBank, a.eventsAddr), size = this.eventsSize(ev);
+    let p = ev + 2;
+    const wStart = p; p += 1 + d[p] * 5;
+    const cStart = p; p += 1 + d[p] * 8;
+    const [from, to] = part === 'warp' ? [wStart, cStart] : [cStart, p];
+    const head = Array.from(d.subarray(ev, from)), tail = Array.from(d.subarray(to, ev + size));
+    const all = head.concat(bytes, tail);
+    if (all.length <= size) d.set(all, ev);
+    else {
+      const np = this.allocInBank(a.scriptBank, all.length);
+      if (np < 0) return '이 구역의 데이터 공간이 부족해요';
+      d.set(all, np);
+      a.eventsAddr = 0x4000 + np % 0x4000;
+      d[a.attrOff + 9] = a.eventsAddr & 0xFF; d[a.attrOff + 10] = a.eventsAddr >> 8;
+    }
+    this.dirty = true;
+    this.loadArea(a);
+    return null;
+  },
+  saveAreaWarps(a, warps) {
+    const b = [warps.length];
+    for (const w of warps) b.push(w.y, w.x, w.destWarpId, w.destGroup, w.destMap);
+    return this.rewriteEvents(a, 'warp', b);
+  },
+  // 트리거 목록을 롬에 저장. 실패하면 이유
+  saveAreaCoords(a, coords) {
+    const objs = this.getAreaObjects(a);
+    // 쓰기 전에 모두 검사 (중간에 실패해서 반만 바뀌지 않게)
+    for (const c of coords) {
+      if (c.x >= a.width * 2 || c.y >= a.height * 2) return '트리거 (' + c.x + ',' + c.y + ') 가 지도 밖에 있어요';
+      if (c.kind === TK.Original || !(c.dirty || !Rom.banked(c.scriptPtr))) continue;
+      try { this.buildTriggerScript(a, c, objs); } catch (e) { return e.message; }
+    }
+    const b = [coords.length];
+    for (const c of coords) {
+      let addr = c.scriptPtr;
+      if (c.kind !== TK.Original && (c.dirty || !Rom.banked(addr))) {
+        if (c.once && c.kind !== TK.Push && (c.flag < 1932 || c.flag > 2047)) {
+          c.flag = this.allocFlag();
+          if (c.flag < 0) return "쓸 수 있는 이벤트 번호가 없어요 ('한 번만'을 끄세요)";
+        }
+        let sb;
+        try { sb = this.buildTriggerScript(a, c, objs); } catch (e) { return e.message; }
+        const off = this.allocInBank(a.scriptBank, sb.length);
+        if (off < 0) return '이 구역의 데이터 공간이 부족해서 트리거를 더 만들 수 없어요';
+        addr = 0x4000 + off % 0x4000;
+        this.data.set(sb.build(addr), off);
+        c.scriptPtr = addr; c.dirty = false;
+      }
+      if (!Rom.banked(addr)) return '트리거 (' + c.x + ',' + c.y + ') 의 스크립트가 없어요';
+      b.push(c.sceneId, c.y, c.x, 0, addr & 0xFF, addr >> 8, c.varId & 0xFF, c.varId >> 8);
+    }
+    return this.rewriteEvents(a, 'coord', b);
+  }
+});
+
+// ===== 64-blocks.js
+// ================================================================ 지도 블록 읽기·쓰기 (RomBlocks.cs · MapRender.cs 블록 부분과 같음)
+// 지도 블록은 압축 없이 가로×세로 바이트로 들어 있어서 그 자리에 바로 고쳐 씀 (크기 변화 없음)
+// 충돌(지나갈 수 있는지)은 블록마다 타일셋에 정해져 있으므로 블록을 바꾸면 같이 바뀜
+mixin(MapRender.prototype, {
+  tilesetEntry(tileset) { return this.off(this.tilesetBank, this.tilesetPtr + tileset * 15); },
+  // 타일셋에 있는 블록 수. 보통 블록 표 바로 뒤에 충돌 표가 있어서 그 거리로 셈
+  blockCount(a, maxUsed) {
+    if (!this.ok) return 0;
+    const d = this.d, ts = this.tilesetEntry(a.tileset);
+    const meta = this.off(d[ts + 3], this.w(ts + 4)), coll = this.off(d[ts + 6], this.w(ts + 7)), diff = coll - meta;
+    if (diff > 0 && diff % 16 === 0 && diff / 16 <= 256 && diff / 16 > maxUsed) return diff / 16;
+    return Math.min(256, Math.max(16, Math.floor((maxUsed + 16) / 16) * 16));
+  },
+  // 블록 하나하나의 그림 (32×32 canvas). 같은 타일셋·색이면 다시 씀
+  renderBlocks(a, count) {
+    if (!this.ok) return [];
+    this.blockCache = this.blockCache || new Map();
+    const key = a.tileset + '/' + a.group + '/' + a.env + '/' + count;
+    if (this.blockCache.has(key)) return this.blockCache.get(key);
+    const p = this.prepare(a), res = [];
+    for (let i = 0; i < count; i++) {
+      const img = new ImageData(32, 32);
+      this.drawBlock(new Uint32Array(img.data.buffer), 32, 0, 0, p, i);
+      const c = document.createElement('canvas'); c.width = c.height = 32;
+      c.getContext('2d').putImageData(img, 0, 0);
+      res.push(c);
+    }
+    this.blockCache.set(key, res);
+    return res;
+  }
+});
+
+mixin(Rom.prototype, {
+  blocksOff(a) { return this.off(a.blocksBank, a.blocksAddr); },
+  blocksValid(a) { const o = this.blocksOff(a); return a.width > 0 && a.height > 0 && o >= 0x4000 && o + a.width * a.height <= this.data.length; },
+  // 같은 블록 데이터를 함께 쓰는 다른 구역들 (예: 모든 포켓몬센터 1층)
+  sharingBlocks(a) { const o = this.blocksOff(a); return this.allAreas.filter(x => x !== a && this.blocksOff(x) === o); },
+  blockCount(a) {
+    let max = 0;
+    for (const x of this.allAreas) {
+      if (x.tileset !== a.tileset || !this.blocksValid(x)) continue;
+      const o = this.blocksOff(x);
+      for (let i = 0; i < x.width * x.height; i++) if (this.data[o + i] > max) max = this.data[o + i];
+    }
+    return this.gfx.blockCount(a, max);
+  },
+  blockCollision(a, blk) {
+    const c = this.collisionOff(a);
+    if (c < 0 || c + blk * 4 + 4 > this.data.length) return null;
+    return Array.from(this.data.subarray(c + blk * 4, c + blk * 4 + 4));
+  },
+  // 블록 하나를 바꾸고 되돌리기용 기록(위치, 전, 후)을 남김. 바뀌지 않으면 false
+  setBlock(a, bx, by, blk, log) {
+    if (bx < 0 || by < 0 || bx >= a.width || by >= a.height) return false;
+    const o = this.blocksOff(a) + by * a.width + bx;
+    if (this.data[o] === blk) return false;
+    log.push([o, this.data[o], blk]);
+    this.data[o] = blk; this.dirty = true;
+    return true;
+  },
+  applyBlockLog(log, undo) {
+    if (undo) for (let i = log.length - 1; i >= 0; i--) this.data[log[i][0]] = log[i][1];
+    else for (const e of log) this.data[e[0]] = e[2];
+    this.dirty = true;
+  },
+  // 다른 구역으로 가는 연결 (북·남·서·동) → [[group, map], …]
+  connections(a) {
+    const d = this.data, flags = d[a.attrOff + 11], res = [];
+    let p = a.attrOff + 12;
+    for (let bit = 3; bit >= 0; bit--) if (flags & (1 << bit)) { res.push([d[p], d[p + 1]]); p += 12; }
+    return res;
+  },
+  // 함께 쓰던 블록 데이터를 이 구역 전용으로 복사. 실패하면 이유
+  separateBlocks(a) {
+    if (!this.sharingBlocks(a).length) return '이미 이 구역만 쓰는 블록이에요';
+    if (this.allAreas.some(x => x !== a && x.attrOff === a.attrOff)) return '이 롬은 지도 정보 자체를 다른 구역과 같이 써서 따로 나눌 수 없어요';
+    for (const x of this.allAreas) for (const c of this.connections(x)) if (c[0] === a.group && c[1] === a.map) return '다른 지도와 이어진 구역이라 블록을 옮길 수 없어요';
+    const n = a.width * a.height, al = this.alloc(n + 1);
+    if (!al) return '롬에 남은 빈 공간이 부족해요';
+    const d = this.data;
+    d.copyWithin(al.p, this.blocksOff(a), this.blocksOff(a) + n);
+    // 끝에 빈 공간 채움값과 다른 바이트를 하나 둬서, 다음에 열 때 빈 공간으로 착각하지 않게 함
+    d[al.p + n] = al.fill === 0xFF ? 0x00 : 0xFF;
+    const bank = Math.floor(al.p / 0x4000), addr = 0x4000 + al.p % 0x4000;
+    d[a.attrOff + 3] = bank; d[a.attrOff + 4] = addr & 0xff; d[a.attrOff + 5] = addr >> 8;
+    a.blocksBank = bank; a.blocksAddr = addr;
+    this.dirty = true;
+    return null;
+  }
+});
+
+// 충돌 값 → 표시 색 (바닥은 null)
+function collColor(c) {
+  if (c < 0) return null;
+  if (c === 0x07 || c === 0x12 || c === 0x15 || c === 0x1A || c === 0xFF || (c >= 0x90 && c <= 0x9F) || (c >= 0xB0 && c <= 0xBF)) return 'rgba(230,40,40,.47)';
+  if (c >= 0x20 && c <= 0x3F) return 'rgba(40,110,255,.43)';
+  if (c === 0x14 || c === 0x18 || c === 0x1C) return 'rgba(40,220,60,.35)';
+  if (c >= 0x60 && c <= 0x7F) return 'rgba(200,60,255,.51)';
+  if (c >= 0xA0 && c <= 0xAF) return 'rgba(255,210,0,.51)';
+  return null;
+}
+
+// ===== 66-sprite.js
+// ================================================================ 포켓몬 그림 쓰기 · 사진 → 2세대 4색 변환 (RomSprite.cs 와 같음)
+// 그림 = { w, h, px: Uint8Array(w*h) 색 번호 0~3 (가로줄 순서) }, 색 = [r, g, b]
+const C555 = c => [Math.floor((c & 31) * 255 / 31), Math.floor(((c >> 5) & 31) * 255 / 31), Math.floor(((c >> 10) & 31) * 255 / 31)];
+const TO555 = c => Math.floor((c[0] * 31 + 127) / 255) | Math.floor((c[1] * 31 + 127) / 255) << 5 | Math.floor((c[2] * 31 + 127) / 255) << 10;
+const SNAP = c => C555(TO555(c));   // 실제 게임 화면에 보일 색 (5비트로 깎은 색)
+const WHITE = [255, 255, 255], BLACK = [0, 0, 0];
+const rgbCss = c => 'rgb(' + c[0] + ',' + c[1] + ',' + c[2] + ')';
+const rgbHex = c => '#' + c.map(v => v.toString(16).padStart(2, '0')).join('');
+const hexRgb = h => [parseInt(h.substr(1, 2), 16), parseInt(h.substr(3, 2), 16), parseInt(h.substr(5, 2), 16)];
+function newPic(w, h) { return { w, h, px: new Uint8Array(w * h) }; }
+function clonePic(p) { return { w: p.w, h: p.h, px: p.px.slice() }; }
+
+// 2세대 LZ 압축 (간단한 방식: 0 반복, 같은 값 반복, 앞부분 복사, 그대로 쓰기)
+const Lz = {
+  cmd(o, cmd, len) { if (len <= 32) o.push((cmd << 5) | (len - 1)); else { o.push(0xE0 | (cmd << 2) | ((len - 1) >> 8)); o.push((len - 1) & 0xFF); } },
+  compress(s) {
+    const o = [], lit = [];
+    const flush = () => { let i = 0; while (i < lit.length) { const n = Math.min(1024, lit.length - i); this.cmd(o, 0, n); for (let k = 0; k < n; k++) o.push(lit[i + k]); i += n; } lit.length = 0; };
+    let p = 0;
+    while (p < s.length) {
+      let run = 1;
+      while (p + run < s.length && s[p + run] === s[p] && run < 1024) run++;
+      let bestLen = 0, bestSrc = 0;
+      for (let src = Math.max(0, p - 0x7FFF); src < p; src++) {
+        let l = 0;
+        while (p + l < s.length && src + l < p && s[src + l] === s[p + l] && l < 1024) l++;
+        if (l > bestLen) { bestLen = l; bestSrc = src; }
+      }
+      if (run >= 3 && run >= bestLen) { flush(); if (s[p] === 0) this.cmd(o, 3, run); else { this.cmd(o, 1, run); o.push(s[p]); } p += run; }
+      else if (bestLen >= 4) {
+        flush(); this.cmd(o, 4, bestLen);
+        const dist = p - bestSrc;
+        if (dist <= 128) o.push(0x80 | (dist - 1)); else { o.push(bestSrc >> 8); o.push(bestSrc & 0xFF); }
+        p += bestLen;
+      } else { lit.push(s[p]); p++; }
+    }
+    flush(); o.push(0xFF);
+    return o;
+  }
+};
+
+// 색 번호 그림 → 2bpp 타일 바이트. colMajor: 타일을 세로줄 순서로 (포켓몬 그림)
+function picToTiles(pic, colMajor) {
+  const tw = pic.w / 8, th = pic.h / 8, raw = [];
+  for (let t = 0; t < tw * th; t++) {
+    const tx = colMajor ? Math.floor(t / th) : t % tw, ty = colMajor ? t % th : Math.floor(t / tw);
+    for (let y = 0; y < 8; y++) {
+      let lo = 0, hi = 0;
+      for (let x = 0; x < 8; x++) { const c = pic.px[(ty * 8 + y) * pic.w + tx * 8 + x]; lo |= (c & 1) << (7 - x); hi |= ((c >> 1) & 1) << (7 - x); }
+      raw.push(lo, hi);
+    }
+  }
+  return raw;
+}
+function tilesToPic(raw, tw, th, colMajor) {
+  const pic = newPic(tw * 8, th * 8);
+  for (let t = 0; t < tw * th; t++) {
+    const tx = colMajor ? Math.floor(t / th) : t % tw, ty = colMajor ? t % th : Math.floor(t / tw);
+    for (let y = 0; y < 8; y++) {
+      const i = t * 16 + y * 2, lo = raw[i] || 0, hi = raw[i + 1] || 0;
+      for (let x = 0; x < 8; x++) pic.px[(ty * 8 + y) * pic.w + tx * 8 + x] = ((lo >> (7 - x)) & 1) | (((hi >> (7 - x)) & 1) << 1);
+    }
+  }
+  return pic;
+}
+// 그림 → canvas (pal: [r,g,b] 4개 또는 (x, y) => 4개, transparent0: 0번 투명)
+function picCanvas(pic, pal, transparent0, zoom) {
+  const id = new ImageData(pic.w, pic.h), d = id.data;
+  for (let y = 0; y < pic.h; y++) for (let x = 0; x < pic.w; x++) {
+    const i = y * pic.w + x, ci = pic.px[i] & 3;
+    if (transparent0 && ci === 0) continue;
+    const c = (typeof pal === 'function' ? pal(x, y) : pal)[ci];
+    d[i * 4] = c[0]; d[i * 4 + 1] = c[1]; d[i * 4 + 2] = c[2]; d[i * 4 + 3] = 255;
+  }
+  const c = document.createElement('canvas'); c.width = pic.w; c.height = pic.h; c.getContext('2d').putImageData(id, 0, 0);
+  if (!zoom || zoom === 1) return c;
+  const z = document.createElement('canvas'); z.width = pic.w * zoom; z.height = pic.h * zoom;
+  const g = z.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(c, 0, 0, z.width, z.height);
+  return z;
+}
+function downloadCanvas(c, name) { c.toBlob(b => { const u = URL.createObjectURL(b), a = el('a', { href: u, download: name }); document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 5000); }, 'image/png'); }
+// 그림 파일 고르기 → { w, h, data: RGBA } (취소하면 null)
+function pickImageFile() {
+  return new Promise((resolve, reject) => {
+    const inp = el('input', { type: 'file', accept: 'image/*' });
+    inp.addEventListener('change', () => {
+      const f = inp.files[0];
+      if (!f) { resolve(null); return; }
+      const url = URL.createObjectURL(f), img = new Image();
+      img.onload = () => {
+        const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight;
+        const g = c.getContext('2d'); g.drawImage(img, 0, 0);
+        URL.revokeObjectURL(url);
+        resolve({ w: c.width, h: c.height, data: g.getImageData(0, 0, c.width, c.height).data });
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('그림을 열 수 없어요')); };
+      img.src = url;
+    });
+    inp.click();
+  });
+}
+// 그림 파일 → 가장 가까운 색 번호 (크기가 다르면 맞춤). 투명한 곳은 0
+function picFromImage(src, w, h, pal, transparent0) {
+  const pic = newPic(w, h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const sx = Math.floor(x * src.w / w), sy = Math.floor(y * src.h / h), i = (sy * src.w + sx) * 4;
+    let c = [src.data[i], src.data[i + 1], src.data[i + 2]];
+    if (transparent0 && src.data[i + 3] < 128) { pic.px[y * w + x] = 0; continue; }
+    if (src.data[i + 3] < 128) c = WHITE;
+    let best = transparent0 ? 1 : 0, bd = Infinity;
+    for (let k = transparent0 ? 1 : 0; k < 4; k++) { const d = (c[0] - pal[k][0]) ** 2 * 0.3 + (c[1] - pal[k][1]) ** 2 * 0.59 + (c[2] - pal[k][2]) ** 2 * 0.11; if (d < bd) { bd = d; best = k; } }
+    pic.px[y * w + x] = best;
+  }
+  return pic;
+}
+
+// ---------------------------------------------------------------- 사진 → 2세대 4색 그림
+const SpriteConvert = {
+  dither: false,
+  dist(a, b) { const dr = a[0] - b[0], dg = a[1] - b[1], db = a[2] - b[2]; return dr * dr * 0.30 + dg * dg * 0.59 + db * db * 0.11; },
+  lum(c) { return c[0] * 0.30 + c[1] * 0.59 + c[2] * 0.11; },
+  hsl(c) {
+    const r = c[0] / 255, g = c[1] / 255, b = c[2] / 255, mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2;
+    let h = 0, s = 0;
+    if (mx !== mn) {
+      const d = mx - mn;
+      s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn);
+      h = mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+      h *= 60;
+    }
+    return [h, s, l];
+  },
+  // 배경 지우기: 투명 정보가 없으면 네 모서리 색과 이어진 비슷한 색을 배경으로 봄
+  mask(src) {
+    const { w, h, data } = src, n = w * h, m = new Uint8Array(n), col = i => [data[i * 4], data[i * 4 + 1], data[i * 4 + 2]];
+    let alpha = false;
+    for (let i = 0; i < n; i++) if (data[i * 4 + 3] < 128) { alpha = true; break; }
+    if (alpha) { for (let i = 0; i < n; i++) m[i] = data[i * 4 + 3] >= 128 ? 1 : 0; return m; }
+    m.fill(1);
+    const corners = [0, w - 1, (h - 1) * w, h * w - 1];
+    for (const start of corners) {
+      const bg = col(start), q = [start];
+      for (let qi = 0; qi < q.length; qi++) {
+        const i = q[qi];
+        if (!m[i] || this.dist(col(i), bg) > 900) continue;
+        m[i] = 0;
+        const x = i % w, y = Math.floor(i / w);
+        if (x > 0) q.push(i - 1); if (x < w - 1) q.push(i + 1); if (y > 0) q.push(i - w); if (y < h - 1) q.push(i + w);
+      }
+    }
+    // 다리 사이처럼 막힌 곳의 배경도 지움 (모서리 배경색과 아주 비슷한 점)
+    for (const corner of corners) {
+      const bg = col(corner);
+      if (this.lum(bg) > 230) continue;   // 흰 배경이면 몸 안의 흰 부분(눈·배)은 남겨 둠
+      for (let i = 0; i < n; i++) if (m[i] && this.dist(col(i), bg) < 300) m[i] = 0;
+    }
+    return m;
+  },
+  // tiles: 칸 수(5~7), fixedPal: 이미 정해진 색에 맞출 때 → { img, tiles, c1, c2 }
+  convert(src, tiles, fixedPal, outline) {
+    const { w, h, data } = src, mask = this.mask(src), col = i => [data[i * 4], data[i * 4 + 1], data[i * 4 + 2]];
+    let x0 = w, y0 = h, x1 = -1, y1 = -1;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (mask[y * w + x]) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
+    if (x1 < 0) throw new Error('그림에서 포켓몬을 찾지 못했어요 (배경만 있는 것 같아요)');
+    const cw = x1 - x0 + 1, ch = y1 - y0 + 1, size = tiles * 8;
+    if (cw > size * 2 || ch > size * 2) return this.convertArt(src, mask, x0, y0, cw, ch, tiles, fixedPal, outline);
+    const scale = Math.min(1, Math.min(size / cw, size / ch));
+    const tw = Math.max(1, Math.round(cw * scale)), th = Math.max(1, Math.round(ch * scale));
+    const C = [], on = [];
+    for (let ty = 0; ty < th; ty++) for (let tx = 0; tx < tw; tx++) {
+      const sx0 = x0 + Math.floor(tx / scale), sx1 = x0 + Math.max(Math.floor((tx + 1) / scale), Math.floor(tx / scale) + 1);
+      const sy0 = y0 + Math.floor(ty / scale), sy1 = y0 + Math.max(Math.floor((ty + 1) / scale), Math.floor(ty / scale) + 1);
+      // 칸 안에서 가장 많이 나온 색 (평균을 내면 색이 탁해짐)
+      const votes = new Map(); let n = 0, total = 0;
+      for (let y = sy0; y < Math.min(sy1, h); y++) for (let x = sx0; x < Math.min(sx1, w); x++) {
+        total++;
+        if (!mask[y * w + x]) continue;
+        const k = TO555(col(y * w + x)); votes.set(k, (votes.get(k) || 0) + 1); n++;
+      }
+      on[ty * tw + tx] = n * 2 >= total && n > 0;
+      if (n > 0) { let bk = 0, bv = -1; for (const [k, v] of votes) if (v > bv) { bv = v; bk = k; } C[ty * tw + tx] = C555(bk); }
+    }
+    const ON = (x, y) => on[y * tw + x];
+    let c1, c2;
+    if (fixedPal) { c1 = fixedPal[1]; c2 = fixedPal[2]; }
+    else {
+      const mids = [];
+      const inner = (x, y) => ON(x, y) && x > 0 && y > 0 && x < tw - 1 && y < th - 1 && ON(x - 1, y) && ON(x + 1, y) && ON(x, y - 1) && ON(x, y + 1);
+      for (let y = 0; y < th; y++) for (let x = 0; x < tw; x++) if (inner(x, y)) { const l = this.lum(C[y * tw + x]); if (l > 40 && l < 235) mids.push(C[y * tw + x]); }
+      if (mids.length < 8) for (let y = 0; y < th; y++) for (let x = 0; x < tw; x++) if (ON(x, y)) { const l = this.lum(C[y * tw + x]); if (l > 40 && l < 235) mids.push(C[y * tw + x]); }
+      if (mids.length < 2) { c1 = [200, 200, 200]; c2 = [110, 110, 110]; }
+      else {
+        const sorted = mids.slice().sort((p, q) => this.lum(q) - this.lum(p));
+        let a = sorted[Math.floor(sorted.length / 4)], b = sorted[Math.floor(sorted.length * 3 / 4)];
+        for (let it = 0; it < 12; it++) {
+          const sa = [0, 0, 0, 0], sb = [0, 0, 0, 0];
+          for (const c of mids) { const t = this.dist(c, a) <= this.dist(c, b) ? sa : sb; t[0] += c[0]; t[1] += c[1]; t[2] += c[2]; t[3]++; }
+          if (sa[3]) a = [Math.floor(sa[0] / sa[3]), Math.floor(sa[1] / sa[3]), Math.floor(sa[2] / sa[3])];
+          if (sb[3]) b = [Math.floor(sb[0] / sb[3]), Math.floor(sb[1] / sb[3]), Math.floor(sb[2] / sb[3])];
+        }
+        // 묶음에서 가장 많이 쓰인 실제 색 (선명한 색 유지)
+        const mode = (center, isA) => {
+          const cnt = new Map();
+          for (const c of mids) { if ((this.dist(c, a) <= this.dist(c, b)) !== isA) continue; const k = TO555(c); cnt.set(k, (cnt.get(k) || 0) + 1); }
+          if (!cnt.size) return center;
+          let bk = 0, bv = -1; for (const [k, v] of cnt) if (v > bv) { bv = v; bk = k; }
+          return C555(bk);
+        };
+        let ma = mode(a, true), mb = mode(b, false);
+        if (this.lum(ma) < this.lum(mb)) [ma, mb] = [mb, ma];
+        c1 = ma; c2 = mb;
+      }
+      c1 = SNAP(c1); c2 = SNAP(c2);
+    }
+    const pal = [WHITE, c1, c2, BLACK];
+    let img = newPic(size, size);
+    const ox = Math.floor((size - tw) / 2), oy = size - th;
+    for (let y = 0; y < th; y++) for (let x = 0; x < tw; x++) {
+      if (!ON(x, y)) continue;
+      let best = 0, bd = Infinity;
+      for (let k = 0; k < 4; k++) { const dd = this.dist(C[y * tw + x], pal[k]); if (dd < bd) { bd = dd; best = k; } }
+      img.px[(oy + y) * size + ox + x] = best;
+    }
+    if (outline) {
+      const copy = clonePic(img);
+      for (let y = 0; y < th; y++) for (let x = 0; x < tw; x++) {
+        if (!ON(x, y)) continue;
+        if (x === 0 || y === 0 || x === tw - 1 || y === th - 1 || !ON(x - 1, y) || !ON(x + 1, y) || !ON(x, y - 1) || !ON(x, y + 1)) copy.px[(oy + y) * size + ox + x] = 3;
+      }
+      img = copy;
+    }
+    return { img, tiles, c1, c2 };
+  },
+  // 일러스트·사진 → 2세대 도트 (면적 평균 → 대비·윤곽 → 밝기 3단계 → 흰 부분 → 테두리)
+  convertArt(src, mask, x0, y0, cw, ch, tiles, fixedPal, outline) {
+    const { w, h, data } = src, size = tiles * 8, scale = Math.min(size / cw, size / ch);
+    const tw = Math.max(1, Math.round(cw * scale)), th = Math.max(1, Math.round(ch * scale));
+    const C = [], on = [], N = tw * th;
+    for (let ty = 0; ty < th; ty++) for (let tx = 0; tx < tw; tx++) {
+      const sx0 = x0 + Math.floor(tx / scale), sx1 = Math.min(w, x0 + Math.floor((tx + 1) / scale));
+      const sy0 = y0 + Math.floor(ty / scale), sy1 = Math.min(h, y0 + Math.floor((ty + 1) / scale));
+      let r = 0, g = 0, b = 0, n = 0, total = 0;
+      for (let y = sy0; y < Math.max(sy1, sy0 + 1); y++) for (let x = sx0; x < Math.max(sx1, sx0 + 1); x++) {
+        total++;
+        const i = y * w + x;
+        if (!mask[i]) continue;
+        r += data[i * 4]; g += data[i * 4 + 1]; b += data[i * 4 + 2]; n++;
+      }
+      on[ty * tw + tx] = n * 2 >= total && n > 0;
+      if (n > 0) C[ty * tw + tx] = [Math.floor(r / n), Math.floor(g / n), Math.floor(b / n)];
+    }
+    const L = new Float64Array(N), vals = [];
+    for (let i = 0; i < N; i++) if (on[i]) { L[i] = this.lum(C[i]); vals.push(L[i]); }
+    if (!vals.length) throw new Error('그림에서 포켓몬을 찾지 못했어요');
+    vals.sort((p, q) => p - q);
+    const pct = q => vals[Math.min(vals.length - 1, Math.floor(q * vals.length))];
+    const lo = pct(0.02), hi = Math.max(lo + 1, pct(0.98));
+    const S = new Float64Array(N), E = new Float64Array(N);
+    for (let i = 0; i < N; i++) if (on[i]) S[i] = Math.max(0, Math.min(255, (L[i] - lo) * 255 / (hi - lo)));
+    for (let y = 0; y < th; y++) for (let x = 0; x < tw; x++) {
+      const i = y * tw + x;
+      if (!on[i]) continue;
+      let s = 0, n = 0;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= tw || ny >= th || !on[ny * tw + nx]) continue;
+        s += S[ny * tw + nx]; n++;
+      }
+      E[i] = Math.max(0, Math.min(255, S[i] + 0.7 * (S[i] - s / n)));
+    }
+    const ev = []; for (let i = 0; i < N; i++) if (on[i]) ev.push(E[i]);
+    ev.sort((p, q) => p - q);
+    const epct = q => ev[Math.min(ev.length - 1, Math.floor(q * ev.length))];
+    let m0 = epct(0.15), m1 = epct(0.5), m2 = epct(0.85);
+    for (let it = 0; it < 15; it++) {
+      let s0 = 0, s1 = 0, s2 = 0, n0 = 0, n1 = 0, n2 = 0;
+      for (const v of ev) {
+        const d0 = Math.abs(v - m0), d1 = Math.abs(v - m1), d2 = Math.abs(v - m2);
+        if (d0 <= d1 && d0 <= d2) { s0 += v; n0++; } else if (d1 <= d2) { s1 += v; n1++; } else { s2 += v; n2++; }
+      }
+      if (n0) m0 = s0 / n0; if (n1) m1 = s1 / n1; if (n2) m2 = s2 / n2;
+    }
+    const t1 = Math.min((m0 + m1) / 2, epct(0.22)), t2 = Math.max(epct(0.55), Math.min((m1 + m2) / 2, epct(0.85)));
+    const level = new Uint8Array(N);
+    for (let y = 0; y < th; y++) for (let x = 0; x < tw; x++) {
+      const i = y * tw + x;
+      if (!on[i]) continue;
+      const c = C[i], mx = Math.max(...c), mn = Math.min(...c);
+      const whiteish = L[i] > 215 && (mx - mn) < 40;
+      const e = E[i] + (this.dither ? (((x + y) & 1) === 0 ? 6 : -6) : 0);
+      level[i] = whiteish ? 0 : e < t1 ? 3 : e < t2 ? 2 : 1;
+    }
+    let c1, c2;
+    if (fixedPal) { c1 = fixedPal[1]; c2 = fixedPal[2]; }
+    else {
+      const mean = lv => { let r = 0, g = 0, b = 0, n = 0; for (let i = 0; i < N; i++) if (on[i] && level[i] === lv) { r += C[i][0]; g += C[i][1]; b += C[i][2]; n++; } return n ? [Math.floor(r / n), Math.floor(g / n), Math.floor(b / n)] : [128, 128, 128]; };
+      c1 = this.lift(mean(1), 0.62, 0.85); c2 = this.lift(mean(2), 0.36, 0.55);
+      if (this.hsl(c1)[2] < this.hsl(c2)[2] + 0.15) c1 = this.lift(c1, this.hsl(c2)[2] + 0.2, 0.9);
+      c1 = SNAP(c1); c2 = SNAP(c2);
+    }
+    let img = newPic(size, size);
+    const ox = Math.floor((size - tw) / 2), oy = size - th;
+    for (let y = 0; y < th; y++) for (let x = 0; x < tw; x++) if (on[y * tw + x]) img.px[(oy + y) * size + ox + x] = level[y * tw + x];
+    if (outline) {
+      const copy = clonePic(img), ON = (x, y) => on[y * tw + x];
+      for (let y = 0; y < th; y++) for (let x = 0; x < tw; x++) {
+        if (!ON(x, y)) continue;
+        if (x === 0 || y === 0 || x === tw - 1 || y === th - 1 || !ON(x - 1, y) || !ON(x + 1, y) || !ON(x, y - 1) || !ON(x, y + 1)) copy.px[(oy + y) * size + ox + x] = 3;
+      }
+      img = copy;
+    }
+    return { img, tiles, c1, c2 };
+  },
+  // 색상은 그대로, 밝기를 [minL, maxL] 사이로, 채도는 조금 올림
+  lift(c, minL, maxL) {
+    const [hd, s0, l0] = this.hsl(c), hue = hd / 360, sat = Math.min(1, s0 * 1.2 + 0.05), l = Math.max(minL, Math.min(maxL, l0));
+    const f = (p, q, t) => { if (t < 0) t += 1; if (t > 1) t -= 1; if (t < 1 / 6) return p + (q - p) * 6 * t; if (t < 0.5) return q; if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6; return p; };
+    const qq = l < 0.5 ? l * (1 + sat) : l + sat - l * sat, pp = 2 * l - qq;
+    return [Math.floor(f(pp, qq, hue + 1 / 3) * 255), Math.floor(f(pp, qq, hue) * 255), Math.floor(f(pp, qq, hue - 1 / 3) * 255)];
+  },
+  // 앞모습 그림으로 뒷모습 비슷하게: 좌우 뒤집고 윗부분을 크게 (2세대 뒷모습처럼 아래가 잘림)
+  backSource(src) {
+    const { w, h, data } = src, mask = this.mask(src);
+    let x0 = w, y0 = h, x1 = -1, y1 = -1;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (mask[y * w + x]) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
+    if (x1 < 0) throw new Error('그림에서 포켓몬을 찾지 못했어요');
+    const cw = x1 - x0 + 1, ch = Math.floor((y1 - y0 + 1) * 0.68), out = new Uint8ClampedArray(cw * ch * 4);
+    for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++) {
+      const i = (y0 + y) * w + (x1 - x), o = (y * cw + x) * 4;
+      if (!mask[i]) continue;
+      out[o] = data[i * 4]; out[o + 1] = data[i * 4 + 1]; out[o + 2] = data[i * 4 + 2]; out[o + 3] = 255;
+    }
+    return { w: cw, h: ch, data: out };
+  }
+};
+
+mixin(Rom.prototype, {
+  monPaletteRGB(mon, shiny) { const o = this.monPalOff + mon * 8 + (shiny ? 4 : 0); return [WHITE, C555(this.w(o)), C555(this.w(o + 2)), BLACK]; },
+  setMonPalette(mon, shiny, c1, c2) {
+    const o = this.monPalOff + mon * 8 + (shiny ? 4 : 0), a = TO555(c1), b = TO555(c2);
+    this.data[o] = a & 0xff; this.data[o + 1] = a >> 8; this.data[o + 2] = b & 0xff; this.data[o + 3] = b >> 8;
+    this.dirty = true;
+  },
+  readPicP(mon, back) { const r = this.readPic(mon, back); return { w: r.tiles * 8, h: r.tiles * 8, px: r.img, tiles: r.tiles }; },
+  // 그림을 압축해서 빈 공간에 쓰고 주소를 바꿈. 실패하면 이유
+  writePic(mon, back, pic, tiles) {
+    const comp = Lz.compress(picToTiles(pic, true));
+    let p = -1;
+    for (const r of this.free) {
+      const bank = Math.floor(r[0] / 0x4000);
+      if (this.picBankFix.has(bank) || r[1] - r[0] < comp.length) continue;   // FixPicBank 이 바꾸는 뱅크에는 안 씀
+      p = r[0]; r[0] += comp.length; break;
+    }
+    if (p < 0) return '롬에 그림을 넣을 빈 공간이 부족해요';
+    this.data.set(comp, p);
+    const e = this.picPtrOff + (mon - 1) * 6 + (back ? 3 : 0), addr = 0x4000 + p % 0x4000;
+    this.data[e] = Math.floor(p / 0x4000); this.data[e + 1] = addr & 0xff; this.data[e + 2] = addr >> 8;
+    if (!back) this.data[this.statOff(mon) + 17] = tiles | (tiles << 4);
+    this.gfx.gfxCache.delete(p);
+    this.dirty = true;
+    return null;
+  }
+});
+
+// ===== 67-owsprite.js
+// ================================================================ 필드 캐릭터(주인공·NPC) 그림 읽기·쓰기 (RomOwSprite.cs 와 같음)
+// 그림은 압축 없는 2bpp 타일. 한 장면 = 16×16 = 타일 4개 (왼위, 오른위, 왼아래, 오른아래)
+const OW_WALK_FRAMES = ['아래', '위', '옆', '아래 걷기', '위 걷기', '옆 걷기'];
+function owFrames(s) { return s.tiles / 4; }
+function owFrameNames(s) { const f = owFrames(s); return f === 6 ? OW_WALK_FRAMES : f === 3 ? OW_WALK_FRAMES.slice(0, 3) : ['모습']; }
+function owKind(s) { return s.type === 1 ? '걷는 캐릭터 (6장면)' : s.type === 2 ? '서 있는 캐릭터 (3장면)' : '움직이지 않는 물건 (1장면)'; }
+
+mixin(Rom.prototype, {
+  owSprites() {
+    const g = this.gfx, res = [];
+    if (!g.ok || !g.spritePtr) return res;
+    const t = g.off(g.spriteBank, g.spritePtr), banks = this.data.length / 0x4000;
+    for (let id = 1; id < 0x80; id++) {
+      const e = t + (id - 1) * 6;
+      if (e + 6 > this.data.length) break;
+      const addr = this.w(e), n = this.data[e + 2], bank = this.data[e + 3], type = this.data[e + 4], pal = this.data[e + 5];
+      if (bank < 1 || bank >= banks || !Rom.banked(addr) || type < 1 || type > 3 || pal > 7 || n === 0 || n % 64 !== 0) break;
+      const s = { id, entry: e, bank, addr, type, pal, tiles: n / 16 * (type === 1 ? 2 : 1), get off() { return this.bank * 0x4000 + (this.addr - 0x4000); } };
+      if (s.off + s.tiles * 16 > this.data.length) break;
+      res.push(s);
+    }
+    return res;
+  },
+  // 장면들을 가로로 이어 붙인 그림 (가로 장면수×16, 세로 16)
+  readOw(s) {
+    const pic = newPic(owFrames(s) * 16, 16);
+    for (let t = 0; t < s.tiles; t++) {
+      const f = Math.floor(t / 4), q = t % 4, x0 = f * 16 + (q % 2) * 8, y0 = Math.floor(q / 2) * 8, o = s.off + t * 16;
+      for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++)
+        pic.px[(y0 + y) * pic.w + x0 + x] = ((this.data[o + y * 2] >> (7 - x)) & 1) | (((this.data[o + y * 2 + 1] >> (7 - x)) & 1) << 1);
+    }
+    return pic;
+  },
+  // 그림 크기가 그대로라 원래 자리에 씀
+  writeOw(s, pic) {
+    for (let t = 0; t < s.tiles; t++) {
+      const f = Math.floor(t / 4), q = t % 4, x0 = f * 16 + (q % 2) * 8, y0 = Math.floor(q / 2) * 8, o = s.off + t * 16;
+      for (let y = 0; y < 8; y++) {
+        let lo = 0, hi = 0;
+        for (let x = 0; x < 8; x++) { const c = pic.px[(y0 + y) * pic.w + x0 + x]; lo |= (c & 1) << (7 - x); hi |= ((c >> 1) & 1) << (7 - x); }
+        this.data[o + y * 2] = lo; this.data[o + y * 2 + 1] = hi;
+      }
+    }
+    this.dirty = true;
+  },
+  sharingOw(s, all) { return all.filter(x => x.id !== s.id && x.off < s.off + s.tiles * 16 && s.off < x.off + x.tiles * 16); },
+  // 이 캐릭터만 쓰는 그림으로 복사 (빈 공간). 실패하면 이유
+  separateOw(s) {
+    const n = s.tiles * 16, a = this.alloc(n + 1);
+    if (!a) return '롬에 남은 빈 공간이 부족해요';
+    this.data.copyWithin(a.p, s.off, s.off + n);
+    this.data[a.p + n] = a.fill === 0xFF ? 0x00 : 0xFF;
+    s.bank = Math.floor(a.p / 0x4000); s.addr = 0x4000 + a.p % 0x4000;
+    this.data[s.entry] = s.addr & 0xff; this.data[s.entry + 1] = s.addr >> 8; this.data[s.entry + 3] = s.bank;
+    this.dirty = true;
+    return null;
+  },
+  setOwPal(s, pal) { s.pal = pal; this.data[s.entry + 5] = pal; this.dirty = true; },
+  objPalBase() { const g = this.gfx; return g.ok && g.objPalPtr ? g.off(g.palBank, g.objPalPtr) : -1; },
+  // 캐릭터 색 묶음(0~7). 0번 색은 투명
+  objPal(pal) {
+    const b = this.objPalBase();
+    if (b < 0) return [[255, 255, 255], [211, 211, 211], [128, 128, 128], [0, 0, 0]];
+    const o = b + 64 + (pal & 7) * 8;
+    return [0, 1, 2, 3].map(i => C555(this.w(o + i * 2)));
+  },
+  // 색 묶음 바꾸기. 아침·낮·밤·어두운 곳 4벌 중 낮과 같던 색은 같은 색으로, 시간마다 다르던 색은 원래 비율대로
+  setObjPal(pal, cols) {
+    const b = this.objPalBase();
+    if (b < 0) return;
+    for (let i = 1; i < 4; i++) {
+      const day = this.w(b + 64 + pal * 8 + i * 2), nw = TO555(cols[i]);
+      for (let set = 0; set < 4; set++) {
+        const o = b + set * 64 + pal * 8 + i * 2, old = this.w(o);
+        let v;
+        if (set === 1 || old === day) v = nw;
+        else { v = 0; for (let sh = 0; sh <= 10; sh += 5) { const dc = (day >> sh) & 31, oc = (old >> sh) & 31, nc = (nw >> sh) & 31; v |= (dc === 0 ? oc : Math.min(31, Math.floor(nc * oc / dc))) << sh; } }
+        this.data[o] = v & 0xff; this.data[o + 1] = v >> 8;
+      }
+    }
+    this.dirty = true;
+  }
+});
+
+// ===== 68-pixelcanvas.js
+// ================================================================ 도트 그리기 판 (PixelEditor.cs 의 PixelCanvas · BrushUi) — 도트 편집 창·타이틀 창이 같이 씀
+// o = { pic, palAt(x, y) → [rgb×4], transparent0, frameW, overlay(g, zoom), onChange(), onPick(x, y), onHover(cell), importPic(img) → pic, exportName }
+function pixelCanvas(o) {
+  const st = { pic: clonePic(o.pic), tool: 0, color: 3, brush: 1, round: false, mirror: false, grid: true, zoom: 8, undo: [], redo: [], hover: null, frameW: o.frameW || 0 };
+  const W = st.pic.w, H = st.pic.h, T0 = !!o.transparent0;
+  const ctl = { st };
+  const cv = el('canvas', { style: 'image-rendering:pixelated;cursor:crosshair;display:block' });
+  const wrap = el('div', { style: 'overflow:auto;background:#464646;padding:8px;flex:1;min-width:0;max-height:62vh' }, cv);
+  const toolNames = ['연필 (B)', '채우기 (G)', '직선 (L)', '네모 (R)', '색 집기 (I)'];
+  const toolBtns = toolNames.map((n, i) => el('button', { text: n, style: 'width:140px', onclick: () => { st.tool = i; showTools(); } }));
+  const showTools = () => toolBtns.forEach((b, i) => { b.style.background = i === st.tool ? '#cfe0ff' : ''; b.style.fontWeight = i === st.tool ? 'bold' : ''; });
+  const undoBtn = el('button', { text: '되돌리기', onclick: () => ctl.undo() }), redoBtn = el('button', { text: '다시하기', onclick: () => ctl.redo() });
+  ctl.snapshot = () => { st.undo.push(st.pic.px.slice()); st.redo = []; };
+  ctl.undo = () => { if (!st.undo.length) return; st.redo.push(st.pic.px.slice()); st.pic.px = st.undo.pop(); ctl.changed(); };
+  ctl.redo = () => { if (!st.redo.length) return; st.undo.push(st.pic.px.slice()); st.pic.px = st.redo.pop(); ctl.changed(); };
+  const set = (x, y, c) => {
+    if (x < 0 || y < 0 || x >= W || y >= H) return;
+    st.pic.px[y * W + x] = c;
+    if (st.mirror) { const fw = st.frameW || W, f0 = Math.floor(x / fw) * fw, mx = f0 + (fw - 1 - (x - f0)); if (mx >= 0 && mx < W) st.pic.px[y * W + mx] = c; }
+  };
+  // 붓 한 번 찍기: (x, y) 를 가운데로 굵기만큼
+  const stamp = (x, y, c) => {
+    const s = Math.max(1, st.brush), a = Math.floor((s - 1) / 2), r = s / 2;
+    for (let dy = 0; dy < s; dy++) for (let dx = 0; dx < s; dx++) {
+      if (st.round && s > 2) { const cx = dx - (s - 1) / 2, cy = dy - (s - 1) / 2; if (cx * cx + cy * cy > r * r) continue; }
+      set(x - a + dx, y - a + dy, c);
+    }
+  };
+  const line = (a, b, c) => {
+    let dx = Math.abs(b[0] - a[0]), dy = -Math.abs(b[1] - a[1]), sx = a[0] < b[0] ? 1 : -1, sy = a[1] < b[1] ? 1 : -1, err = dx + dy, x = a[0], y = a[1];
+    for (;;) { stamp(x, y, c); if (x === b[0] && y === b[1]) break; const e2 = 2 * err; if (e2 >= dy) { err += dy; x += sx; } if (e2 <= dx) { err += dx; y += sy; } }
+  };
+  const fill = (x, y, c) => {
+    const from = st.pic.px[y * W + x];
+    if (from === c) return;
+    const stack = [[x, y]];
+    while (stack.length) {
+      const [px, py] = stack.pop();
+      if (px < 0 || py < 0 || px >= W || py >= H || st.pic.px[py * W + px] !== from) continue;
+      st.pic.px[py * W + px] = c;
+      stack.push([px + 1, py], [px - 1, py], [px, py + 1], [px, py - 1]);
+    }
+  };
+  let drag = null, last = null, before = null;
+  const shape = to => {
+    st.pic.px = before.slice();
+    if (st.tool === 2) line(drag, to, st.color);
+    else { const a = drag; line(a, [to[0], a[1]], st.color); line([to[0], a[1]], to, st.color); line(to, [a[0], to[1]], st.color); line([a[0], to[1]], a, st.color); }
+  };
+  const cell = e => { const r = cv.getBoundingClientRect(), k = r.width / cv.width; const x = Math.floor((e.clientX - r.left) / k / st.zoom), y = Math.floor((e.clientY - r.top) / k / st.zoom); return x >= 0 && y >= 0 && x < W && y < H ? [x, y] : null; };
+  cv.addEventListener('contextmenu', e => e.preventDefault());
+  cv.addEventListener('mousedown', e => {
+    const c = cell(e); if (!c) return;
+    e.preventDefault();
+    if (e.button === 2 || st.tool === 4) { st.color = st.pic.px[c[1] * W + c[0]]; if (o.onPick) o.onPick(c[0], c[1]); return; }
+    if (e.button !== 0) return;
+    ctl.snapshot();
+    if (st.tool === 0) { stamp(c[0], c[1], st.color); last = c; drag = c; }
+    else if (st.tool === 1) fill(c[0], c[1], st.color);
+    else if (st.tool === 2 || st.tool === 3) { drag = c; before = st.pic.px.slice(); shape(c); }
+    ctl.changed();
+  });
+  cv.addEventListener('mousemove', e => {
+    const c = cell(e);
+    if ((c && (!st.hover || c[0] !== st.hover[0] || c[1] !== st.hover[1])) || (!c && st.hover)) { st.hover = c; if (o.onHover) o.onHover(c); ctl.draw(); }
+    if (!c || !(e.buttons & 1) || !drag) return;
+    if (st.tool === 0 && (c[0] !== last[0] || c[1] !== last[1])) { line(last, c, st.color); last = c; ctl.changed(); }
+    else if ((st.tool === 2 || st.tool === 3) && before) { shape(c); ctl.changed(); }
+  });
+  cv.addEventListener('mouseup', () => { drag = last = before = null; });
+  cv.addEventListener('mouseleave', () => { st.hover = null; if (o.onHover) o.onHover(null); ctl.draw(); });
+  cv.addEventListener('wheel', e => { if (e.ctrlKey) { e.preventDefault(); ctl.zoomBy(e.deltaY < 0 ? 2 : -2); } }, { passive: false });
+  ctl.zoomBy = d => { st.zoom = Math.max(2, Math.min(40, st.zoom + d)); ctl.draw(); };
+
+  ctl.draw = () => {
+    const z = st.zoom, w = W * z, h = H * z;
+    if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+    const g = cv.getContext('2d'); g.imageSmoothingEnabled = false;
+    if (T0) { const k = Math.max(4, z / 2); for (let y = 0; y < h; y += k) for (let x = 0; x < w; x += k) { g.fillStyle = ((x / k + y / k) & 1) ? '#bebebe' : '#e1e1e1'; g.fillRect(x, y, k, k); } }
+    else g.clearRect(0, 0, w, h);
+    g.drawImage(picCanvas(st.pic, o.palAt, T0), 0, 0, w, h);
+    if (o.overlay) o.overlay(g, z);
+    g.lineWidth = 1;
+    if (st.grid && z >= 5) { g.strokeStyle = 'rgba(0,0,0,.24)'; g.beginPath(); for (let x = 0; x <= W; x++) { g.moveTo(x * z + .5, 0); g.lineTo(x * z + .5, h); } for (let y = 0; y <= H; y++) { g.moveTo(0, y * z + .5); g.lineTo(w, y * z + .5); } g.stroke(); }
+    g.strokeStyle = 'rgba(0,90,255,.47)'; g.beginPath(); for (let x = 0; x <= W; x += 8) { g.moveTo(x * z + .5, 0); g.lineTo(x * z + .5, h); } for (let y = 0; y <= H; y += 8) { g.moveTo(0, y * z + .5); g.lineTo(w, y * z + .5); } g.stroke();
+    if (st.frameW && !o.hideFrames) { g.strokeStyle = 'orangered'; g.lineWidth = 3; g.beginPath(); for (let x = 0; x <= W; x += st.frameW) { g.moveTo(x * z, 0); g.lineTo(x * z, h); } g.stroke(); }
+    if (st.mirror) { const fw = st.frameW || W; g.strokeStyle = 'rgba(255,0,200,.63)'; g.lineWidth = 1; g.setLineDash([4, 3]); g.beginPath(); for (let x = 0; x < W; x += fw) { g.moveTo((x + fw / 2) * z, 0); g.lineTo((x + fw / 2) * z, h); } g.stroke(); g.setLineDash([]); }
+    if (st.hover) {
+      const s = st.tool === 0 || st.tool === 2 || st.tool === 3 ? Math.max(1, st.brush) : 1, a = Math.floor((s - 1) / 2);
+      g.strokeStyle = 'yellow'; g.lineWidth = 2;
+      if (st.round && s > 2) { g.beginPath(); g.arc((st.hover[0] - a + s / 2) * z, (st.hover[1] - a + s / 2) * z, s * z / 2, 0, 7); g.stroke(); }
+      else g.strokeRect((st.hover[0] - a) * z, (st.hover[1] - a) * z, s * z, s * z);
+    }
+  };
+  ctl.changed = () => { undoBtn.disabled = !st.undo.length; redoBtn.disabled = !st.redo.length; if (o.onChange) o.onChange(); ctl.draw(); };
+  // 연필 굵기 (1~50칸)
+  const bnum = num(1, 1, 50), bbar = el('input', { type: 'range', min: 1, max: 50, value: 1, style: 'width:145px' });
+  ctl.setBrush = v => { st.brush = Math.max(1, Math.min(50, v)); bnum.value = st.brush; bbar.value = st.brush; ctl.draw(); };
+  bnum.addEventListener('input', () => ctl.setBrush(+bnum.value || 1)); bbar.addEventListener('input', () => ctl.setBrush(+bbar.value));
+  const [rc, rl] = check('둥근 붓', false); rc.addEventListener('change', () => { st.round = rc.checked; ctl.draw(); });
+  const [mc, ml] = check(o.mirrorLabel || '좌우 대칭으로 찍기', false); mc.addEventListener('change', () => { st.mirror = mc.checked; if (o.onMirror) o.onMirror(mc.checked); ctl.draw(); });
+  const [gc, gl] = check('격자 보기', true); gc.addEventListener('change', () => { st.grid = gc.checked; ctl.draw(); });
+  ctl.left = el('div', { style: 'width:170px;display:flex;flex-direction:column;gap:4px;flex-shrink:0' },
+    el('b', { text: '도구' }), ...toolBtns, el('div', { class: 'hint', text: '오른쪽 클릭 = 색 집기' }),
+    el('b', { text: '연필 굵기 (1~50칸)', style: 'margin-top:8px' }), el('div', { class: 'bar' }, bnum, rl), bbar, el('div', { class: 'hint', text: '[ ] 키 = 가늘게·굵게' }),
+    ml, gl, ...(o.leftExtra || []),
+    el('div', { class: 'bar' }, el('button', { text: '확대 +', onclick: () => ctl.zoomBy(o.zoomStep || 2) }), el('button', { text: '축소 −', onclick: () => ctl.zoomBy(-(o.zoomStep || 2)) })),
+    el('div', { class: 'hint', text: 'Ctrl+휠 = 확대·축소' }),
+    el('div', { class: 'bar' }, undoBtn, redoBtn),
+    el('button', { text: '그림 파일 불러오기…', style: 'margin-top:8px', onclick: async () => {
+      try {
+        const img = await pickImageFile(); if (!img) return;
+        ctl.snapshot();
+        st.pic = o.importPic ? o.importPic(img, st.pic) : picFromImage(img, W, H, o.palAt(0, 0), T0);
+        ctl.changed();
+      } catch (e) { alert('그림을 열 수 없어요: ' + e.message); }
+    } }),
+    el('button', { text: 'PNG로 저장…', onclick: () => downloadCanvas(picCanvas(st.pic, o.palAt, T0), (o.exportName || '그림') + '.png') }),
+    o.noClear ? null : el('button', { text: '모두 지우기', onclick: () => { ctl.snapshot(); st.pic.px.fill(0); ctl.changed(); } }));
+  ctl.wrap = wrap; ctl.cv = cv;
+  // 키: Ctrl+Z/Y, B G L R I 도구, 1~4 색, [ ] 굵기
+  const onKey = e => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z')) { e.preventDefault(); e.stopPropagation(); ctl.undo(); }
+    else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || e.key === 'Y')) { e.preventDefault(); e.stopPropagation(); ctl.redo(); }
+    else if (!e.ctrlKey && !e.metaKey) {
+      const t = ['b', 'g', 'l', 'r', 'i'].indexOf(e.key.toLowerCase());
+      if (t >= 0) { st.tool = t; showTools(); }
+      else if (e.key >= '1' && e.key <= '4') { st.color = +e.key - 1; if (ctl.onColorKey) ctl.onColorKey(); }
+      else if (e.key === '[') ctl.setBrush(st.brush - 1);
+      else if (e.key === ']') ctl.setBrush(st.brush + 1);
+    }
+  };
+  document.addEventListener('keydown', onKey, true);
+  ctl.dispose = () => document.removeEventListener('keydown', onKey, true);
+  // 창 크기에 맞는 확대
+  ctl.fit = () => { st.zoom = Math.max(2, Math.min(40, Math.floor(Math.min((wrap.clientWidth - 30) / W, (Math.min(window.innerHeight * 0.6, 600) - 30) / H)))); ctl.draw(); };
+  showTools();
+  return ctl;
+}
+
+// R·G·B (게임보이 컬러 0~31) 입력 칸 3개 → { els, set(rgb), enable(bool) }
+function rgbInputs(onChange) {
+  const nr = num(0, 0, 31), ng = num(0, 0, 31), nb = num(0, 0, 31);
+  for (const n of [nr, ng, nb]) { n.style.width = '52px'; n.addEventListener('input', () => onChange(C555((+nr.value & 31) | (+ng.value & 31) << 5 | (+nb.value & 31) << 10))); }
+  return {
+    els: [el('span', { text: 'R' }), nr, el('span', { text: 'G' }), ng, el('span', { text: 'B' }), nb],
+    set(c) { const v = TO555(c); nr.value = v & 31; ng.value = (v >> 5) & 31; nb.value = (v >> 10) & 31; },
+    enable(on) { nr.disabled = ng.disabled = nb.disabled = !on; }
+  };
+}
+
+// ===== 69-title.js
+// ================================================================ 타이틀 화면 (배경: 로고·구름·저작권 글자) 읽기·쓰기 (RomTitle.cs 와 같음)
+// 한글 금·은: 로고 타일(압축)을 VRAM $9000 에, 배치표(반복·증가 묶음 압축)를 $9800 에 풀고,
+// 영역별 색 번호(속성)는 코드가 네모로 칠함. 색은 배경 팔레트 5개. 호오(날아다니는 새)는 스프라이트라 따로임
+const TITLE_W = 32, TITLE_H = 18;
+function titleHasHigh(t) { return t.loads.some(l => l.dest === 0x8800); }
+function titleHighCount(t) { return t.objTop ? 120 : 128; }
+function titleMaxTiles(t) { return 128 + (titleHasHigh(t) || t.hookCall >= 0 ? titleHighCount(t) : 0); }
+
+mixin(Rom.prototype, {
+  // 코드 모양으로 타이틀 데이터를 찾음. 못 찾으면 null
+  findTitle() {
+    const d = this.data;
+    const m = this.findPattern([0x21, -1, -1, 0x11, 0x00, 0x98, 0x3E, -1, 0xCD, -1, -1, 0xFE, 0xFF], 0x4000, 0x8000);
+    if (m < 0) return null;
+    const t = { loads: [], objTop: false, hookCall: -1, decomp: 0, mapPtr: m + 1, mapBankPtrs: [], palOff: -1, tiles: [], map: new Array(TITLE_W * TITLE_H).fill(0), attr: new Array(TITLE_W * TITLE_H).fill(0) };
+    const bank = d[m + 7];
+    for (let i = m + 6; i < m + 64; i++) if (d[i] === 0x3E && d[i + 1] === bank && d[i + 2] === 0xCD) t.mapBankPtrs.push(i + 1);
+    t.mapOff = this.off(bank, this.w(t.mapPtr));
+    const call = this.findPattern([0xCD, m & 0xff, (0x4000 + m % 0x4000) >> 8], 0x4000, 0x8000);
+    if (call < 0) return null;
+    for (let i = Math.max(0x4000, call - 0x60); i < call; i++) {
+      if (d[i] !== 0x21 || d[i + 3] !== 0x11 || d[i + 6] !== 0x3E || d[i + 8] !== 0xCD) continue;
+      const dest = this.w(i + 4);
+      if (dest !== 0x9000 && dest !== 0x8800) continue;
+      t.loads = t.loads.filter(x => x.dest !== dest);
+      t.loads.push({ ptr: i + 1, bankPtr: i + 7, dest });
+      if (dest === 0x9000) t.decomp = this.w(i + 9);
+    }
+    if (!t.loads.some(l => l.dest === 0x9000)) return null;
+    for (let i = Math.max(0x4000, call - 0x60); i < call; i++) if (d[i] === 0x11 && d[i + 1] === 0x80 && d[i + 2] === 0x8F) t.objTop = true;
+    // 배치표 그리기 바로 앞의 call: 전에 이 편집기가 끼워 넣은 코드면 그 안의 $8800 풀기를 읽고, 아니면 끼울 자리로 기억
+    if (d[call - 3] === 0xCD && !titleHasHigh(t)) {
+      const target = this.w(call - 2);
+      if (target >= 0x4000) {
+        const h = this.off(Math.floor(call / 0x4000), target);
+        if (d[h] === 0x21 && d[h + 3] === 0x11 && d[h + 4] === 0x00 && d[h + 5] === 0x88 && d[h + 6] === 0x3E && d[h + 8] === 0xCD && d[h + 11] === 0xC3)
+          t.loads.push({ ptr: h + 1, bankPtr: h + 7, dest: 0x8800 });
+        else if (t.decomp !== 0) t.hookCall = call - 3;
+      }
+    }
+    for (let i = 0; i < 256; i++) t.tiles.push(new Uint8Array(16));
+    for (const ld of t.loads) {
+      const first = ld.dest === 0x9000 ? 0 : 128;
+      const raw = this.gfx.decompress(this.off(d[ld.bankPtr], this.w(ld.ptr)));
+      for (let i = 0; i < raw.length / 16 && i < 128; i++) t.tiles[first + i] = raw.slice(i * 16, i * 16 + 16);
+    }
+    let p = t.mapOff, n = 0;
+    while (n < t.map.length && d[p] !== 0xFF) {
+      const b = d[p++], v = d[p++];
+      for (let i = 0; i < (b & 0x7F) && n < t.map.length; i++) t.map[n++] = (b & 0x80) ? (v + i) & 0xFF : v;
+    }
+    if (n !== t.map.length) return null;
+    this.readTitleAttr(call - 0x80, t);
+    for (let g = 0; ; g++) {
+      g = this.findPattern([0x21, -1, -1, 0x11, -1, -1, 0x01, 0x28, 0x00, 0xCD, -1, -1, 0x21, -1, -1], g, d.length);
+      if (g < 0) break;
+      if (this.w(g + 13) === this.w(g + 1) + 0x28) { t.palOff = this.off(Math.floor(g / 0x4000), this.w(g + 1)); break; }
+    }
+    return t;
+  },
+  // 영역별 색 번호: VRAM 1번 뱅크로 바꾼 뒤 "ld hl / ld bc / ld a / call 칠하기" 를 흉내 냄
+  readTitleAttr(from, t) {
+    const d = this.data, s = this.findPattern([0x3E, 0x01, 0xE0, 0x4F], from, from + 0x200);
+    if (s < 0) return;
+    let pc = s + 4, hl = 0, bc = 0, a = 0;
+    const setA = (i, v) => { if (i >= 0 && i < t.attr.length) t.attr[i] = v & 7; };
+    for (let k = 0; k < 40 && pc < s + 120; k++) {
+      const op = d[pc];
+      if (op === 0x21) { hl = this.w(pc + 1); pc += 3; }
+      else if (op === 0x01) { bc = this.w(pc + 1); pc += 3; }
+      else if (op === 0x3E) { a = d[pc + 1]; if (d[pc + 2] === 0xE0 && d[pc + 3] === 0x4F) break; pc += 2; }
+      else if (op === 0xAF) { a = 0; pc++; }
+      else if (op === 0xCD) {
+        const target = this.w(pc + 1);
+        if (target < 0x4000) for (let i = 0; i < bc; i++) setA(hl - 0x9800 + i, a);
+        else for (let r = 0; r < (bc >> 8); r++) for (let c = 0; c < (bc & 0xFF); c++) setA(hl - 0x9800 + r * 32 + c, a);
+        pc += 3;
+      } else break;
+    }
+  },
+  titlePals(t) {
+    const res = [];
+    for (let p = 0; p < 5; p++) res.push([0, 1, 2, 3].map(i => t.palOff < 0 ? [[255, 255, 255], [192, 192, 192], [128, 128, 128], [0, 0, 0]][i] : C555(this.w(t.palOff + p * 8 + i * 2))));
+    return res;
+  },
+  // 배경 전체(32×18 타일)를 색 번호 그림으로
+  titleImage(t) {
+    const pic = newPic(TITLE_W * 8, TITLE_H * 8);
+    for (let i = 0; i < t.map.length; i++) {
+      const b = t.tiles[t.map[i] & 0xFF], x0 = i % 32 * 8, y0 = Math.floor(i / 32) * 8;
+      for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) pic.px[(y0 + y) * pic.w + x0 + x] = ((b[y * 2] >> (7 - x)) & 1) | (((b[y * 2 + 1] >> (7 - x)) & 1) << 1);
+    }
+    return pic;
+  },
+  // 서로 다른 8×8 칸 수
+  titleTileCount(pic) {
+    const set = new Set();
+    for (let ty = 0; ty < TITLE_H; ty++) for (let tx = 0; tx < TITLE_W; tx++) {
+      let s = '';
+      for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) s += pic.px[(ty * 8 + y) * pic.w + tx * 8 + x];
+      set.add(s);
+    }
+    return set.size;
+  },
+  // 그림 → 타일 나누기 → 같은 타일 합치기 → 압축해서 빈 공간에 쓰고 코드의 주소를 바꿈. 실패하면 이유
+  writeTitle(t, pic, pals) {
+    const d = this.data, tiles = [], index = new Map(), map = new Array(t.map.length);
+    for (let i = 0; i < map.length; i++) {
+      const b = [], x0 = i % 32 * 8, y0 = Math.floor(i / 32) * 8;
+      for (let y = 0; y < 8; y++) {
+        let lo = 0, hi = 0;
+        for (let x = 0; x < 8; x++) { const c = pic.px[(y0 + y) * pic.w + x0 + x]; lo |= (c & 1) << (7 - x); hi |= ((c >> 1) & 1) << (7 - x); }
+        b.push(lo, hi);
+      }
+      const key = b.join(',');
+      let k = index.get(key);
+      if (k === undefined) { k = tiles.length; index.set(key, k); tiles.push(b); }
+      map[i] = k;
+    }
+    if (tiles.length > titleMaxTiles(t)) return '그림이 너무 복잡해요: 서로 다른 8×8 칸이 ' + tiles.length + '개예요 (이 롬은 최대 ' + titleMaxTiles(t) + '개). 같은 무늬를 반복하거나 빈 칸을 늘려 주세요';
+    const w16 = (o, v) => { d[o] = v & 0xff; d[o + 1] = v >> 8; };
+    // 128칸이 넘는데 $8800 에 푸는 코드가 없으면 끼워 넣음: ld hl,타일 / ld de,$8800 / ld a,뱅크 / call FarDecompress / jp 원래 부르던 곳
+    if (tiles.length > 128 && !titleHasHigh(t)) {
+      if (t.hookCall < 0) return '이 롬은 타이틀 타일을 128개까지만 넣을 수 있어요';
+      const bank = Math.floor(t.hookCall / 0x4000), hp = this.allocInBank(bank, 14);
+      if (hp < 0) return '타이틀 코드 뱅크에 빈 공간이 없어서 128칸을 넘길 수 없어요';
+      const orig = this.w(t.hookCall + 1);
+      d.set([0x21, 0, 0, 0x11, 0x00, 0x88, 0x3E, 0, 0xCD, t.decomp & 0xff, t.decomp >> 8, 0xC3, orig & 0xff, orig >> 8], hp);
+      w16(t.hookCall + 1, 0x4000 + hp % 0x4000);
+      t.loads.push({ ptr: hp + 1, bankPtr: hp + 7, dest: 0x8800 });
+      t.hookCall = -1;
+    }
+    for (const ld of t.loads) {
+      const first = ld.dest === 0x9000 ? 0 : 128;
+      const part = tiles.slice(first, first + (ld.dest === 0x8800 ? titleHighCount(t) : 128));
+      if (!part.length) continue;
+      const comp = Lz.compress(part.flat());
+      const a = this.alloc(comp.length + 1);
+      if (!a) return '롬에 남은 빈 공간이 부족해요';
+      d.set(comp, a.p); d[a.p + comp.length] = a.fill === 0xFF ? 0 : 0xFF;
+      w16(ld.ptr, 0x4000 + a.p % 0x4000); d[ld.bankPtr] = Math.floor(a.p / 0x4000);
+    }
+    // 배치표: 같은 타일 반복(0~127) / 1씩 늘어나는 타일(128+) 묶음
+    const enc = [];
+    for (let i = 0; i < map.length;) {
+      let inc = 1; while (i + inc < map.length && inc < 127 && map[i + inc] === map[i] + inc) inc++;
+      let rep = 1; while (i + rep < map.length && rep < 127 && map[i + rep] === map[i]) rep++;
+      if (inc >= rep && inc > 1) { enc.push(0x80 | inc, map[i]); i += inc; } else { enc.push(rep, map[i]); i += rep; }
+    }
+    enc.push(0xFF);
+    const mp = this.alloc(enc.length + 1);
+    if (!mp) return '롬에 남은 빈 공간이 부족해요';
+    d.set(enc, mp.p); d[mp.p + enc.length] = mp.fill === 0xFF ? 0 : 0xFF;
+    w16(t.mapPtr, 0x4000 + mp.p % 0x4000); for (const bp of t.mapBankPtrs) d[bp] = Math.floor(mp.p / 0x4000);
+    if (t.palOff >= 0) for (let p = 0; p < 5; p++) for (let i = 0; i < 4; i++) w16(t.palOff + p * 8 + i * 2, TO555(pals[p][i]));
+    t.mapOff = mp.p; t.map = map;
+    for (let i = 0; i < 256; i++) t.tiles[i] = i < tiles.length ? Uint8Array.from(tiles[i]) : new Uint8Array(16);
+    this.dirty = true;
+    return null;
+  }
+});
+
+// ===== 70-audioconv.js
+// ================================================================ 음악 파일(MP3·WAV·FLAC·OGG·M4A … + MIDI) → 게임보이 4채널 칩튠 (AudioConverter.cs 와 같음)
+//  · 템포·박자 위치 자동 감지 (온셋 자기상관)
+//  · FFT 배음 합산으로 멜로디 / 화음 / 베이스 음 높이 추적 (비터비로 매끄럽게 이음)
+//  · 대역별 타격 감지로 킥 / 스네어 / 하이햇
+const AudioConverter = (() => {
+  const MAX_STEPS = 4000, MAX_SECONDS = 180;
+  let lastInfo = '';
+  const put = (t, ch, step, midi, dur, vol) => {
+    if (step < 0 || step >= t.totalSteps) return;
+    const n = t.channels[ch][step];
+    if (ch === 3) { n.pitch = midi; n.octave = 0; }
+    else { n.pitch = ((midi % 12) + 12) % 12 + 1; n.octave = Math.max(1, Math.min(7, Math.floor(midi / 12) - 1)); }
+    n.duration = Math.max(1, Math.min(16, dur)); n.volume = Math.max(1, Math.min(15, vol));
+  };
+  // 다음 음이 시작하기 전에 끝나도록 길이 자르기
+  const clipDurations = t => {
+    for (let ch = 0; ch < 3; ch++) {
+      const c = t.channels[ch]; let last = -1;
+      for (let i = 0; i < c.length; i++) { if (!c[i].pitch) continue; if (last >= 0 && last + c[last].duration > i) c[last].duration = Math.max(1, i - last); last = i; }
+    }
+  };
+  const fold = (m, lo, hi) => { while (m < lo) m += 12; while (m > hi) m -= 12; return m; };
+
+  // ================================================================ MIDI
+  function convertMidi(bytes, title, targetSteps, transpose) {
+    const b = bytes;
+    if (b.length < 14 || b[0] !== 0x4D || b[1] !== 0x54 || b[2] !== 0x68 || b[3] !== 0x64) throw new Error('유효한 MIDI 파일이 아닙니다.');
+    const numTracks = (b[10] << 8) | b[11];
+    let division = (b[12] << 8) | b[13];
+    if (division <= 0 || (division & 0x8000)) division = 96;
+    let p = 14, usPerQuarter = -1;
+    const notes = [];
+    for (let t = 0; t < numTracks && p < b.length - 8; t++) {
+      if (b[p] !== 0x4D || b[p + 1] !== 0x54 || b[p + 2] !== 0x72 || b[p + 3] !== 0x6B) break;
+      const trkLen = (b[p + 4] << 24) | (b[p + 5] << 16) | (b[p + 6] << 8) | b[p + 7];
+      p += 8;
+      const end = Math.min(b.length, p + trkLen);
+      let abs = 0, lastStatus = 0;
+      const open = new Map();
+      const vlq = () => { let v = 0; while (p < end) { const x = b[p++]; v = v * 128 + (x & 0x7F); if (!(x & 0x80)) break; } return v; };
+      while (p < end) {
+        abs += vlq();
+        if (p >= end) break;
+        let status = b[p];
+        if (status & 0x80) { p++; if (status < 0xF0) lastStatus = status; } else status = lastStatus;
+        const type = status & 0xF0, chn = status & 0x0F;
+        if (status === 0xFF) {
+          const meta = b[p++], len = vlq();
+          if (meta === 0x51 && len === 3 && usPerQuarter < 0) usPerQuarter = (b[p] << 16) | (b[p + 1] << 8) | b[p + 2];
+          p += len;
+        } else if (status === 0xF0 || status === 0xF7) { p += vlq(); }
+        else if (type === 0x90 || type === 0x80) {
+          const note = b[p++], vel = b[p++], key = chn << 8 | note;
+          const on = open.get(key);
+          if (on) { on.endTick = abs; open.delete(key); }
+          if (type === 0x90 && vel > 0) { const ev = { tick: abs, endTick: -1, note, velocity: vel, channel: chn }; notes.push(ev); open.set(key, ev); }
+        } else if (type === 0xA0 || type === 0xB0 || type === 0xE0) p += 2;
+        else if (type === 0xC0 || type === 0xD0) p += 1;
+        else break;
+      }
+      for (const ev of open.values()) ev.endTick = abs;
+      p = end;
+    }
+    if (!notes.length) throw new Error('MIDI 안에 음표가 없어요.');
+    if (usPerQuarter <= 0) usPerQuarter = 500000;
+    const ticksPerStep = Math.max(1, division / 4), bpm = Math.round(60000000 / usPerQuarter);
+    const lastTick = Math.max(...notes.map(n => Math.max(n.tick, n.endTick)));
+    let steps = targetSteps > 0 ? targetSteps : Math.ceil(lastTick / ticksPerStep) + 1;
+    steps = Math.max(16, Math.min(MAX_STEPS, steps));
+    const track = RomMusic.newTrack(title, steps, Math.max(30, Math.min(400, bpm)));
+    const byStep = [];
+    for (const n of notes) { const s = Math.round(n.tick / ticksPerStep); if (s < 0 || s >= steps) continue; (byStep[s] = byStep[s] || []).push(n); }
+    const durOf = n => Math.max(1, Math.round(((n.endTick > n.tick ? n.endTick : n.tick + ticksPerStep) - n.tick) / ticksPerStep));
+    const drumKindGm = note => [35, 36, 41, 43].includes(note) ? 1 : [37, 38, 39, 40, 45, 47, 48, 50].includes(note) ? 2 : [49, 52, 55, 57].includes(note) ? 4 : 3;
+    for (let s = 0; s < steps; s++) {
+      const list = byStep[s];
+      if (!list) continue;
+      const drums = list.filter(n => n.channel === 9);
+      if (drums.length) put(track, 3, s, Math.min(...drums.map(n => drumKindGm(n.note))), 1, Math.max(8, Math.floor(Math.max(...drums.map(n => n.velocity)) / 8)));
+      const tones = list.filter(n => n.channel !== 9).map(n => ({ n, m: n.note + transpose })).sort((x, y) => y.m - x.m);
+      if (!tones.length) continue;
+      // 제일 높은 음 = 멜로디, 제일 낮은 음 = 베이스, 그 사이 다른 음 = 화음
+      const mel = tones[0], low = tones[tones.length - 1];
+      put(track, 0, s, fold(mel.m, 55, 88), durOf(mel.n), Math.max(9, Math.floor(mel.n.velocity / 8) + 2));
+      if (tones.length > 1 && low.m < 60) put(track, 2, s, fold(low.m, 33, 57), durOf(low.n), 15);
+      const mid = tones.slice(1).find(x => x !== low && x.m % 12 !== mel.m % 12) || (tones.length > 1 && low.m >= 60 ? low : null);
+      if (mid) put(track, 1, s, fold(mid.m, 52, 81), durOf(mid.n), Math.max(7, Math.floor(mid.n.velocity / 10)));
+    }
+    clipDurations(track);
+    lastInfo = 'MIDI: 템포 ' + track.bpm + ' BPM · ' + steps + '스텝 (' + Math.round(steps * 15 / track.bpm) + '초)';
+    return track;
+  }
+
+  // ================================================================ 분석 도우미
+  const hann = n => { const w = new Float64Array(n); for (let i = 0; i < n; i++) w[i] = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (n - 1)); return w; };
+  function fft(re, im) {
+    const n = re.length;
+    for (let i = 1, j = 0; i < n; i++) {
+      let bit = n >> 1;
+      for (; j & bit; bit >>= 1) j ^= bit;
+      j ^= bit;
+      if (i < j) { let t = re[i]; re[i] = re[j]; re[j] = t; t = im[i]; im[i] = im[j]; im[j] = t; }
+    }
+    for (let len = 2; len <= n; len <<= 1) {
+      const ang = -2 * Math.PI / len, wr = Math.cos(ang), wi = Math.sin(ang);
+      for (let i = 0; i < n; i += len) {
+        let cr = 1, ci = 0;
+        for (let k = 0; k < len / 2; k++) {
+          const a = i + k, b = a + len / 2;
+          const tr = re[b] * cr - im[b] * ci, ti = re[b] * ci + im[b] * cr;
+          re[b] = re[a] - tr; im[b] = im[a] - ti; re[a] += tr; im[a] += ti;
+          const nr = cr * wr - ci * wi; ci = cr * wi + ci * wr; cr = nr;
+        }
+      }
+    }
+  }
+  const percentile = (v, q) => { if (!v.length) return 0; const s = Array.from(v).sort((a, b) => a - b); return s[Math.min(s.length - 1, Math.floor(q * s.length))]; };
+  // 주변(±win) 중앙값 × k 를 넘어야 '튀는 것'
+  function adaptive(v, win, k) {
+    const th = new Float64Array(v.length), floor = percentile(v, 0.5) * 0.5 + 1e-9;
+    for (let i = 0; i < v.length; i++) th[i] = Math.max(floor, percentile(v.slice(Math.max(0, i - win), Math.min(v.length, i + win + 1)), 0.5) * k);
+    return th;
+  }
+  const maxIn = (env, st, len, hop) => { const a = Math.max(0, Math.floor(st / hop)), b = Math.min(env.length, Math.floor((st + len) / hop) + 1); let m = 0; for (let i = a; i < b; i++) m = Math.max(m, env[i]); return m; };
+  // 타격 세기의 자기상관으로 템포 찾기 (70~180 BPM, 120 근처를 조금 선호)
+  function detectTempo(env, hop) {
+    const n = env.length; let mean = 0; for (const v of env) mean += v; mean /= n;
+    const e = Float64Array.from(env, v => v - mean);
+    let best = 0, bestBpm = 120;
+    for (let b = 70; b <= 180; b += 0.5) {
+      const lag = 60 / b / hop; let sum = 0;
+      for (const mult of [1, 2, 4, 0.5]) {
+        const L = lag * mult, li = Math.floor(L), fr = L - li;
+        let c = 0;
+        for (let i = 0; i + li + 1 < n; i++) c += e[i] * (e[i + li] * (1 - fr) + e[i + li + 1] * fr);
+        sum += c * (mult === 0.5 ? 0.5 : 1);
+      }
+      const prior = Math.exp(-0.5 * Math.pow(Math.log2(b / 120) / 0.9, 2));
+      if (sum * prior > best) { best = sum * prior; bestBpm = b; }
+    }
+    return bestBpm;
+  }
+  // 16분음표 격자가 타격과 가장 잘 맞는 시작 위치 (초)
+  function detectPhase(env, hop, stepSec) {
+    let best = -1, bestP = 0;
+    for (let k = 0; k < 16; k++) {
+      const p = stepSec * k / 16; let sum = 0;
+      for (let t = p; t / hop < env.length; t += stepSec) sum += env[Math.floor(t / hop)];
+      if (sum > best) { best = sum; bestP = p; }
+    }
+    return bestP;
+  }
+  // 음역 [lo, hi] 안에서 가장 그럴듯한 음을 비터비로 이어 고르기 (-1 = 쉼표)
+  function track(sal, minMidi, lo, hi, avoid, rms, rmsRef, restLevel) {
+    const steps = sal.length, n = hi - lo + 1;
+    const bests = new Float64Array(steps);
+    for (let s = 0; s < steps; s++) for (let m = lo; m <= hi; m++) bests[s] = Math.max(bests[s], sal[s][m - minMidi]);
+    const refv = percentile(bests, 0.85) + 1e-9;
+    let score = new Float64Array(n + 1), next = new Float64Array(n + 1);
+    const from = []; const obs = new Float64Array(n + 1);
+    for (let s = 0; s < steps; s++) {
+      const quiet = rms[s] < rmsRef * 0.12;
+      obs[0] = restLevel;
+      for (let i = 1; i <= n; i++) {
+        const m = lo + i - 1;
+        let v = sal[s][m - minMidi] / refv;
+        if (avoid && avoid[s] >= 0 && (m - avoid[s]) % 12 === 0) v *= 0.7;
+        obs[i] = quiet ? 0 : Math.min(1.5, v);
+      }
+      const fr = new Int16Array(n + 1);
+      for (let j = 0; j <= n; j++) {
+        let bestv = -Infinity, arg = 0;
+        if (s === 0) bestv = 0;
+        else for (let i = 0; i <= n; i++) {
+          const tr = i === j ? 0 : (i === 0 || j === 0) ? -0.12 : -0.06 - 0.025 * Math.min(12, Math.abs(i - j));
+          const v = score[i] + tr;
+          if (v > bestv) { bestv = v; arg = i; }
+        }
+        next[j] = bestv + obs[j]; fr[j] = arg;
+      }
+      from.push(fr);
+      const t = score; score = next; next = t;
+    }
+    const res = new Int16Array(steps);
+    let cur = 0, bv = -Infinity;
+    for (let j = 0; j <= n; j++) if (score[j] > bv) { bv = score[j]; cur = j; }
+    for (let s = steps - 1; s >= 0; s--) { res[s] = cur === 0 ? -1 : lo + cur - 1; cur = from[s][cur]; }
+    return res;
+  }
+  // 배음 합산 점수 (기본음이 약하면 한 옥타브 아래로 잘못 잡힌 것이라 깎음)
+  function salience(mag, rate, minMidi, maxMidi, harmonics) {
+    const N = mag.length * 2, sv = new Float64Array(maxMidi - minMidi + 1);
+    for (let m = minMidi; m <= maxMidi; m++) {
+      const f0 = 440 * Math.pow(2, (m - 69) / 12);
+      let sum = 0, w = 1, fund = 0;
+      for (let h = 1; h <= harmonics; h++, w *= 0.8) {
+        const b = f0 * h * N / rate;
+        if (b >= N / 2 - 2) break;
+        const k = Math.round(b), pk = Math.max(mag[k], mag[k - 1], mag[k + 1]);
+        if (h === 1) fund = pk;
+        sum += w * pk;
+      }
+      sv[m - minMidi] = sum * (0.55 + 0.45 * Math.min(1, fund / (sum / 2.5 + 1e-9)));
+    }
+    return sv;
+  }
+  // 이 음의 배음 자리에서 그 음이 낼 만큼 빼기
+  function removePartials(mag, rate, midi) {
+    const N = mag.length * 2, f0 = 440 * Math.pow(2, (midi - 69) / 12), k0 = Math.round(f0 * N / rate);
+    if (k0 < 2 || k0 >= mag.length - 2) return;
+    const a = Math.max(mag[k0], mag[k0 - 1], mag[k0 + 1]);
+    for (let h = 1; h <= 10; h++) {
+      const k = Math.round(f0 * h * N / rate);
+      if (k + 2 >= mag.length) break;
+      const expect = a * Math.pow(0.75, h - 1);
+      for (let j = k - 2; j <= k + 2; j++) mag[j] = Math.max(0, mag[j] - expect * (j === k ? 1 : Math.abs(j - k) === 1 ? 0.8 : 0.4));
+    }
+  }
+  // 화음: 남은 소리에서 멜로디·베이스와 다른 음 중 가장 센 음
+  function harmony(harSal, sal, minMidi, lo, hi, mel, bass, rms, rmsRef) {
+    const steps = harSal.length, res = new Int16Array(steps), melRef = new Float64Array(steps);
+    for (let s = 0; s < steps; s++) for (let m = lo; m <= hi; m++) melRef[s] = Math.max(melRef[s], sal[s][m - minMidi]);
+    const refv = percentile(melRef, 0.85) + 1e-9;
+    for (let s = 0; s < steps; s++) {
+      res[s] = -1;
+      if (rms[s] < rmsRef * 0.12) continue;
+      let best = 0;
+      for (let m = lo; m <= hi; m++) {
+        if (mel[s] >= 0 && (Math.abs(m - mel[s]) % 12 === 0 || Math.abs(m - mel[s]) <= 1)) continue;
+        if (bass[s] >= 0 && Math.abs(m - bass[s]) % 12 === 0) continue;
+        const v = harSal[s][m - minMidi] / refv;
+        if (v > best) { best = v; res[s] = m; }
+      }
+      if (best < 0.3) res[s] = -1;
+      if (res[s] < 0 && s > 0 && res[s - 1] >= 0 && sal[s][res[s - 1] - minMidi] / refv > 0.3) res[s] = res[s - 1];
+    }
+    for (let s = 1; s + 1 < steps; s++) if (res[s - 1] === res[s + 1] && res[s] !== res[s - 1]) res[s] = res[s - 1];
+    return res;
+  }
+  // 음 배열 → 트랙 채널 (같은 음은 이어서 길게, 그 음이 다시 세게 울리면 새로 침)
+  function emit(t, ch, notes, sal, minMidi, rms, vRef, transpose, lo, hi, vMin, vMax) {
+    const steps = notes.length;
+    let s = 0;
+    while (s < steps) {
+      if (notes[s] < 0) { s++; continue; }
+      let e = s + 1;
+      const k = notes[s] - minMidi;
+      while (e < steps && notes[e] === notes[s] && e - s < 16 && sal[e][k] < sal[e - 1][k] * 1.25) e++;
+      put(t, ch, s, fold(notes[s] + transpose, lo, hi), e - s, vMin + Math.round((vMax - vMin) * Math.min(1, rms[s] / vRef)));
+      s = e;
+    }
+  }
+
+  // ================================================================ 오디오 (targetSteps 0 = 곡 전체, bpm 0 = 자동 감지)
+  // progress(문구) 를 부르며 단계마다 화면을 갱신할 틈을 줌
+  async function convertAudio(x, rate, title, targetSteps, bpm, transpose, progress) {
+    const tick = async msg => { if (progress) progress(msg); await new Promise(r => setTimeout(r, 0)); };
+    let peak = 0; for (const v of x) peak = Math.max(peak, Math.abs(v));
+    if (peak < 1e-4) throw new Error('소리가 거의 없는 파일이에요.');
+    for (let i = 0; i < x.length; i++) x[i] /= peak;
+    // 1. 짧은 간격(약 12ms)의 대역별 타격 세기
+    await tick('박자를 찾는 중…');
+    const OnN = 1024, Hop = 256, hopSec = Hop / rate, frames = Math.max(1, Math.floor((x.length - OnN) / Hop));
+    const full = new Float64Array(frames), lowB = new Float64Array(frames), midB = new Float64Array(frames), highB = new Float64Array(frames);
+    {
+      const win = hann(OnN);
+      let prev = new Float64Array(OnN / 2), cur = new Float64Array(OnN / 2), prevPerc = new Float64Array(OnN / 2), perc = new Float64Array(OnN / 2);
+      const med = new Float64Array(9), re = new Float64Array(OnN), im = new Float64Array(OnN), binHz = rate / OnN;
+      for (let f = 0; f < frames; f++) {
+        const o = f * Hop;
+        for (let i = 0; i < OnN; i++) { re[i] = x[o + i] * win[i]; im[i] = 0; }
+        fft(re, im);
+        let a = 0, l = 0, m = 0, h = 0;
+        for (let k = 1; k < OnN / 2; k++) cur[k] = Math.log(1 + Math.sqrt(re[k] * re[k] + im[k] * im[k]));
+        // 타악기 성분: 주파수 방향 중앙값
+        for (let k = 1; k < OnN / 2; k++) {
+          let c = 0;
+          for (let j = Math.max(1, k - 4); j <= Math.min(OnN / 2 - 1, k + 4); j++) {
+            const v = cur[j]; let q = c++;
+            while (q > 0 && med[q - 1] > v) { med[q] = med[q - 1]; q--; }
+            med[q] = v;
+          }
+          perc[k] = med[c >> 1];
+        }
+        for (let k = 1; k < OnN / 2; k++) {
+          const dd = cur[k] - prev[k], dp = perc[k] - prevPerc[k], hz = k * binHz;
+          if (dd > 0) { a += dd; if (hz >= 35 && hz < 160) l += dd; }
+          if (dp > 0) { if (hz >= 1000 && hz < 4500) m += dp; else if (hz >= 5500) h += dp; }
+        }
+        let sw = prev; prev = cur; cur = sw; sw = prevPerc; prevPerc = perc; perc = sw;
+        full[f] = a; lowB[f] = l; midB[f] = m; highB[f] = h;
+        if ((f & 2047) === 2047) await tick('박자를 찾는 중… ' + Math.round(f * 100 / frames) + '%');
+      }
+    }
+    // 2. 템포와 박자 위치
+    const tempo = bpm > 0 ? bpm : detectTempo(full, hopSec), stepSec = 60 / tempo / 4, phase = detectPhase(full, hopSec, stepSec);
+    let steps = targetSteps > 0 ? targetSteps : Math.floor((x.length / rate - phase) / stepSec);
+    steps = Math.max(16, Math.min(MAX_STEPS, steps));
+    const tr = RomMusic.newTrack(title, steps, Math.round(tempo));
+    // 3. 스텝마다 FFT → 음 높이별 배음 합산 점수
+    await tick('음 높이를 찾는 중…');
+    const N = 4096, MinMidi = 28, MaxMidi = 96;
+    const sal = [], rms = new Float64Array(steps), win4 = hann(N), re4 = new Float64Array(N), im4 = new Float64Array(N), mag4 = new Float64Array(N / 2);
+    const spectrum = s => {
+      const c = Math.floor((phase + (s + 0.5) * stepSec) * rate);
+      let e = 0;
+      for (let i = 0; i < N; i++) { const q = c - N / 2 + i, v = q >= 0 && q < x.length ? x[q] : 0; re4[i] = v * win4[i]; im4[i] = 0; e += v * v; }
+      fft(re4, im4);
+      for (let k = 0; k < N / 2; k++) mag4[k] = Math.sqrt(Math.sqrt(re4[k] * re4[k] + im4[k] * im4[k]));
+      return Math.sqrt(e / N);
+    };
+    for (let s = 0; s < steps; s++) {
+      rms[s] = spectrum(s); sal.push(salience(mag4, rate, MinMidi, MaxMidi, 6));
+      if ((s & 255) === 255) await tick('음 높이를 찾는 중… ' + Math.round(s * 100 / steps) + '%');
+    }
+    const rmsRef = percentile(rms, 0.6);
+    // 4. 베이스 → 멜로디 순서로 음 고르기
+    await tick('멜로디·베이스를 나누는 중…');
+    const bass = track(sal, MinMidi, 28, 52, null, rms, rmsRef, 0.35);
+    const mel = track(sal, MinMidi, 55, 90, bass, rms, rmsRef, 0.28);
+    await tick('화음을 찾는 중…');
+    const harSal = [];
+    for (let s = 0; s < steps; s++) {
+      spectrum(s);
+      if (bass[s] >= 0) removePartials(mag4, rate, bass[s]);
+      if (mel[s] >= 0) removePartials(mag4, rate, mel[s]);
+      harSal.push(salience(mag4, rate, MinMidi, MaxMidi, 4));
+      if ((s & 255) === 255) await tick('화음을 찾는 중… ' + Math.round(s * 100 / steps) + '%');
+    }
+    const har = harmony(harSal, sal, MinMidi, 48, 79, mel, bass, rms, rmsRef);
+    // 5. 같은 음이 이어지면 길게
+    const vRef = percentile(rms, 0.9) + 1e-9;
+    emit(tr, 0, mel, sal, MinMidi, rms, vRef, transpose, 55, 88, 9, 15);
+    emit(tr, 1, har, sal, MinMidi, rms, vRef, transpose, 52, 81, 6, 10);
+    emit(tr, 2, bass, sal, MinMidi, rms, vRef, transpose, 33, 57, 13, 15);
+    // 6. 드럼: 대역별 세기가 주변보다 확 튀면
+    await tick('드럼을 찾는 중…');
+    const lo = new Float64Array(steps), mi = new Float64Array(steps), hi = new Float64Array(steps);
+    for (let s = 0; s < steps; s++) { const st = phase + s * stepSec - stepSec * 0.3; lo[s] = maxIn(lowB, st, stepSec, hopSec); mi[s] = maxIn(midB, st, stepSec, hopSec); hi[s] = maxIn(highB, st, stepSec, hopSec); }
+    const loTop = percentile(lo, 0.95) + 1e-9, loTh = adaptive(lo, 32, 1.7), miTh = adaptive(mi, 32, 1.6), hiTh = adaptive(hi, 32, 1.5);
+    for (let s = 0; s < steps; s++) {
+      let kind = 0, strength = 0;
+      const rl = lo[s] / loTh[s], rm = mi[s] / miTh[s], rh = hi[s] / hiTh[s], lowNorm = lo[s] / loTop;
+      if (rm > 1.5 && rh > 0.7 && (rm > 2.0 || lowNorm < 0.7)) { kind = 2; strength = rm; }
+      else if (rl > 1 && lowNorm > 0.45) { kind = 1; strength = rl; }
+      else if (rh > 1.0) { kind = 3; strength = rh; }
+      if (kind) put(tr, 3, s, kind, 1, Math.floor(Math.min(15, 8 + strength * 3)));
+    }
+    clipDurations(tr);
+    lastInfo = '템포 ' + Math.round(tempo) + ' BPM' + (bpm > 0 ? '' : ' (자동 감지)') + ' · ' + steps + '스텝 (' + Math.round(steps * stepSec) + '초) · 시작 위치 ' + phase.toFixed(2) + '초';
+    return tr;
+  }
+
+  // 음악 파일 → 모노 22050Hz (브라우저가 아는 형식은 모두: MP3, WAV, FLAC, OGG, M4A/AAC …). 앞 3분까지
+  async function decodeFile(buf) {
+    const C = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+    const ctx = new C(1, 1, 22050);
+    let ab;
+    try { ab = await ctx.decodeAudioData(buf.slice(0)); }
+    catch (e) { throw new Error('이 음악 파일을 읽지 못했어요. 브라우저가 이 형식을 모를 수 있어요 (MP3·WAV·FLAC·OGG·M4A 는 대부분 돼요).'); }
+    const n = Math.min(ab.length, ab.sampleRate * MAX_SECONDS), out = new Float32Array(n);
+    for (let c = 0; c < ab.numberOfChannels; c++) { const d = ab.getChannelData(c); for (let i = 0; i < n; i++) out[i] += d[i] / ab.numberOfChannels; }
+    return { x: out, rate: ab.sampleRate };
+  }
+
+  return { MAX_STEPS, convertMidi, convertAudio, decodeFile, get lastInfo() { return lastInfo; } };
+})();
+
+// ===== 71-musicwrite.js
+// ================================================================ 구역 배경음악 · 편집한 곡을 롬 음악 번호에 써 넣기 (RomMusicWrite.cs 와 같음)
+mixin(Rom.prototype, {
+  // 곡 번호마다 몇 개 구역에서 쓰는지
+  musicUsage() {
+    const u = new Map(), seen = new Set();
+    for (const a of this.allAreas) { if (seen.has(a.headerOff)) continue; seen.add(a.headerOff); const id = this.areaMusic(a); u.set(id, (u.get(id) || 0) + 1); }
+    return u;
+  },
+  // 곡 번호를 처음 바꾸기 전에 원래 음악 표를 롬 안에 복사해 둠 (원곡 메뉴·되돌리기용, 저장 후 다시 열어도 남음)
+  ensureMusicBackup() {
+    if (this._musicBackup || RomMusic.findBackup(this.data) >= 0) { this._musicBackup = true; return null; }
+    const count = RomMusic.songCount(this.data);
+    if (!count) return '음악 표를 찾지 못했어요';
+    const sig = RomMusic.BACKUP_SIG, a = this.alloc(sig.length + count * 3 + 1);
+    if (!a) return '롬에 남은 빈 공간이 부족해요';
+    const orig = RomMusic.originalTable(this.data);
+    this.data.set(sig, a.p); this.data.set(orig.subarray(0, count * 3), a.p + sig.length);
+    this.data[a.p + sig.length + count * 3] = a.fill === 0xFF ? 0 : 0xFF;
+    this._musicBackup = true; this.dirty = true;
+    return null;
+  },
+  // 음악 번호 slot 이 offset 의 곡을 가리키게 (원곡 백업을 먼저 만듦). 실패하면 이유
+  setSongSlot(slot, offset) {
+    const err = this.ensureMusicBackup();
+    if (err) return err;
+    if (!RomMusic.setSongPointer(this.data, slot, offset)) return '음악 번호가 올바르지 않아요';
+    this.dirty = true;
+    return null;
+  },
+  restoreSongSlot(slot) { return this.setSongSlot(slot, RomMusic.originalOffset(this.data, slot)); },
+  // 편집한 곡을 빈 공간에 쓰고 음악 번호 slot 이 그 곡을 가리키게 함. 실패하면 이유
+  writeCustomSong(track, slot) {
+    if (RomMusic.songCount(this.data) <= slot || slot < 1) return '음악 번호가 올바르지 않아요';
+    const berr = this.ensureMusicBackup();
+    if (berr) return berr;
+    const size = RomMusic.encode(this.data, track, 0x4000).length, a = this.alloc(size + 1);
+    if (!a) return '롬에 남은 빈 공간이 부족해요 (곡이 ' + size + '바이트)';
+    const bytes = RomMusic.encode(this.data, track, 0x4000 + a.p % 0x4000);
+    this.data.set(bytes, a.p); this.data[a.p + bytes.length] = a.fill === 0xFF ? 0 : 0xFF;
+    RomMusic.setSongPointer(this.data, slot, a.p);
+    this.dirty = true;
+    return null;
+  }
+});
+
 // ===== 90-ui.js
 // ================================================================ 화면 (데스크톱 툴과 같은 배치: 위 버튼줄 · 왼쪽 목록 · 오른쪽 위 지도 · 아래 탭)
 const CSS = `
@@ -1862,8 +4034,9 @@ const CSS = `
 .gsc .tree .it{padding:1px 4px 1px 30px;cursor:pointer;border-radius:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gsc .tree .it:hover,.gsc .tree summary:hover{background:#e8eefc}
 .gsc .tree .it.on:hover,.gsc .tree summary.on:hover{background:var(--accent)}
-.gsc .right{display:grid;grid-template-rows:minmax(0,45fr) minmax(0,55fr);gap:6px;min-height:0}
-.gsc .mapbox{display:flex;flex-direction:column;min-height:0}
+.gsc .right{display:grid;grid-template-rows:minmax(0,45fr) minmax(0,55fr);grid-template-columns:minmax(0,1fr);gap:6px;min-height:0;min-width:0}
+.gsc .mapbox{display:flex;flex-direction:column;min-height:0;min-width:0}
+.gsc .tabbox{min-width:0}
 .gsc .maplabel{color:var(--sub);font-size:13px;display:flex;gap:8px;align-items:center;min-height:26px}
 .gsc .maplabel.pick{color:var(--warn);font-weight:bold}
 .gsc .mapwrap{overflow:auto;flex:1;background:#262626;border-radius:3px;min-height:0}
@@ -1981,9 +4154,9 @@ class App {
     this.toolBtns = [
       this.playBtn = B('▶ 게임으로 확인', 'play', () => this.playTest()),
       B('포켓몬 편집', '', () => this.dialog('포켓몬 편집', () => this.tab_dex())),
-      B('포켓몬 그림', '', () => this.notYet('포켓몬 그림')),
-      B('캐릭터 그림', '', () => this.notYet('캐릭터 그림')),
-      B('타이틀 화면', '', () => this.notYet('타이틀 화면')),
+      B('포켓몬 그림', '', () => this.spriteDialog()),
+      B('캐릭터 그림', '', () => this.owDialog()),
+      B('타이틀 화면', '', () => this.titleDialog()),
       B('기술 편집', '', () => this.dialog('기술 편집', () => this.tab_moves())),
       B('트레이너 편집', '', () => this.dialog('트레이너 편집', () => this.tab_trainer(), () => this.refreshArea())),
       B('타입 상성', '', () => this.dialog('타입 상성', () => this.tab_types())),
@@ -2006,6 +4179,10 @@ class App {
     this.canvas = el('canvas', { class: 'map' });
     this.canvas.addEventListener('click', e => this.mapClick(e));
     this.canvas.addEventListener('dblclick', e => this.mapDblClick(e));
+    // 지도 블록 탭에서는 칠하기
+    for (const t of ['mousedown', 'mousemove', 'mouseup', 'mouseleave', 'contextmenu'])
+      this.canvas.addEventListener(t, e => { if (this.tab === T_BLOCK && this.area && !this.picking) this.blockMouse(t, e); });
+    document.addEventListener('mouseup', e => { if (this.blk && (this.blk.painting || this.blk.rectStart)) this.blockMouse('mouseup', e); });
     const mapBox = el('div', { class: 'mapbox' }, this.mapLabel, this.mapWrap);
 
     // 오른쪽 아래: 탭
@@ -2045,14 +4222,20 @@ class App {
     if (!this.rom || !this.host.isConnected) return;
     if (e.key === 'Escape') {
       if (this.picking) { this.picking = null; this.setMapLabel(); this.say('취소했어요'); return; }
-      const dlg = this.host.querySelector('.dlg-bg');
-      if (dlg) { dlg.querySelector('.dlg-close').click(); return; }
+      const dlgs = this.host.querySelectorAll('.dlg-bg');
+      if (dlgs.length) { dlgs[dlgs.length - 1].querySelector('.dlg-close').click(); return; }
       if (this.host.classList.contains('gsc-full')) this.toggleFull();
       return;
     }
     const t = e.target;
     if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
     if (this.host.querySelector('.dlg-bg')) return;
+    if (this.tab === T_BLOCK) {
+      // 블록 탭에서는 Delete 로 NPC 를 지우지 않음
+      if ((e.key === 'z' || e.key === 'Z') && (e.ctrlKey || e.metaKey)) { e.preventDefault(); this.blockUndo(); }
+      else if ((e.key === 'y' || e.key === 'Y') && (e.ctrlKey || e.metaKey)) { e.preventDefault(); this.blockRedo(); }
+      return;
+    }
     if (e.key === 'Delete' && !e.ctrlKey) { e.preventDefault(); this.deleteSelected(); }
     else if ((e.key === 'z' || e.key === 'Z') && (e.ctrlKey || e.metaKey)) { e.preventDefault(); this.undoDelete(); }
   }
@@ -2065,7 +4248,7 @@ class App {
       try { rom = new Rom(new Uint8Array(r.result), f.name); }
       catch (e) { console.error(e); alert(e.message || String(e)); return; }
       Player.stop();
-      this.rom = rom; this.area = null; this.owner = null; this.spriteCache.clear(); this.undo = [];
+      this.rom = rom; this.area = null; this.owner = null; this.spriteCache.clear(); this.undo = []; this.wt = null; this.evSt = null; this.mapCache = null; this.blk = null;
       this.saveBtn.disabled = false; for (const b of this.toolBtns) b.disabled = false;
       this.search.value = '';
       this.buildTree();
@@ -2150,7 +4333,7 @@ class App {
     l.replaceChildren();
     if (!this.area) { l.textContent = '지도'; return; }
     const zoom = sel([[1, '1배'], [2, '2배'], [3, '3배']], this.scale, v => { this.scale = v; this.drawMap(); });
-    l.append(el('span', { text: this.area.name + '  —  클릭: 고르기 · Delete: 지우기 · Ctrl+Z: 되돌리기' }), el('span', { style: 'flex:1' }), zoom);
+    l.append(el('span', { text: this.area.name + (this.tab === T_BLOCK ? '  —  블록 칠하기 모드 (지도 블록 탭)' : '  —  클릭: 고르기 · Delete: 지우기 · Ctrl+Z: 되돌리기') }), el('span', { style: 'flex:1' }), zoom);
   }
   showMap() { this.mapWrap.replaceChildren(this.canvas); this.drawMap(); this.mapWrap.scrollTop = this.mapWrap.scrollLeft = 0; }
 
@@ -2167,17 +4350,16 @@ class App {
 
   drawMap() {
     const a = this.area; if (!a) return;
-    const img = this.rom.gfx.renderMap(a);
+    const base = this.mapBase(a);
     const s = this.scale, cv = this.canvas;
-    if (!img) { this.mapWrap.replaceChildren(el('div', { class: 'empty', text: '이 구역 지도는 그릴 수 없어요' })); return; }
+    if (!base) { this.mapWrap.replaceChildren(el('div', { class: 'empty', text: '이 구역 지도는 그릴 수 없어요' })); return; }
     if (cv.parentElement !== this.mapWrap) this.mapWrap.replaceChildren(cv);
-    cv.width = img.width * s; cv.height = img.height * s;
+    if (cv.width !== base.width * s || cv.height !== base.height * s) { cv.width = base.width * s; cv.height = base.height * s; }
     const g = cv.getContext('2d');
     g.imageSmoothingEnabled = false;
-    const base = document.createElement('canvas'); base.width = img.width; base.height = img.height;
-    base.getContext('2d').putImageData(img, 0, 0);
     g.drawImage(base, 0, 0, cv.width, cv.height);
     const T = 16 * s;
+    if (this.tab === T_BLOCK) { this.drawBlockMode(g, T); return; }
     const drawObj = (o, faded) => {
       if (o.x < 0 || o.y < 0) return;
       g.globalAlpha = faded ? 0.45 : 1;
@@ -2199,12 +4381,25 @@ class App {
     };
     for (const o of a.extras) drawObj(o, true);
     for (const o of a.owners) drawObj(o, false);
+    this.drawOverlay(g, T);
     if (this.owner && this.owner.x >= 0) {
       const wrap = this.mapWrap, x = this.owner.x * T, y = this.owner.y * T;
       if (x < wrap.scrollLeft || x > wrap.scrollLeft + wrap.clientWidth - T || y < wrap.scrollTop || y > wrap.scrollTop + wrap.clientHeight - T) {
         wrap.scrollLeft = x - wrap.clientWidth / 2; wrap.scrollTop = y - wrap.clientHeight / 2;
       }
     }
+  }
+
+  // 지도 그림 (1배, 구역마다 기억). 블록을 바꾸면 mapCache 를 비움
+  mapBase(a) {
+    this.mapCache = this.mapCache || new Map();
+    if (!this.mapCache.has(a)) {
+      const img = this.rom.gfx.renderMap(a);
+      let c = null;
+      if (img) { c = document.createElement('canvas'); c.width = img.width; c.height = img.height; c.getContext('2d').putImageData(img, 0, 0); }
+      this.mapCache.set(a, c);
+    }
+    return this.mapCache.get(a);
   }
 
   mapXY(e) {
@@ -2219,11 +4414,16 @@ class App {
     if (!this.area) return;
     const [x, y] = this.mapXY(e);
     if (this.picking) { const act = this.picking; this.picking = null; this.setMapLabel(); act(x, y); return; }
+    if (this.tab === T_BLOCK) return;
     const a = this.area;
     const hit = a.owners.find(o => o.x === x && o.y === y) || a.extras.find(o => o.x === x && o.y === y);
+    const wh = this.wtHit(x, y);
+    if (wh && (this.tab === T_WARP || !hit)) { this.wtSelect(wh); this.say(wh.coord != null ? '타일 트리거 T' + (wh.coord + 1) : '워프 W' + (wh.warp + 1) + ' · 더블클릭하면 도착 지도'); return; }
     if (!hit) { this.say('(' + x + ', ' + y + ') 칸'); return; }
     this.selectArea(a, hit);
-    // 지도에서 고른 NPC 에 맞는 탭으로
+    // 지도에서 고른 NPC 에 맞는 탭으로: 트리거로 다가오는 NPC → 워프·트리거, 그 밖의 NPC → NPC · 이벤트
+    const ti = this.triggerFor(hit);
+    if (ti >= 0) { this.wt.sub = 'trig'; this.wt.selC = ti; this.setTab(T_WARP); this.drawMap(); this.say("'" + hit.name + "' 은(는) 타일 트리거 T" + (ti + 1) + ' 을(를) 밟으면 다가오는 NPC예요'); return; }
     if (this.rom.giftsOf(hit).length) this.setTab(T_GIFT);
     else if (hit.mart != null) this.setTab(T_SHOP);
     else if (hit.eventOff >= 0) this.setTab(T_EVENT);
@@ -2231,7 +4431,11 @@ class App {
       this.say("⚠ '" + hit.name + "' 은(는) 게임에선 다른 인물로 보여요. NPC · 이벤트 탭에서 [모습·방향 적용]을 누르면 이 지역 빈 칸에 넣어 고쳐요", true);
     else this.say(hit.name + ' (' + x + ', ' + y + ')');
   }
-  mapDblClick() { }
+  mapDblClick(e) {
+    if (!this.area || this.picking || this.tab === T_BLOCK) return;
+    const [x, y] = this.mapXY(e), wh = this.wtHit(x, y);
+    if (wh && wh.warp != null) this.warpPreview(wh.warp);
+  }
 
   // ---------------------------------------------------------------- Delete 로 지우기 · Ctrl+Z 되돌리기
   deleteSelected() {
@@ -2242,6 +4446,7 @@ class App {
     const err = this.rom.deleteOwner(a, o);
     if (err) { this.say(err, true); return; }
     this.undo.push({ a, off, snap, name: o.name });
+    this.wtAfterNpc();
     this.owner = null; this.buildTree(); this.drawMap(); this.setTab(this.tab);
     this.say("'" + o.name + "' 을(를) 지웠어요  ·  되돌리려면 Ctrl+Z");
   }
@@ -2251,13 +4456,19 @@ class App {
     this.rom.data.set(u.snap, u.off); this.rom.dirty = true;
     this.rom.loadArea(u.a);
     this.area = u.a; this.owner = u.a.owners.find(x => x.name === u.name) || null;
+    this.wtAfterNpc();
     this.buildTree(); this.showMap(); this.setTab(this.tab);
     this.say("'" + u.name + "' 을(를) 되돌렸어요");
   }
 
   // ---------------------------------------------------------------- 탭
   setTab(i) {
+    const prev = this.tab;
     this.tab = i;
+    if (this.area && prev !== i && (prev === T_BLOCK || i === T_BLOCK || prev === T_WARP || i === T_WARP)) {
+      if (prev === T_BLOCK) this.blockEndStroke();
+      this.drawMap(); this.setMapLabel();
+    }
     this.tabBtns.forEach((b, k) => b.classList.toggle('on', k === i));
     const p = this.page;
     p.replaceChildren();
@@ -2299,8 +4510,6 @@ class App {
     return box;
   }
 
-  pageBlock() { return el('div', { class: 'hint', text: '지도 블록 칠하기는 웹판에 아직 옮기는 중이에요. 데스크톱 툴에서는 쓸 수 있어요.' }); }
-  pageWarp() { return el('div', { class: 'hint', text: '워프 · 트리거 편집은 웹판에 아직 옮기는 중이에요. 데스크톱 툴에서는 쓸 수 있어요.' }); }
 
   // ---------------------------------------------------------------- 창 (데스크톱의 따로 뜨는 창)
   dialog(title, make, onClose, small) {
@@ -2343,8 +4552,6 @@ class App {
     else this.say(name + ' 로 저장했어요 (내려받기)');
     this.buildTree(); this.setTab(this.tab);
   }
-
-  playTest() { this.notYet('게임으로 확인 (브라우저 안 에뮬레이터)'); }
 }
 
 // ===== 95-tabs.js
@@ -2886,54 +5093,6 @@ Object.assign(App.prototype, {
         el('button', { text: '안 바꾸기', onclick: () => close() }), ok)), after);
   },
 
-  // ---------------------------------------------------------------- [NPC · 이벤트] 탭
-  pageEvent() {
-    const rom = this.rom, a = this.area, o = this.owner, box = el('div');
-    if (!a) { box.append(el('div', { class: 'hint', text: '왼쪽에서 구역을 고르세요.' })); return box; }
-    if (!o || o.eventOff < 0) {
-      box.append(el('div', { class: 'ttl', text: a.regionName + '  ›  ' + a.name }), el('div', { class: 'hint', text: '지도에서 NPC 나 표지판을 클릭하면 모습·자리를 바꿀 수 있어요.' }));
-      const region = rom.outdoorRegionText(a);
-      if (region) box.append(el('div', { class: 'hint', style: 'margin-top:6px', text: region }));
-      return box;
-    }
-    const note = el('div', { class: 'hint', style: 'margin-top:6px' });
-    const idx = o.isSign ? '표지판' : 'NPC';
-    box.append(el('div', { class: 'ttl', text: o.name }),
-      el('div', { class: 'hint', text: idx + ' · 위치 (' + o.x + ', ' + o.y + ')' + (o.trainer ? ' · 트레이너 ' + rom.trainerLabel(o.trainer.cls, o.trainer.id) : '') + (o.mart != null ? ' · 상점 ' + (o.mart + 1) + '번' : '') }));
-    if (!o.isSign) {
-      const sprites = Object.keys(SPRITE_NAMES).map(Number).sort((x, y) => x - y);
-      if (!sprites.includes(o.sprite)) sprites.unshift(o.sprite);
-      const allowed = rom.outdoorSprites(a);
-      const look = sel(sprites.map(s => [s, (allowed && allowed.includes(s) ? '✓ ' : '') + Names.sprite(s)]), o.sprite);
-      const MOVE_IDS = [6, 7, 8, 9, 3, 2], MOVE_NAMES = ['아래를 보고 서 있음', '위를 보고 서 있음', '왼쪽을 보고 서 있음', '오른쪽을 보고 서 있음', '제자리에서 두리번', '돌아다님'];
-      const mv = sel(MOVE_IDS.map((m, i) => [m, MOVE_NAMES[i]]).concat(MOVE_IDS.includes(o.move) ? [] : [[o.move, '특별한 움직임 (그대로)']]), o.move);
-      const pic = el('canvas', { width: 16, height: 16, style: 'width:32px;height:32px;background:#eee;border-radius:4px;image-rendering:pixelated' });
-      const drawPic = () => { const g = pic.getContext('2d'); g.clearRect(0, 0, 16, 16); const sp = this.spriteImg(+look.value, o.pal); if (sp) g.drawImage(sp, 0, 0); };
-      look.addEventListener('change', drawPic); drawPic();
-      const apply = el('button', { class: 'apply', text: '모습·방향 적용', onclick: () => {
-        const msg = rom.setLook(a, o, +look.value, +mv.value);
-        this.drawMap(); this.setTab(T_EVENT);
-        this.say('NPC를 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.');
-        if (msg) alert(msg);
-      } });
-      box.append(el('div', { class: 'bar' }, el('span', { text: '모습' }), pic, look, el('span', { text: '방향' }), mv, apply));
-      const region = rom.outdoorRegionText(a);
-      if (region) note.textContent = region + '\n(✓ = 이 지역 바깥 지도에서 그대로 보이는 모습)';
-    }
-    box.append(el('div', { class: 'bar' },
-      el('button', { text: '📍 지도에서 자리 옮기기', onclick: () => this.startPick('지도에서 자리를 클릭하세요', (x, y) => {
-        rom.moveOwner(o, x, y); this.drawMap(); this.setTab(T_EVENT);
-        this.say("'" + o.name + "' 을(를) (" + x + ', ' + y + ') 로 옮겼어요. [저장하기]를 눌러야 롬 파일에 기록돼요.');
-      }) }),
-      el('button', { text: '🗑 지우기 (Delete)', onclick: () => this.deleteSelected() }),
-      o.trainer ? el('button', { text: '⚔ 이 트레이너 팀 고치기', onclick: () => { this.pick = { trainer: o.trainer }; this.dialog('트레이너 편집', () => this.tab_trainer(), () => this.refreshArea()); } }) : null,
-      o.mart != null ? el('button', { text: '🏪 상점 탭', onclick: () => this.setTab(T_SHOP) }) : null,
-      rom.giftsOf(o).length ? el('button', { text: '🎁 선물 포켓몬 탭', onclick: () => this.setTab(T_GIFT) }) : null),
-      note,
-      el('div', { class: 'hint', style: 'margin-top:8px', text: '새 NPC 추가 · 이벤트 종류 바꾸기는 웹판에 옮기는 중이에요.' }));
-    return box;
-  },
-
   // ---------------------------------------------------------------- 오박사 인트로 (IntroForm)
   introDialog() {
     const rom = this.rom, box = el('div');
@@ -2961,42 +5120,1702 @@ Object.assign(App.prototype, {
     box.append(el('div', { class: 'bar', style: 'margin-top:12px;justify-content:flex-end' }, ok));
     show();
     return box;
-  },
-
-  // ---------------------------------------------------------------- BGM 에디터 (원곡 듣기 · 구역 음악 바꾸기)
-  bgmEditor() {
-    const rom = this.rom, n = RomMusic.songCount(rom.data), box = el('div');
-    if (!n) { box.append(el('div', { text: '이 롬에서 음악 표를 찾지 못했어요.' })); return box; }
-    const a = this.area;
-    if (a) {
-      const cur = rom.areaMusic(a);
-      const s = sel(Array.from({ length: n }, (_, i) => [i, hex2(i) + ' ' + RomMusic.name(i)]), cur, v => { rom.setAreaMusic(a, v); this.say(a.name + ' 배경음악 → ' + RomMusic.name(v) + '. [저장하기]를 눌러야 롬 파일에 기록돼요.'); });
-      const play = el('button', { text: '▶ 듣기', onclick: () => this.playSong(+s.value, play) });
-      box.append(el('fieldset', null, el('legend', { text: '지금 구역: ' + a.regionName + ' › ' + a.name }),
-        el('div', { class: 'bar' }, el('span', { text: '이 구역 배경음악' }), s, play, el('button', { text: '■', onclick: () => Player.stop() }))));
-    }
-    box.append(el('div', { class: 'bar' }, el('button', { text: '■ 멈춤', onclick: () => Player.stop() }),
-      el('span', { class: 'hint', text: '곡을 누르면 게임 사운드 칩과 똑같은 방식으로 합성해서 들려줘요. (음악 파일 변환·게임에 넣기는 웹판에 옮기는 중)' })));
-    const done = new Set();
-    let selEl = null;
-    const item = id => {
-      done.add(id);
-      const d = el('div', { class: 'song', title: '눌러서 듣기' }, el('span', { class: 'n', text: hex2(id) }), el('span', { text: RomMusic.name(id) }),
-        RomMusic.isReplaced(rom.data, id) ? el('span', { class: 'chg', text: '★바뀜' }) : null);
-      d.addEventListener('click', () => { if (selEl) selEl.classList.remove('on'); selEl = d; d.classList.add('on'); this.playSong(id); });
-      return d;
-    };
-    for (const [gname, ids] of RomMusic.groups) {
-      const list = ids.filter(i => i < n);
-      if (list.length) box.append(el('div', { class: 'grp', text: gname }), el('div', { class: 'songs' }, ...list.map(item)));
-    }
-    const rest = []; for (let i = 1; i < n; i++) if (!done.has(i)) rest.push(i);
-    if (rest.length) box.append(el('div', { class: 'grp', text: '기타' }), el('div', { class: 'songs' }, ...rest.map(item)));
-    return box;
   }
 });
 
-// ===== 99-mount.js
+// ===== 97-eventpanel.js
+// ================================================================ [NPC · 이벤트] 탭 (EventPanel.cs · NewPartyForm.cs · SpotPickForm.cs 와 같음)
+const LOOK_MOVE_IDS = [6, 7, 8, 9, 3, 2];
+const LOOK_MOVE_NAMES = ['아래를 보고 서 있음', '위를 보고 서 있음', '왼쪽을 보고 서 있음', '오른쪽을 보고 서 있음', '제자리에서 두리번', '돌아다님'];
+const EV_SAMPLES = [
+  ['안녕! 오늘 날씨\n정말 좋구나!'],
+  ['처음 보는 얼굴이네!\n\n나는 이 마을에\n오래 살았단다', '또 왔구나!\n잘 지내지?'],
+  ['포켓몬을\n좋아하니?', '그렇구나!\n나도 정말 좋아해!', '그래…?\n아쉽네…'],
+  ['여행에 도움이\n될 거야!\n받아 두렴', '잘 쓰고 있니?'],
+  ['그 아이템을 주면\n좋은 걸 줄게!\n바꿀래?', '고마워!\n소중히 쓸게!', '그래? 아쉽네…'],
+  ['이 포켓몬을\n키워 줄 수 있니?', '잘 키워 주렴!'],
+  ['크와아앙!'],
+  ['나랑 승부하자!', '졌다…!', '다음엔 안 질 거야!'],
+  [], [],
+  ['다른 곳으로\n데려다줄까?', '필요하면\n언제든 말해!'],
+  ['눈이 마주쳤다!\n승부다!', '으윽 졌다…', '너 정말 강하구나!']];
+const EV_SPRITE_FOR = [0x27, 0x2F, 0x28, 0x40, 0x2B, 0x10, 0x9E, 0x35, 0x39, 0x37, 0x3F, 0x25];
+const EV_DESCS = [
+  '말 걸면 대사를 해요.',
+  '처음 말 걸 때와 그 다음부터 대사가 달라요.',
+  '질문 뒤에 예/아니요가 나오고, 고른 것에 따라 다른 대사를 해요.',
+  '말 걸면 아이템을 줘요 (가방이 꽉 차면 다음에 다시 줌). 한 번만이면 받은 뒤에는 다른 대사, 여러 번이면 말 걸 때마다 줘요.',
+  "예를 고르고 '받을 아이템'을 가지고 있으면 1개 가져가고 '줄 아이템'을 줘요. 한 번만 또는 여러 번.",
+  '말 걸면 포켓몬을 줘요 (손에 6마리면 PC 로 감). 기술 4개를 하나하나 정할 수 있어요 (PC 로 간 경우엔 기본 기술). 한 번만 또는 여러 번.',
+  '말 걸면 울음소리 뒤에 야생 포켓몬 배틀 (잡을 수 있어요). 한 번만이면 끝나고 사라지고, 여러 번이면 말 걸 때마다 배틀해요. 모습은 포켓몬 모양을 고르면 좋아요.',
+  '말 걸면 트레이너 배틀. 한 번만이면 이긴 뒤엔 다른 대사(또는 사라짐), 여러 번이면 말 걸 때마다 배틀. 눈이 마주치면 다가오는 트레이너는 맨 아래 종류예요.',
+  "말 걸면 상점이 열려요. 파는 물건은 '프렌들리숍' 탭의 목록 중 하나예요 (목록을 고치면 같은 목록을 쓰는 상점도 같이 바뀜).",
+  '포켓몬센터 간호순과 똑같이 포켓몬을 회복해 줘요 (대사도 같아요).',
+  '예를 고르면 다른 구역의 원하는 자리로 순간이동해요. 도착 구역을 고르고 [지도에서 도착 위치 고르기…]로 그 지도에서 직접 클릭하세요.',
+  '게임 기본 트레이너처럼, 시야 안에서 눈이 마주치면 다가와서 배틀해요. 이기면 다음부터는 배틀 후 대사 (또는 사라짐). 한 방향을 보고 서 있어야 해요.'];
+const EV_SPRITES = (() => { const l = []; for (let i = 1; i <= 0x5F; i++) if (i !== 0x53) l.push(i); for (let i = 0x80; i < 0x80 + 0x23; i++) l.push(i); return l; })();
+
+Object.assign(App.prototype, {
+  // 탭 상태 (데스크톱처럼 다른 NPC 를 골라도 적던 내용이 남음)
+  evState() {
+    if (!this.evSt) {
+      this.evSt = { kind: 0, t: ['', '', ''], item: 17, qty: 1, item2: 4, qty2: 1, species: 25, level: 5, moves: null, team: 30, mart: 0,
+        dest: 0, wx: 0, wy: 0, repeat: false, vanish: false, sight: 3, sprite: 0x27, move: 0, loadedFlag: -1, loadedOwner: null, msg: '', bad: false };
+      this.evSetKind(0);
+    }
+    return this.evSt;
+  },
+  evSetKind(k) {
+    const st = this.evSt;
+    st.kind = k;
+    const s = EV_SAMPLES[k];
+    st.t = [s[0] || '', s[1] || '', s[2] || ''];
+    if (k === EV.Wild) st.level = 30; else if (k === EV.Pokemon) st.level = 5;
+    if (k === EV.EyeTrainer && st.move > 3) st.move = 0;
+    st.sprite = EV_SPRITE_FOR[k]; st.moves = null; st.msg = '';
+  },
+  evMsg(text, bad) { const st = this.evState(); st.msg = text; st.bad = bad; },
+  evMake() {
+    const st = this.evState(), rom = this.rom;
+    const e = Object.assign(newEvent(st.kind), { t1: st.t[0], t2: st.t[1], t3: st.t[2], item: st.item, qty: st.qty, item2: st.item2, qty2: st.qty2,
+      species: st.species, level: st.level, mart: st.mart, warpX: st.wx, warpY: st.wy, sight: st.sight,
+      vanish: st.vanish && evCanVanish(st.kind) && st.kind !== EV.Wild, repeat: st.repeat && evCanRepeat(st.kind) });
+    if (e.kind === EV.Pokemon) e.moves = (st.moves || rom.defaultMoves(st.species, st.level)).slice();
+    const t = rom.trainerList()[st.team]; if (t) { e.trainerClass = t.cls; e.trainerId = t.id; }
+    const d = rom.allAreas[st.dest]; if (d) { e.warpGroup = d.group; e.warpMap = d.map; }
+    return e;
+  },
+
+  pageEvent() {
+    const rom = this.rom, a = this.area, o = this.owner, st = this.evState();
+    const k = st.kind, rerender = () => this.setTab(T_EVENT);
+    const kinds = el('div', { class: 'list', style: 'border:1px solid var(--line);border-radius:4px;max-height:none;width:250px;font-size:14px' });
+    EV_NAMES.forEach((n, i) => kinds.append(el('div', { class: 'it' + (i === k ? ' on' : ''), text: n, onclick: () => { this.evSetKind(i); rerender(); } })));
+    const left = el('div', null, el('b', { text: '이벤트 종류' }), kinds);
+    const col = el('div', { style: 'flex:1;min-width:0' });
+
+    // ---- 지도에서 고른 NPC
+    const info = el('fieldset', null, el('legend', { text: '지도에서 고른 NPC' }));
+    let evInfo = null;
+    if (!a || !o || o.eventOff < 0) info.append(el('b', { text: '지도에서 NPC를 클릭하면 어떤 NPC 인지, 무슨 이벤트를 하는지 나와요' }));
+    else {
+      try { evInfo = rom.readNpcEvent(a, o); } catch (x) { evInfo = { summary: '읽지 못함 (' + x.message + ')', lines: [], ev: null }; }
+      const idx = rom.eventIndex(a, o), mi = LOOK_MOVE_IDS.indexOf(o.move);
+      info.append(el('b', { text: o.name + '  ·  ' + evInfo.summary }),
+        el('div', { style: 'white-space:pre-line;margin:2px 0 6px', text: (o.isSign ? '표지판 ' + idx + '번 · 위치 (' + o.x + ', ' + o.y + ')'
+          : 'NPC ' + idx + '번 · 모습 ' + Names.sprite(o.sprite) + ' · 위치 (' + o.x + ', ' + o.y + ') · ' + (mi >= 0 ? LOOK_MOVE_NAMES[mi] : '특별한 움직임'))
+          + (evInfo.lines.length ? '\n· ' + evInfo.lines.join('\n· ') : '') }));
+      const loadBtn = el('button', { class: 'play', text: '이 이벤트 불러와서 고치기', onclick: () => this.evLoad(evInfo, o) });
+      loadBtn.disabled = !evInfo.ev || !o.isObject;
+      info.append(el('div', { class: 'bar' }, loadBtn,
+        el('button', { text: '지도에서 위치 옮기기', onclick: () => {
+          this.evMsg('옮길 자리를 지도에서 클릭하세요 (Esc = 취소)'); rerender();
+          this.startPick('지도에서 자리를 클릭하세요', (x, y) => {
+            const idx = rom.eventIndex(a, o), note = rom.moveOwner(o, x, y);
+            this.evMsg(note || '', !!(note && note.startsWith('⚠')));
+            this.afterNpcChange(a, a.owners.includes(o) || a.extras.includes(o) ? o : rom.ownerAt(a, false, idx));
+          });
+        } }),
+        el('button', { text: '이 NPC 지우기', style: 'color:var(--warn)', onclick: () => { if (confirm("'" + o.name + "' 을(를) 지울까요? (지운 뒤 Ctrl+Z 로 되돌릴 수 있어요)")) this.deleteSelected(); } })));
+      if (o.isObject) {
+        const allowed = rom.outdoorSprites(a);
+        const ids = EV_SPRITES.includes(o.sprite) ? EV_SPRITES.slice() : [o.sprite, ...EV_SPRITES];
+        ids.sort((x, y) => (allowed && allowed.includes(x) ? 0 : 1) - (allowed && allowed.includes(y) ? 0 : 1) || ids.indexOf(x) - ids.indexOf(y));
+        const look = sel(ids.map(s => [s, (allowed && allowed.includes(s) ? '✓ ' : '') + Names.sprite(s)]), o.sprite);
+        const lookMove = sel(LOOK_MOVE_NAMES.map((n, i) => [i, n]), mi >= 0 ? mi : 0);
+        const pic = this.spriteCanvas(o.sprite, o.pal);
+        look.addEventListener('change', () => pic.replaceWith(this.spriteCanvas(+look.value, o.pal, pic)));
+        info.append(el('div', { class: 'bar' }, el('span', { text: '모습' }), pic, look, el('span', { text: '방향' }), lookMove,
+          el('button', { text: '모습·방향 적용', onclick: () => {
+            const note = rom.setLook(a, o, +look.value, LOOK_MOVE_IDS[+lookMove.value]);
+            this.evMsg(note || '', note && note.startsWith('⚠'));
+            this.afterNpcChange(a, o);
+          } })));
+        const text = rom.outdoorRegionText(a);
+        if (text) {
+          const wrong = allowed && !allowed.includes(o.sprite);
+          info.append(el('div', { class: 'hint', style: wrong ? 'color:#d9480f' : '', text: (wrong ? "⚠ 이 NPC 의 모습 '" + Names.sprite(o.sprite) + "' 은(는) 이 지역 목록에 없어서 게임에선 다른 인물로 보여요 (지도의 ? 표시). ✓ 붙은 모습은 그대로 보여요.\n" : '✓ 붙은 모습은 이 지역에서 게임에 그대로 보여요.\n') + text }));
+        }
+      }
+    }
+    col.append(info, el('div', { class: 'hint', style: 'margin:4px 0 8px', text: EV_DESCS[k] }));
+
+    // ---- 종류별 칸
+    const itemOpts = this.itemOptions().slice(1).map(([v, t]) => [v, pad3(v) + ' ' + t]);
+    const monOpts = this.monOptions(false);
+    if (k === EV.Item || k === EV.Trade) {
+      const r = el('div', { class: 'bar' }, el('span', { text: k === EV.Trade ? '받을 아이템' : '줄 아이템' }), sel(itemOpts, st.item, v => st.item = v));
+      if (k === EV.Item) r.append(el('span', { text: '개수' }), num(st.qty, 1, 99, v => st.qty = v));
+      col.append(r);
+    }
+    if (k === EV.Trade) col.append(el('div', { class: 'bar' }, el('span', { text: '줄 아이템' }), sel(itemOpts, st.item2, v => st.item2 = v), el('span', { text: '개수' }), num(st.qty2, 1, 99, v => st.qty2 = v)));
+    if (k === EV.Pokemon || k === EV.Wild)
+      col.append(el('div', { class: 'bar' }, el('span', { text: '포켓몬' }), sel(monOpts, st.species, v => { st.species = v; st.moves = null; rerender(); }),
+        el('span', { text: '레벨' }), num(st.level, 1, 100, v => { st.level = v; st.moves = null; rerender(); })));
+    if (k === EV.Pokemon) {
+      if (!st.moves) st.moves = rom.defaultMoves(st.species, st.level);
+      const mo = this.moveOptions().map(([v, t]) => [v, v ? pad3(v) + ' ' + rom.moveName(v) : t]);
+      col.append(el('div', { class: 'bar' }, el('span', { text: '기술' }), ...[0, 1, 2, 3].map(i => { const s = sel(mo, st.moves[i], v => st.moves[i] = v); s.style.width = '140px'; return s; }),
+        el('button', { text: '기본 기술로', onclick: () => { st.moves = null; rerender(); } })));
+    }
+    if (k === EV.Trainer || k === EV.EyeTrainer) {
+      const teams = rom.trainerList();
+      if (st.team >= teams.length) st.team = Math.max(0, teams.length - 1);
+      const r = el('div', { class: 'bar' }, el('span', { text: '트레이너 팀' }), (() => { const s = sel(teams.map((t, i) => [i, t.label]), st.team, v => st.team = v); s.style.width = '440px'; return s; })(),
+        el('button', { text: '새 팀 만들기…', onclick: () => this.newPartyDialog((cls, id) => {
+          const i = rom.trainerList().findIndex(t => t.cls === cls && t.id === id);
+          if (i >= 0) st.team = i;
+          this.evMsg('새 트레이너 팀을 만들었어요 (' + rom.trainerLabel(cls, id) + ')'); rerender();
+        }) }));
+      if (k === EV.EyeTrainer) r.append(el('span', { text: '시야' }), num(st.sight, 1, 5, v => st.sight = v), el('span', { text: '칸' }));
+      col.append(r);
+    }
+    if (k === EV.Shop) {
+      const spots = this.martSpots();
+      const ms = sel(rom.marts.map(m => [m.id, m.id + '번 [' + (spots.has(m.id) ? spots.get(m.id)[0][0].regionName : '쓰는 곳 없음') + '] ' + m.items.slice(0, 5).map(i => rom.itemName(i)).join(', ') + (m.items.length > 5 ? ' …' : '')]), st.mart, v => st.mart = v);
+      ms.style.width = '440px';
+      col.append(el('div', { class: 'bar' }, el('span', { text: '파는 물건' }), ms));
+    }
+    if (k === EV.Warp) {
+      const areas = rom.allAreas, d = areas[st.dest];
+      const note = el('span', { class: 'hint', text: d ? '(가로 0~' + (d.width * 2 - 1) + ', 세로 0~' + (d.height * 2 - 1) + ')' : '' });
+      const ds = sel(areas.map((x, i) => [i, x.regionName + ' · ' + x.name]), st.dest, v => { st.dest = v; rerender(); });
+      ds.style.width = '300px';
+      const wx = num(st.wx, 0, 255, v => st.wx = v), wy = num(st.wy, 0, 255, v => st.wy = v);
+      col.append(el('div', { class: 'bar' }, el('span', { text: '도착 구역' }), ds,
+        el('button', { text: '지도에서 도착 위치 고르기…', style: 'background:#c8e6ff', onclick: () => this.spotPickDialog(areas[st.dest], st.wx, st.wy, (x, y) => { st.wx = x; st.wy = y; rerender(); }) }),
+        el('span', { text: 'x' }), wx, el('span', { text: 'y' }), wy, note));
+    }
+    // 대사 칸
+    const labels = evTextLabels(k, st.repeat && evCanRepeat(k));
+    labels.forEach((l, i) => {
+      const ta = el('textarea', { spellcheck: 'false', style: 'width:420px;max-width:100%;height:64px;font-size:15px' });
+      ta.value = st.t[i];
+      ta.addEventListener('input', () => st.t[i] = ta.value);
+      col.append(el('div', { style: 'margin-top:6px' }, el('div', { text: l }), ta));
+    });
+    if (labels.length) col.append(el('div', { class: 'hint', text: '엔터 = 다음 줄, 빈 줄 = 다음 말풍선, 한 줄 18자까지. {주인공} {라이벌} 사용 가능' }));
+    if (evCanRepeat(k)) { const [c, l] = check('여러 번 할 수 있게 (체크 안 하면 한 번만)', st.repeat); c.addEventListener('change', () => { st.repeat = c.checked; rerender(); }); col.append(el('div', null, l)); }
+    if (evCanVanish(k) && k !== EV.Wild) { const [c, l] = check('이벤트가 끝나면 NPC가 사라짐 (다시 와도 없음)', st.vanish); c.disabled = st.repeat; c.addEventListener('change', () => st.vanish = c.checked); col.append(el('div', null, l)); }
+
+    // ---- 새 NPC 로 놓기
+    const spSel = sel(EV_SPRITES.map(s => [s, Names.sprite(s)]), st.sprite, v => { st.sprite = v; spPic.replaceWith(spPic = this.spriteCanvas(v, -1)); });
+    let spPic = this.spriteCanvas(st.sprite, -1);
+    const mvSel = sel(LOOK_MOVE_NAMES.map((n, i) => [i, n]), st.move, v => st.move = v);
+    const addBtn = el('button', { class: 'apply', text: '지도에서 자리 골라 새 NPC 추가', onclick: () => this.evAdd() });
+    addBtn.disabled = !a;
+    col.append(el('fieldset', { style: 'margin-top:10px' }, el('legend', { text: '새 NPC 로 놓기' }),
+      el('div', { class: 'bar' }, el('span', { text: '모습' }), spPic, spSel, el('span', { text: '방향' }), mvSel, addBtn)));
+    // ---- 고른 NPC 바꾸기
+    const setBtn = el('button', { text: '고른 NPC의 이벤트를 이걸로 바꾸기', style: 'background:#c8e6ff', onclick: () => this.evSetSelected() });
+    setBtn.disabled = !(o && o.isObject);
+    col.append(el('fieldset', null, el('legend', { text: '지도에서 고른 NPC 바꾸기 (모습·위치는 그대로, 말 걸었을 때 이벤트만)' }),
+      el('div', { class: 'bar' }, el('b', { text: o && o.isObject ? o.name : '지도에서 NPC를 클릭하세요' }), setBtn)));
+    if (st.msg) col.append(el('div', { class: st.bad ? 'bad' : 'ok', style: 'white-space:pre-line', text: st.msg }));
+    return el('div', { class: 'bar', style: 'align-items:flex-start;gap:14px;flex-wrap:nowrap' }, left, col);
+  },
+
+  spriteCanvas(sprite, pal) {
+    const c = el('canvas', { width: 16, height: 16, style: 'width:32px;height:32px;background:#eee;border-radius:4px;image-rendering:pixelated' });
+    const sp = this.spriteImg(sprite, pal);
+    if (sp) c.getContext('2d').drawImage(sp, 0, 0);
+    return c;
+  },
+
+  afterNpcChange(a, o) {
+    this.wtAfterNpc();
+    this.buildTree(); this.drawMap();
+    if (o && !a.owners.includes(o) && !a.extras.includes(o)) o = null;
+    this.owner = o; this.markTree();
+    this.setTab(T_EVENT);
+    this.say('NPC를 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.');
+  },
+
+  // 고른 NPC 의 지금 이벤트를 칸들에 불러옴
+  evLoad(info, owner) {
+    const st = this.evState(), e = info.ev, rom = this.rom;
+    if (!e) return;
+    this.evSetKind(e.kind);
+    const ts = [e.t1, e.t2, e.t3];
+    for (let i = 0; i < 3; i++) if (ts[i]) st.t[i] = ts[i];
+    if (e.item > 0) st.item = e.item; if (e.item2 > 0) st.item2 = e.item2;
+    st.qty = Math.max(1, Math.min(99, e.qty)); st.qty2 = Math.max(1, Math.min(99, e.qty2));
+    if (e.species > 0) st.species = e.species;
+    st.level = Math.max(1, Math.min(100, e.level));
+    st.moves = e.moves ? e.moves.slice() : null;
+    const ti = rom.trainerList().findIndex(t => t.cls === e.trainerClass && t.id === e.trainerId); if (ti >= 0) st.team = ti;
+    if (e.kind === EV.Shop) st.mart = e.mart;
+    const di = rom.allAreas.findIndex(x => x.group === e.warpGroup && x.map === e.warpMap); if (di >= 0) st.dest = di;
+    st.wx = e.warpX; st.wy = e.warpY;
+    st.repeat = e.repeat; st.vanish = e.vanish; st.sight = Math.max(1, Math.min(5, e.sight));
+    st.loadedFlag = info.flag; st.loadedOwner = owner;
+    this.evMsg('불러왔어요. 고친 뒤 [고른 NPC의 이벤트를 이걸로 바꾸기]를 누르세요');
+    this.setTab(T_EVENT);
+  },
+
+  evAdd() {
+    const rom = this.rom, a = this.area, st = this.evState();
+    if (!a) return;
+    const e = this.evMake(), c = rom.checkEvent(e);
+    if (c) { this.evMsg(c, true); this.setTab(T_EVENT); return; }
+    if (e.kind === EV.EyeTrainer && st.move > 3) { this.evMsg('눈 마주침 트레이너는 한 방향을 보고 서 있어야 해요 (방향을 위·아래·왼쪽·오른쪽 중 하나로)', true); this.setTab(T_EVENT); return; }
+    const sp = st.sprite, mv = LOOK_MOVE_IDS[st.move];
+    this.evMsg('지도에서 놓을 자리를 클릭하세요 (Esc = 취소)'); this.setTab(T_EVENT);
+    this.startPick('지도에서 새 NPC 를 놓을 자리를 클릭하세요', (x, y) => {
+      const r = rom.addEventNpc(a, e, x, y, sp, mv);
+      if (typeof r === 'string') { this.evMsg(r, true); this.setTab(T_EVENT); return; }
+      let msg = "'" + EV_NAMES[e.kind] + "' NPC 를 놓았어요. [저장하기]를 눌러야 롬에 기록돼요";
+      if (r && r.note) msg += '\n' + r.note;
+      this.evMsg(msg, !!(r && r.note && r.note.startsWith('⚠')));
+      const added = a.owners.concat(a.extras).find(o => o.x === x && o.y === y && o.isObject);
+      this.afterNpcChange(a, added);
+    });
+  },
+
+  evSetSelected() {
+    const rom = this.rom, a = this.area, o = this.owner, st = this.evState();
+    if (!a || !o) return;
+    const e = this.evMake();
+    const mi = LOOK_MOVE_IDS.indexOf(o.move);
+    if (e.kind === EV.EyeTrainer && (mi > 3 || mi < 0)) { this.evMsg('눈 마주침 트레이너는 한 방향을 보고 서 있어야 해요. 위 [모습·방향 적용]으로 방향부터 바꿔 주세요', true); this.setTab(T_EVENT); return; }
+    if (!confirm("'" + o.name + "' 의 말 걸었을 때 이벤트를 '" + EV_NAMES[e.kind] + "'(으)로 바꿀까요?\n원래 하던 이벤트(대사·스토리 진행 등)는 더 이상 안 해요.")) return;
+    const idx = rom.eventIndex(a, o);
+    const r = rom.setNpcEvent(a, o, e, o === st.loadedOwner ? st.loadedFlag : -1);
+    st.loadedOwner = null; st.loadedFlag = -1;
+    if (r) { this.evMsg(r, true); this.setTab(T_EVENT); return; }
+    this.evMsg('이벤트를 바꿨어요. [저장하기]를 눌러야 롬에 기록돼요');
+    this.afterNpcChange(a, rom.ownerAt(a, false, idx));
+  },
+
+  // ---------------------------------------------------------------- 새 트레이너 팀 만들기 창 (NewPartyForm)
+  newPartyDialog(onDone, start, startClass) {
+    const rom = this.rom;
+    if (!rom.trainerClasses.length) return;
+    let ci = rom.trainerClasses.findIndex(c => c.cls === startClass);
+    if (ci < 0) ci = Math.min(rom.trainerClasses.length - 1, 24);
+    const ed = { cls: ci, name: start ? start.name : '', moves: start ? !!(start.type & 1) : false, items: start ? !!(start.type & 2) : false,
+      mons: start ? start.mons.map(m => ({ species: m.species, level: m.level, item: m.item, moves: m.moves.slice() })) : [{ species: 19, level: 10, item: 0, moves: [0, 0, 0, 0] }] };
+    const monOpts = this.monOptions(false), itemOpts = this.itemOptions(), moveOpts = this.moveOptions();
+    const box = el('div'), rows = el('div'), err = el('div', { class: 'bad' });
+    const clsSel = sel(rom.trainerClasses.map((c, i) => [i, c.name + '  (' + [...new Set(c.parties.map(p => p.name))].slice(0, 3).join(', ') + ')']), ed.cls, v => ed.cls = v);
+    clsSel.style.width = '420px';
+    const nameIn = el('input', { class: 'txt', value: ed.name }); nameIn.addEventListener('input', () => ed.name = nameIn.value);
+    const [mvC, mvL] = check('포켓몬마다 기술 직접 정하기', ed.moves), [itC, itL] = check('포켓몬에게 도구 지니게 하기', ed.items);
+    const draw = () => {
+      rows.replaceChildren();
+      ed.mons.forEach((m, i) => {
+        if (!m.moves.some(x => x)) m.moves = rom.defaultMoves(m.species, m.level);
+        const r = el('div', { class: 'bar mon' }, sel(monOpts, m.species, v => m.species = v), el('span', { text: 'Lv' }), num(m.level, 1, 100, v => m.level = v));
+        if (ed.items) r.append(el('span', { text: '도구' }), sel(itemOpts, m.item, v => m.item = v));
+        if (ed.moves) { for (let k = 0; k < 4; k++) { const s = sel(moveOpts, m.moves[k], v => m.moves[k] = v); s.style.width = '112px'; r.append(s); } r.append(el('button', { text: '기본 기술', onclick: () => { m.moves = rom.defaultMoves(m.species, m.level); draw(); } })); }
+        r.append(el('button', { text: '빼기', onclick: () => { if (ed.mons.length > 1) { ed.mons.splice(i, 1); draw(); } } }));
+        rows.append(r);
+      });
+      add.disabled = ed.mons.length >= 6;
+    };
+    const add = el('button', { text: '포켓몬 추가', onclick: () => { if (ed.mons.length < 6) { ed.mons.push({ species: 19, level: 10, item: 0, moves: [0, 0, 0, 0] }); draw(); } } });
+    mvC.addEventListener('change', () => { ed.moves = mvC.checked; draw(); });
+    itC.addEventListener('change', () => { ed.items = itC.checked; draw(); });
+    let close;
+    const ok = el('button', { class: 'apply', text: '이 팀으로 정하기', onclick: () => {
+      const n = ed.name.trim();
+      if (!n) { err.textContent = '트레이너 이름을 써주세요'; return; }
+      try { if (rom.encodeName(n).length > 10) { err.textContent = '이름이 너무 길어요 (한글 5글자까지)'; return; } } catch (x) { err.textContent = x.message; return; }
+      if (ed.moves && ed.mons.some(m => !m.moves.some(x => x))) { err.textContent = '기술이 하나도 없는 포켓몬이 있어요'; return; }
+      const cls = rom.trainerClasses[ed.cls].cls;
+      const party = { name: n, type: (ed.moves ? 1 : 0) | (ed.items ? 2 : 0), mons: ed.mons.map(m => ({ level: m.level, species: m.species, item: m.item, moves: m.moves.slice() })) };
+      let id;
+      try { id = rom.addTrainerParty(cls, party); } catch (x) { err.textContent = x.message; return; }
+      close();
+      onDone(cls, id);
+    } });
+    box.append(el('div', { class: 'bar' }, el('span', { text: '직업' }), clsSel, el('span', { text: '이름' }), nameIn),
+      el('div', { class: 'hint', text: '직업에 따라 배틀 때 나오는 트레이너 그림·이름 앞 글자·음악이 정해져요' }),
+      el('div', { class: 'bar' }, mvL, itL), rows, add, el('div', { class: 'bar', style: 'margin-top:12px' }, ok, el('button', { text: '취소', onclick: () => close() }), err));
+    draw();
+    close = this.dialog('새 트레이너 팀 만들기', () => box);
+  },
+
+  // ---------------------------------------------------------------- 다른 구역 지도에서 칸 고르기 (SpotPickForm)
+  spotPickDialog(area, x0, y0, onPick) {
+    const rom = this.rom, Z = 2, C = 16 * Z;
+    if (!area) return;
+    const img = rom.gfx.renderMap(area);
+    let selXY = [Math.min(x0, area.width * 2 - 1), Math.min(y0, area.height * 2 - 1)], hover = [-1, -1];
+    const cv = el('canvas', { class: 'map' });
+    cv.width = area.width * 32 * Z; cv.height = area.height * 32 * Z;
+    const base = document.createElement('canvas');
+    if (img) { base.width = img.width; base.height = img.height; base.getContext('2d').putImageData(img, 0, 0); }
+    const info = el('b');
+    const showInfo = () => {
+      const kind = collKind(rom.collisionAt(area, selXY[0], selXY[1])), bad = kind === '벽' || kind === '물';
+      info.textContent = '고른 칸: x ' + selXY[0] + ', y ' + selXY[1] + (bad ? '  ⚠ ' + kind + '이라 서 있을 수 없는 칸이에요' : '');
+      info.style.color = bad ? 'var(--warn)' : 'var(--ok)';
+    };
+    const draw = () => {
+      const g = cv.getContext('2d'); g.imageSmoothingEnabled = false;
+      g.fillStyle = '#282828'; g.fillRect(0, 0, cv.width, cv.height);
+      if (img) g.drawImage(base, 0, 0, cv.width, cv.height);
+      g.strokeStyle = 'rgba(0,0,0,.2)'; g.lineWidth = 1;
+      for (let x = 0; x <= area.width * 2; x++) { g.beginPath(); g.moveTo(x * C + .5, 0); g.lineTo(x * C + .5, cv.height); g.stroke(); }
+      for (let y = 0; y <= area.height * 2; y++) { g.beginPath(); g.moveTo(0, y * C + .5); g.lineTo(cv.width, y * C + .5); g.stroke(); }
+      g.fillStyle = 'rgba(180,60,255,.43)'; for (const [wx, wy] of rom.warps(area)) g.fillRect(wx * C, wy * C, C, C);
+      g.strokeStyle = 'red'; g.lineWidth = 2; for (const o of area.owners.concat(area.extras)) if (o.x >= 0 && !o.isSign && o.eventOff >= 0) g.strokeRect(o.x * C + 2, o.y * C + 2, C - 4, C - 4);
+      if (hover[0] >= 0) { g.strokeStyle = '#fff'; g.strokeRect(hover[0] * C, hover[1] * C, C, C); }
+      g.fillStyle = 'rgba(255,220,0,.47)'; g.fillRect(selXY[0] * C, selXY[1] * C, C, C);
+      g.strokeStyle = 'yellow'; g.lineWidth = 3; g.strokeRect(selXY[0] * C, selXY[1] * C, C, C);
+    };
+    const cell = e => { const r = cv.getBoundingClientRect(), k = r.width / cv.width; const x = Math.floor((e.clientX - r.left) / k / C), y = Math.floor((e.clientY - r.top) / k / C); return x >= 0 && y >= 0 && x < area.width * 2 && y < area.height * 2 ? [x, y] : [-1, -1]; };
+    let close;
+    cv.addEventListener('mousemove', e => { const c = cell(e); if (c[0] !== hover[0] || c[1] !== hover[1]) { hover = c; draw(); } });
+    cv.addEventListener('click', e => { const c = cell(e); if (c[0] >= 0) { selXY = c; showInfo(); draw(); } });
+    cv.addEventListener('dblclick', () => { close(); onPick(selXY[0], selXY[1]); });
+    const wrap = el('div', { class: 'mapwrap', style: 'max-height:60vh' }, cv);
+    close = this.dialog('도착 위치 고르기 — ' + area.regionName + ' · ' + area.name, () => el('div', null,
+      el('div', { class: 'hint', text: '주인공이 나타날 칸을 클릭하세요. 빨강 = NPC, 보라 = 문·계단(워프)' }), wrap,
+      el('div', { class: 'bar', style: 'margin-top:8px' }, el('button', { class: 'apply', text: '여기로 정하기', onclick: () => { close(); onPick(selXY[0], selXY[1]); } }),
+        el('button', { text: '취소', onclick: () => close() }), info)));
+    draw(); showInfo();
+    setTimeout(() => { wrap.scrollLeft = selXY[0] * C - wrap.clientWidth / 2; wrap.scrollTop = selXY[1] * C - wrap.clientHeight / 2; }, 0);
+  }
+});
+
+// ===== 98-warppanel.js
+// ================================================================ [워프 · 트리거] 탭 (WarpTriggerPanel.cs · WarpPreviewForm 과 같음)
+Object.assign(App.prototype, {
+  // 이 구역의 워프·트리거 편집 상태 (같은 구역이면 저장 안 한 편집을 그대로 둠)
+  wtDisplay(a, force) {
+    const rom = this.rom;
+    if (!a) { this.wt = null; return null; }
+    const old = this.wt;
+    if (!force && old && old.area === a) {
+      if (old.warpsDirty || old.coordsDirty) { this.wtRefreshObjects(); return old; }
+      if (old.loaded) return old;
+    }
+    const wt = { area: a, warps: rom.getAreaWarps(a), coords: rom.getAreaCoords(a), objects: rom.getAreaObjects(a), warpsDirty: false, coordsDirty: false,
+      sub: old ? old.sub : 'trig', selC: 0, selW: 0, overlay: old ? old.overlay : true, status: '', bad: false, loaded: true };
+    // 예전 버전에서 장면 0 으로 만든 트리거 → 항상($FF), NPC 를 옮겨서 길이 안 맞는 트리거 → 저장하면 다시 만들어지게
+    const locked = rom.sceneLockedTriggers(a, wt.coords);
+    for (const i of locked) wt.coords[i].sceneId = 0xFF;
+    const stale = rom.staleApproachTriggers(a, wt.coords);
+    for (const i of stale) rom.markForRebuild(wt.coords[i]);
+    if (locked.length || stale.length) wt.coordsDirty = true;
+    const warn = [];
+    if (stale.length) warn.push('NPC 자리가 바뀌어서 ' + stale.map(i => 'T' + (i + 1)).join(', ') + ' 의 걸어오는 길이 안 맞아요');
+    if (locked.length) warn.push(locked.map(i => 'T' + (i + 1)).join(', ') + ' 은(는) 스토리가 진행되면(예: 포켓몬을 받은 뒤) 안 켜지게 돼 있었어요 → 항상 켜지게 바꿨어요');
+    if (warn.length) { wt.status = '⚠ ' + warn.join(' / ') + ' · [💾 트리거 저장]을 누르면 고쳐져요'; wt.bad = true; }
+    this.wt = wt;
+    return wt;
+  },
+  // NPC 를 추가·삭제·옮긴 뒤: 트리거 편집은 그대로 두고 NPC 목록만 다시 읽음
+  wtRefreshObjects() {
+    const wt = this.wt;
+    if (!wt) return;
+    wt.objects = this.rom.getAreaObjects(wt.area);
+    for (const c of wt.coords) if (c.targetObj >= 0 && c.targetObj < wt.objects.length) c.targetName = wt.objects[c.targetObj].name;
+  },
+  // NPC 가 바뀐 뒤: 저장 안 한 편집이 있으면 NPC 목록만, 없으면 다시 읽게
+  wtAfterNpc() {
+    const wt = this.wt;
+    if (!wt) return;
+    if (wt.warpsDirty || wt.coordsDirty) this.wtRefreshObjects(); else wt.loaded = false;
+  },
+  wtStatus(s, bad) { if (this.wt) { this.wt.status = s; this.wt.bad = !!bad; } },
+  // 이 NPC 가 다가오는 트리거 번호 (없으면 -1)
+  triggerFor(o) {
+    const wt = this.area ? this.wtDisplay(this.area) : null;
+    if (!wt || !o || o.eventOff < 0) return -1;
+    const obj = wt.objects.find(x => x.off === o.eventOff);
+    if (!obj) return -1;
+    return wt.coords.findIndex(c => c.targetObj === obj.index && tkApproaches(c.kind === TK.Original ? c.origKind : c.kind));
+  },
+
+  // ---------------------------------------------------------------- 지도 위 표시 (drawMap 이 부름)
+  drawOverlay(g, T) {
+    const wt = this.area ? this.wtDisplay(this.area) : null;
+    if (!wt || !wt.overlay) return;
+    const onTab = this.tab === T_WARP, s = this.scale;
+    g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = 'bold ' + (7 * s) + 'px sans-serif';
+    const mark = (x, y, fill, stroke, label, sel) => {
+      g.fillStyle = fill; g.fillRect(x * T, y * T, T, T);
+      g.strokeStyle = sel ? '#ff2' : stroke; g.lineWidth = sel ? 3 : 1.5; g.strokeRect(x * T + 1, y * T + 1, T - 2, T - 2);
+      g.fillStyle = '#fff'; g.strokeStyle = '#000'; g.lineWidth = 2.5; g.strokeText(label, x * T + T / 2, y * T + T / 2); g.fillText(label, x * T + T / 2, y * T + T / 2);
+    };
+    wt.warps.forEach((w, i) => mark(w.x, w.y, 'rgba(150,60,255,.45)', '#7b2cff', 'W' + (i + 1), onTab && wt.sub === 'warp' && wt.selW === i));
+    wt.coords.forEach((c, i) => mark(c.x, c.y, 'rgba(255,140,0,.45)', '#e8590c', 'T' + (i + 1), onTab && wt.sub === 'trig' && wt.selC === i));
+    if (!onTab) return;
+    // NPC 번호표 (다가올 NPC 고를 때 쓰는 #번호)
+    g.font = 'bold ' + (6 * s) + 'px sans-serif';
+    for (const o of wt.objects) {
+      if (!o.canApproach) continue;
+      const lx = o.x * T + 2 * s, ly = o.y * T - 1 * s, txt = '#' + (o.index + 1);
+      g.fillStyle = 'rgba(30,60,160,.9)'; const w = g.measureText(txt).width + 4;
+      g.fillRect(lx - 2, ly - 4 * s, w, 8 * s);
+      g.fillStyle = '#fff'; g.textAlign = 'left'; g.fillText(txt, lx, ly);
+    }
+    // 고른 트리거로 다가오는 NPC → 빨간 화살표
+    const c = wt.sub === 'trig' ? wt.coords[wt.selC] : null;
+    if (c) {
+      const k = c.kind === TK.Original ? c.origKind : c.kind;
+      const o = tkApproaches(k) && c.targetObj >= 0 ? wt.objects[c.targetObj] : null;
+      if (o) {
+        const x1 = o.x * T + T / 2, y1 = o.y * T + T / 2, x2 = c.x * T + T / 2, y2 = c.y * T + T / 2;
+        g.strokeStyle = '#e03131'; g.lineWidth = 3; g.setLineDash([6, 4]);
+        g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke(); g.setLineDash([]);
+        const ang = Math.atan2(y2 - y1, x2 - x1), h = 10;
+        g.fillStyle = '#e03131'; g.beginPath(); g.moveTo(x2, y2);
+        g.lineTo(x2 - h * Math.cos(ang - 0.4), y2 - h * Math.sin(ang - 0.4)); g.lineTo(x2 - h * Math.cos(ang + 0.4), y2 - h * Math.sin(ang + 0.4)); g.fill();
+      }
+    }
+  },
+  // 지도 칸의 워프·트리거 → { warp: i } / { coord: i } / null
+  wtHit(x, y) {
+    const wt = this.area ? this.wtDisplay(this.area) : null;
+    if (!wt || !wt.overlay) return null;
+    const ci = wt.coords.findIndex(c => c.x === x && c.y === y);
+    if (ci >= 0) return { coord: ci };
+    const wi = wt.warps.findIndex(w => w.x === x && w.y === y);
+    return wi >= 0 ? { warp: wi } : null;
+  },
+  wtSelect(hit) {
+    const wt = this.wt;
+    if (hit.coord != null) { wt.sub = 'trig'; wt.selC = hit.coord; } else { wt.sub = 'warp'; wt.selW = hit.warp; }
+    this.setTab(T_WARP); this.drawMap();
+  },
+
+  // ---------------------------------------------------------------- 탭 화면
+  pageWarp() {
+    const rom = this.rom, a = this.area;
+    if (!a) return el('div', { class: 'hint', text: '왼쪽에서 구역을 고르세요.' });
+    const wt = this.wtDisplay(a);
+    const rerender = () => { this.setTab(T_WARP); this.drawMap(); };
+    const [ov, ovL] = check('🌀 지도에 워프(W)·트리거(T)·NPC 번호(#) 표시', wt.overlay);
+    ov.addEventListener('change', () => { wt.overlay = ov.checked; this.drawMap(); });
+    ovL.style.fontWeight = 'bold'; ovL.style.color = '#3b3b98';
+    const top = el('div', { class: 'bar' }, ovL, wt.status ? el('span', { style: 'font-weight:bold;color:' + (wt.bad ? '#d9480f' : 'var(--ok)'), text: wt.status }) : null);
+    const subTabs = el('div', { class: 'tabs', style: 'margin-bottom:6px' },
+      el('button', { class: wt.sub === 'trig' ? 'on' : '', text: '⚡ 타일 밟기 트리거', onclick: () => { wt.sub = 'trig'; rerender(); } }),
+      el('button', { class: wt.sub === 'warp' ? 'on' : '', text: '🌀 워프 (문 · 계단 · 동굴 입구)', onclick: () => { wt.sub = 'warp'; rerender(); } }));
+    const body = wt.sub === 'trig' ? this.wtTriggerPage(wt, rerender) : this.wtWarpPage(wt, rerender);
+    return el('div', null, top, subTabs, body);
+  },
+
+  wtSplit(title, items, sel, onSel, buttons, detailTitle, detail) {
+    const list = el('div', { class: 'list', style: 'border:1px solid var(--line);border-radius:4px;max-height:300px;min-height:120px' });
+    items.forEach((t, i) => list.append(el('div', { class: 'it' + (i === sel ? ' on' : ''), text: t, title: t, onclick: () => onSel(i) })));
+    return el('div', { style: 'display:grid;grid-template-columns:minmax(0,4fr) minmax(0,6fr);gap:8px' },
+      el('div', null, el('div', { style: 'font-weight:bold;color:#1c3d9a', text: title }), list, el('div', { class: 'bar', style: 'margin-top:4px' }, ...buttons)),
+      el('fieldset', { style: 'margin:0;min-width:0' }, el('legend', { text: detailTitle }), detail));
+  },
+  wtRow(label, ...ctl) { return el('div', { class: 'bar' }, el('span', { style: 'width:118px;text-align:right;color:#444', text: label }), ...ctl); },
+
+  // ---------------------------------------------------------------- 트리거
+  wtTriggerPage(wt, rerender) {
+    const rom = this.rom, a = wt.area;
+    if (wt.selC >= wt.coords.length) wt.selC = wt.coords.length - 1;
+    const c = wt.coords[wt.selC];
+    const changed = (behaviour) => {
+      if (behaviour && c.kind !== TK.Original) c.dirty = true;
+      wt.coordsDirty = true; this.wtStatus('트리거를 고쳤어요 · [💾 트리거 저장]을 눌러야 기록돼요');
+    };
+    const detail = el('div');
+    if (!c) detail.append(el('div', { class: 'hint', text: wt.coords.length ? '' : '이 구역엔 트리거가 없어요. [➕ 지도에 트리거 놓기]를 누르고 지도에서 칸을 클릭하세요.' }));
+    else {
+      const orig = c.kind === TK.Original, show = orig ? c.origKind : c.kind;
+      if (orig && c.textRef) c.text = c.textRef.current;
+      detail.append(this.wtRow('밟는 칸 X / Y:', num(c.x, 0, 255, v => { c.x = v; changed(false); rerender(); }), num(c.y, 0, 255, v => { c.y = v; changed(false); rerender(); }),
+        el('button', { text: '📍 지도에서 옮기기', style: 'background:#fff0d2', onclick: () => this.startPick('지도에서 칸을 클릭하세요', (x, y) => { c.x = x; c.y = y; changed(false); rerender(); }) })));
+      const kinds = TK_MENU.filter(k => k !== TK.Original || c.kind === TK.Original);
+      detail.append(this.wtRow('밟으면:', sel(kinds.map(k => [k, TK_NAMES[k]]), c.kind, v => {
+        // 배틀·도구·포켓몬을 새로 고르면 기본은 한 번만
+        if (v !== c.kind && (v === TK.Battle || v === TK.GiveItem || v === TK.GivePokemon) && !c.once) c.once = true;
+        c.kind = v; changed(true); rerender();
+      })));
+      if (tkApproaches(c.kind) || (orig && c.targetObj >= 0)) {
+        const npcs = [[-1, '(없음)']].concat(wt.objects.filter(o => o.canApproach).map(o => [o.index, '#' + (o.index + 1) + ' ' + o.name + '  (' + o.x + ',' + o.y + ')']));
+        const ns = sel(npcs, c.targetObj, v => { c.targetObj = v; const o = wt.objects[v]; c.targetName = o ? o.name : ''; changed(true); rerender(); });
+        ns.disabled = orig; ns.style.width = '300px';
+        detail.append(this.wtRow('다가올 NPC:', ns, el('span', { class: 'hint', text: '지도의 #번호' })));
+      }
+      const ta = el('textarea', { spellcheck: 'false', style: 'width:300px;max-width:100%;height:54px' });
+      ta.value = c.text || '';
+      ta.readOnly = orig && !c.textRef;
+      const terr = el('div', { class: 'bad', style: 'margin-left:124px;font-size:12px' });
+      ta.addEventListener('input', () => {
+        const v = ta.value.replace(/\r/g, '');
+        if (orig && c.textRef) {
+          // 롬에 원래 있던 대사: 스크립트는 그대로 두고 그 대사만 ([대사] 탭과 같은 대사)
+          const t = c.textRef;
+          t.edited = v === t.original ? null : v; c.text = v;
+          rom.validate(t);
+          const long = v.split('\n').find(l => l.replace(/\{[^}]*\}/g, '가가가가').length > 18);
+          terr.textContent = t.error || (long != null ? '한 줄이 18자를 넘으면 게임에서 잘려요: ' + long : '');
+          this.wtStatus(t.modified ? '대사를 고쳤어요 · [대사] 탭에도 반영 · [저장하기]로 기록돼요' : '');
+          this.refreshTreeLabel(this.owner);
+        } else { c.text = v; changed(true); }
+      });
+      detail.append(this.wtRow('대사 (한 줄 18자):', ta), terr);
+      const dis = x => { if (orig) x.disabled = true; return x; };
+      if (show === TK.Battle) {
+        const teams = rom.trainerList();
+        const ts = dis(sel([[-1, '(트레이너를 고르세요)']].concat(teams.map((t, i) => [i, t.label])), teams.findIndex(t => t.cls === c.trainerClass && t.id === c.trainerId), v => { const t = teams[v]; if (t) { c.trainerClass = t.cls; c.trainerId = t.id; } changed(true); }));
+        ts.style.width = '300px';
+        detail.append(this.wtRow('배틀할 트레이너:', ts, dis(el('button', { text: '➕ 새 팀 만들기...', style: 'background:#e6f5e6', onclick: () => this.newPartyDialog((cls, id) => {
+          c.trainerClass = cls; c.trainerId = id; changed(true); this.wtStatus('새 트레이너 팀을 만들었어요: ' + rom.trainerLabel(cls, id) + ' · [💾 트리거 저장]'); rerender();
+        }) }))));
+        const wta = dis(el('textarea', { style: 'width:300px;max-width:100%;height:40px' })); wta.value = c.winText || '';
+        wta.addEventListener('input', () => { c.winText = wta.value; changed(true); });
+        detail.append(this.wtRow('상대가 진 대사:', wta, el('span', { class: 'hint', text: '배틀에서 이기면' })));
+      }
+      if (show === TK.GiveItem)
+        detail.append(this.wtRow('줄 도구 / 개수:', dis(sel(this.itemOptions().slice(1).map(([v, t]) => [v, pad3(v) + ' ' + t]), c.item, v => { c.item = v; changed(true); })), dis(num(c.qty, 1, 99, v => { c.qty = v; changed(true); }))));
+      if (show === TK.GivePokemon)
+        detail.append(this.wtRow('줄 포켓몬 / 레벨:', dis(sel(this.monOptions(false), c.species, v => { c.species = v; changed(true); })), dis(num(c.level, 1, 100, v => { c.level = v; changed(true); }))));
+      if (c.kind !== TK.Push) {
+        const [oc, ol] = check('한 번만 (이벤트가 끝나면 다시 밟아도 안 일어남)', c.once);
+        oc.disabled = orig; oc.addEventListener('change', () => { c.once = oc.checked; changed(true); });
+        detail.append(el('div', { style: 'margin-left:124px' }, ol));
+      }
+      if (c.kind === TK.Push) detail.append(this.wtRow('밀려날 방향:', sel(DIR_NAMES.map((n, i) => [i, n]), c.pushDir & 3, v => { c.pushDir = v; changed(true); }), el('span', { class: 'hint', text: '주인공이 이쪽으로 한 칸 걸어가요' })));
+      if (c.kind === TK.Warp) {
+        const areas = rom.allAreas;
+        const ds = sel([[-1, '(구역을 고르세요)']].concat(areas.map((x, i) => [i, x.regionName + ' ' + x.name])), areas.findIndex(x => x.group === c.warpGroup && x.map === c.warpMap), v => { const d = areas[v]; if (d) { c.warpGroup = d.group; c.warpMap = d.map; } changed(true); });
+        ds.style.width = '200px';
+        detail.append(this.wtRow('이동할 곳 / X / Y:', ds, num(c.warpX, 0, 255, v => { c.warpX = v; changed(true); }), num(c.warpY, 0, 255, v => { c.warpY = v; changed(true); }),
+          el('button', { text: '지도에서 고르기…', onclick: () => { const d = areas.find(x => x.group === c.warpGroup && x.map === c.warpMap); if (d) this.spotPickDialog(d, c.warpX, c.warpY, (x, y) => { c.warpX = x; c.warpY = y; changed(true); rerender(); }); } })));
+      }
+      const scene = el('input', { class: 'num', style: 'width:55px', value: c.sceneId.toString(16).toUpperCase() });
+      scene.addEventListener('change', () => { const v = parseInt(scene.value, 16); if (!isNaN(v) && v >= 0 && v <= 255) { c.sceneId = v; changed(false); } scene.value = c.sceneId.toString(16).toUpperCase(); });
+      detail.append(this.wtRow('발동 장면 번호:', scene, el('span', { class: 'hint', text: 'FF = 항상 켜짐 (추천) · 0,1… = 그 지도 스토리 단계일 때만' })));
+      // 설명
+      let hint;
+      if (orig && c.textRef) hint = '롬에 들어있는 이벤트예요 (' + coordActionType(c) + '). 그대로 두면 지금처럼 동작해요.\n대사 칸은 [대사] 탭의 같은 대사와 연결돼 있어서 여기서 고치면 바로 반영돼요 ({ } 표시는 지우지 마세요).\n고친 대사는 메인 화면 [저장하기]로 기록돼요.';
+      else if (orig) hint = '롬에 들어있는 이벤트예요 (' + coordActionType(c) + "). 그대로 두면 지금처럼 동작해요.\n이 이벤트는 대사가 없거나 읽을 수 없는 형태예요. 위 '밟으면'을 고르면 새 동작으로 다시 만들어요.";
+      else hint = {
+        [TK.Battle]: "주인공이 이 칸을 밟으면 고른 NPC가 걸어와서 대사 후 고른 트레이너 팀으로 배틀해요.\n지면 원래 게임처럼 포켓몬센터로 돌아가요. '한 번만'을 켜면 이긴 뒤엔 다시 안 일어나요.",
+        [TK.GiveItem]: '고른 NPC가 걸어와서 대사 후 도구를 줘요. 가방이 꽉 차면 안 주고 다음에 다시 줘요.',
+        [TK.GivePokemon]: '고른 NPC가 걸어와서 대사 후 포켓몬을 줘요 (그 레벨까지 배우는 기술). 파티가 꽉 차면 박스로 가요.',
+        [TK.Approach]: '주인공이 이 칸을 밟으면 고른 NPC가 옆 칸까지 걸어와 말을 걸고 제자리로 돌아가요.\n지도에 빨간 화살표로 NPC가 오는 길이 보여요.',
+        [TK.Push]: '대사를 보여준 뒤 주인공을 한 칸 밀어내서 지나가지 못하게 막아요.',
+        [TK.Warp]: '이 칸을 밟으면 (대사가 있으면 보여준 뒤) 고른 구역의 X, Y 로 순간이동해요.'
+      }[c.kind] || '이 칸을 밟으면 대사창이 떠요.';
+      let far = null;
+      if (tkApproaches(show) && c.targetObj >= 0 && c.targetObj < wt.objects.length) far = tooFar(wt.objects[c.targetObj], c);
+      detail.append(el('div', { class: 'hint', style: 'color:' + (far ? '#d9480f' : '#8b4513') + ';margin:6px 0 0 8px', text: (far ? '⚠ ' + far + '\n\n' : '') + hint }));
+    }
+    const addBtn = el('button', { text: '➕ 지도에 트리거 놓기', style: 'background:#e6f5e6;font-weight:bold', onclick: () => {
+      this.wtStatus('▶ 지도에서 트리거를 놓을 칸(주인공이 밟을 곳)을 클릭하세요'); this.setTab(T_WARP);
+      this.startPick('지도에서 트리거를 놓을 칸(주인공이 밟을 곳)을 클릭하세요', (x, y) => {
+        // 가장 가까운 NPC 를 '다가올 NPC' 로 미리 골라 둠
+        const near = wt.objects.filter(o => o.canApproach && o.x >= 0).sort((p, q) => (Math.abs(p.x - x) + Math.abs(p.y - y)) - (Math.abs(q.x - x) + Math.abs(q.y - y)))[0];
+        wt.coords.push(newCoord({ x, y, sceneId: 0xFF, kind: near ? TK.Approach : TK.Talk, targetObj: near ? near.index : -1, targetName: near ? near.name : '',
+          text: '잠깐 기다려!', warpGroup: a.group, warpMap: a.map, dirty: true }));
+        wt.coordsDirty = true; wt.selC = wt.coords.length - 1; wt.sub = 'trig';
+        this.wtStatus('(' + x + ',' + y + ') 에 트리거를 놓았어요 · 동작·대사를 정하고 [💾 트리거 저장]');
+        rerender();
+      });
+    } });
+    const delBtn = el('button', { text: '❌ 삭제', style: 'background:#ffe6e6', onclick: () => {
+      if (!c) return;
+      wt.coords.splice(wt.selC, 1); wt.coordsDirty = true; this.wtStatus('트리거를 지웠어요 · [💾 트리거 저장]을 눌러야 기록돼요'); rerender();
+    } });
+    const saveBtn = el('button', { class: 'save', text: '💾 트리거 저장', style: 'font-weight:bold', onclick: () => {
+      const err = rom.saveAreaCoords(a, wt.coords);
+      if (err) { alert(err); return; }
+      const keep = wt.selC;
+      this.wtDisplay(a, true); this.wt.selC = keep; this.wt.sub = 'trig';
+      this.wtStatus('트리거 저장 완료! 메인 화면 [저장하기]로 파일에 기록돼요');
+      this.owner = null; this.buildTree(); rerender();
+      this.say('워프·트리거를 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.');
+    } });
+    return this.wtSplit('⚡ 이 구역의 트리거 (지도의 주황 T 칸)', wt.coords.map((x, i) => 'T' + (i + 1) + '  ' + coordText(x)), wt.selC,
+      i => { wt.selC = i; rerender(); }, [addBtn, delBtn, saveBtn], '선택한 트리거 상세 설정', detail);
+  },
+
+  // ---------------------------------------------------------------- 워프
+  wtWarpPage(wt, rerender) {
+    const rom = this.rom, a = wt.area;
+    if (wt.selW >= wt.warps.length) wt.selW = wt.warps.length - 1;
+    const w = wt.warps[wt.selW];
+    const changed = () => { wt.warpsDirty = true; this.wtStatus('워프를 고쳤어요 · [💾 워프 저장]을 눌러야 기록돼요'); };
+    const detail = el('div');
+    if (w) {
+      const areas = rom.allAreas;
+      const ds = sel([[-1, '(구역을 고르세요)']].concat(areas.map((x, i) => [i, x.regionName + ' ' + x.name])), areas.findIndex(x => x.group === w.destGroup && x.map === w.destMap), v => { const d = areas[v]; if (d) { w.destGroup = d.group; w.destMap = d.map; } changed(); rerender(); });
+      ds.style.width = '300px';
+      detail.append(
+        this.wtRow('문 위치 X / Y:', num(w.x, 0, 255, v => { w.x = v; changed(); rerender(); }), num(w.y, 0, 255, v => { w.y = v; changed(); rerender(); }),
+          el('button', { text: '📍 지도에서 옮기기', style: 'background:#dcebfc', onclick: () => this.startPick('지도에서 칸을 클릭하세요', (x, y) => { w.x = x; w.y = y; changed(); rerender(); }) })),
+        this.wtRow('도착 구역:', ds),
+        this.wtRow('도착 워프 번호:', num(Math.max(1, w.destWarpId), 1, 32, v => { w.destWarpId = v; changed(); rerender(); }), el('span', { class: 'hint', text: '도착 구역의 W번호 칸에 나타나요' })),
+        this.wtRow('', el('button', { text: '🗺 도착 지도 보기', style: 'background:#e1ebff', onclick: () => this.warpPreview(wt.selW) }), el('span', { class: 'hint', text: '지도의 W 칸을 더블클릭해도 돼요' })));
+    }
+    const addBtn = el('button', { text: '➕ 지도에 워프 놓기', style: 'background:#e6f5e6;font-weight:bold', onclick: () => {
+      this.wtStatus('▶ 지도에서 워프(문)를 놓을 칸을 클릭하세요'); this.setTab(T_WARP);
+      this.startPick('지도에서 워프(문)를 놓을 칸을 클릭하세요', (x, y) => {
+        wt.warps.push({ x, y, destWarpId: 1, destGroup: a.group, destMap: a.map });
+        wt.warpsDirty = true; wt.selW = wt.warps.length - 1; wt.sub = 'warp';
+        this.wtStatus('(' + x + ',' + y + ') 에 워프를 놓았어요 · 도착 구역을 고르고 [💾 워프 저장]');
+        rerender();
+      });
+    } });
+    const delBtn = el('button', { text: '❌ 삭제', style: 'background:#ffe6e6', onclick: () => {
+      if (!w) return;
+      wt.warps.splice(wt.selW, 1); wt.warpsDirty = true; this.wtStatus('워프를 지웠어요 · [💾 워프 저장]을 눌러야 기록돼요'); rerender();
+    } });
+    const saveBtn = el('button', { class: 'save', text: '💾 워프 저장', style: 'font-weight:bold', onclick: () => {
+      const err = rom.saveAreaWarps(a, wt.warps);
+      if (err) { alert('워프를 저장할 공간이 부족합니다.'); return; }
+      const keep = wt.selW;
+      this.wtDisplay(a, true); this.wt.selW = keep; this.wt.sub = 'warp';
+      this.wtStatus('워프 저장 완료! 메인 화면 [저장하기]로 파일에 기록돼요');
+      this.owner = null; this.buildTree(); rerender();
+      this.say('워프·트리거를 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.');
+    } });
+    return this.wtSplit('🌀 이 구역의 워프 (지도의 보라 W 칸)',
+      wt.warps.map((x, i) => 'W' + (i + 1) + '  워프 (' + x.x + ',' + x.y + ') → ' + rom.areaName(x.destGroup, x.destMap) + ' (워프 ' + x.destWarpId + '번)'), wt.selW,
+      i => { wt.selW = i; rerender(); }, [addBtn, delBtn, saveBtn], '선택한 워프 상세 설정', detail);
+  },
+
+  // ---------------------------------------------------------------- 워프 도착지 미리보기 (WarpPreviewForm)
+  warpPreview(idx) {
+    const rom = this.rom, wt = this.wt, from = this.area;
+    const w = wt && wt.warps[idx];
+    if (!w) return;
+    const dest = rom.allAreas.find(x => x.group === w.destGroup && x.map === w.destMap);
+    if (!dest) { this.wtStatus('도착 구역 ' + w.destGroup + '-' + w.destMap + ' 을(를) 찾지 못했어요', true); this.setTab(T_WARP); return; }
+    const Z = 2, C = 16 * Z, history = [];
+    let area, arrive, warps;
+    const cv = el('canvas', { class: 'map' }), info = el('b', { style: 'color:#1c3d9a' });
+    const wrap = el('div', { class: 'mapwrap', style: 'height:56vh' }, cv);
+    const back = el('button', { text: '◀ 이전 지도', onclick: () => { const h = history.pop(); if (h) show(h[0], h[1]); } });
+    const show = (a, arr) => {
+      area = a; arrive = arr; back.disabled = !history.length;
+      warps = rom.getAreaWarps(a);
+      const img = rom.gfx.renderMap(a), g = cv.getContext('2d');
+      cv.width = a.width * 32 * Z; cv.height = a.height * 32 * Z;
+      g.imageSmoothingEnabled = false;
+      if (img) { const b = document.createElement('canvas'); b.width = img.width; b.height = img.height; b.getContext('2d').putImageData(img, 0, 0); g.drawImage(b, 0, 0, cv.width, cv.height); }
+      for (const o of a.owners.concat(a.extras)) if (o.x >= 0 && !o.isSign) { const sp = this.spriteImg(o.sprite, o.pal); if (sp) g.drawImage(sp, o.x * C, o.y * C, C, C); }
+      g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = 'bold 14px sans-serif';
+      warps.forEach((x, i) => {
+        g.fillStyle = 'rgba(150,60,255,.45)'; g.fillRect(x.x * C, x.y * C, C, C);
+        g.strokeStyle = i === arr ? '#ff3b9a' : '#7b2cff'; g.lineWidth = i === arr ? 5 : 1.5; g.strokeRect(x.x * C + 2, x.y * C + 2, C - 4, C - 4);
+        g.fillStyle = '#fff'; g.strokeStyle = '#000'; g.lineWidth = 3; g.strokeText('W' + (i + 1), x.x * C + C / 2, x.y * C + C / 2); g.fillText('W' + (i + 1), x.x * C + C / 2, x.y * C + C / 2);
+      });
+      if (arr >= 0 && arr < warps.length) {
+        info.textContent = '도착: ' + a.regionName + ' ' + a.name + '  ·  W' + (arr + 1) + ' 칸 (' + warps[arr].x + ',' + warps[arr].y + ')';
+        setTimeout(() => { wrap.scrollLeft = warps[arr].x * C - wrap.clientWidth / 2; wrap.scrollTop = warps[arr].y * C - wrap.clientHeight / 2; }, 0);
+      } else info.textContent = '도착: ' + a.regionName + ' ' + a.name + '  ·  ' + (arr + 1) + '번 워프가 이 지도에 없어요 (게임에서 이상한 곳에 나올 수 있어요)';
+      if (!img) info.textContent += '  (지도 그림을 못 그렸어요)';
+    };
+    cv.addEventListener('dblclick', e => {
+      const r = cv.getBoundingClientRect(), k = r.width / cv.width;
+      const x = Math.floor((e.clientX - r.left) / k / C), y = Math.floor((e.clientY - r.top) / k / C);
+      const i = warps.findIndex(q => q.x === x && q.y === y);
+      if (i < 0) return;
+      const next = rom.allAreas.find(q => q.group === warps[i].destGroup && q.map === warps[i].destMap);
+      if (!next) return;
+      history.push([area, arrive]); show(next, warps[i].destWarpId - 1);
+    });
+    let close;
+    close = this.dialog('워프 도착지', () => el('div', null,
+      el('div', { class: 'bar' }, info),
+      el('div', { class: 'bar' },
+        el('button', { class: 'apply', text: '➡ 이 구역으로 가기', style: 'font-weight:bold', onclick: () => {
+          const a2 = area, i2 = arrive; close();
+          this.selectArea(a2, null);
+          const wt2 = this.wtDisplay(a2); wt2.sub = 'warp'; wt2.selW = Math.max(0, i2);
+          this.setTab(T_WARP); this.drawMap();
+          const ww = wt2.warps[i2];
+          if (ww) { const T = 16 * this.scale; this.mapWrap.scrollLeft = ww.x * T - this.mapWrap.clientWidth / 2; this.mapWrap.scrollTop = ww.y * T - this.mapWrap.clientHeight / 2; }
+        } }), back, el('button', { text: '닫기', onclick: () => close() })),
+      wrap,
+      el('div', { class: 'hint', text: '분홍 굵은 테두리 = 도착 위치 · 이 지도의 W 칸을 더블클릭하면 그 워프의 도착지로 계속 따라가요 · 출발: ' + from.regionName + ' ' + from.name + '  W' + (idx + 1) + ' (' + w.x + ',' + w.y + ')' })));
+    show(dest, w.destWarpId - 1);
+  }
+});
+
+// ===== 99-bgm.js
+// ================================================================ BGM 에디터 (BgmForm.cs) · 음악 파일 변환 창 (AudioImportForm.cs) · 게임에 넣기 창 (SongAssignForm.cs)
+const PITCH_NAMES = ['쉼표', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+const DRUM_NAMES = ['쉼표', '킥 (Kick)', '스네어 (Snare)', '하이햇 (HiHat)', '크래시 (Crash)'];
+const durName = d => ({ 1: ' (16분)', 2: ' (8분)', 3: ' (점8분)', 4: ' (4분)', 6: ' (점4분)', 8: ' (2분)', 12: ' (점2분)', 16: ' (온음)' })[d] || '';
+
+Object.assign(App.prototype, {
+  _music: RomMusic, _audioConverter: AudioConverter,   // 자동 테스트용
+  bgmEditor() {
+    const rom = this.rom, a = this.area, n = RomMusic.songCount(rom.data);
+    const st = { track: RomMusic.newTrack('새 BGM', 32, 130), ch: 0, sel: 0, mute: [false, false, false, false], romSamples: null, playing: false };
+    const status = el('b', { style: 'color:var(--ok)' });
+    const playBtn = el('button', { text: '▶ 전체 재생', style: 'font-weight:bold;background:#dcf5dc', onclick: () => play() });
+    const stopBtn = el('button', { text: '■ 정지', style: 'font-weight:bold;background:#ffdcdc', onclick: () => stop() });
+    const bpmIn = num(130, 30, 400, v => { if (st.track.bpm !== v) markEdited(); st.track.bpm = v; });
+    const stop = () => { Player.stop(); playBtn.style.background = '#dcf5dc'; };
+    const play = () => {
+      stop();
+      const t = st.track;
+      let samples;
+      if (t.romSongId >= 0 && !t.edited) {
+        // 고치지 않은 원곡은 롬 데이터를 그대로 합성 (음소거한 채널만 빼고)
+        if (st.mute.some(x => x)) { const r = RomMusic.render(rom.data, t.romSongId, st.mute, 240, t.romOriginal); samples = r && r.samples; }
+        else samples = st.romSamples;
+      } else samples = RomMusic.renderTrack(t, st.mute);
+      if (!samples) return;
+      Player.play(samples); playBtn.style.background = '#b4ffb4';
+    };
+    const markEdited = () => { if (st.track.edited) return; st.track.edited = true; if (st.track.romSongId >= 0) status.textContent = '✏ 편집본: 고친 음표로 재생돼요 (원곡 음색 일부 생략)'; };
+    // 롬에 들어있는 진짜 BGM 을 불러와 원곡 그대로 재생 + 편집 표에 펼침. original: 곡 번호를 바꿨어도 처음 원곡
+    const loadRomSong = (id, doPlay, original) => {
+      stop();
+      status.textContent = '불러오는 중…';
+      setTimeout(() => {
+        const r = RomMusic.render(rom.data, id, null, 240, original);
+        if (!r) { status.textContent = '이 곡은 읽을 수 없어요'; return; }
+        st.romSamples = r.samples;
+        st.track = RomMusic.toTrack(r, id); st.track.romOriginal = original;
+        bpmIn.value = Math.max(30, Math.min(400, st.track.bpm));
+        rebuildRows();
+        const replaced = RomMusic.isReplaced(rom.data, id);
+        status.textContent = original
+          ? '🎶 원곡: [0x' + hex2(id) + '] ' + RomMusic.name(id) + (replaced ? '  ·  지금 게임에선 다른 곡으로 바뀌어 있어요 ([게임에 넣기]로 되돌릴 수 있어요)' : '  ·  게임 속 소리 그대로 재생돼요')
+          : '🎶 지금 게임에서 나오는 곡: [0x' + hex2(id) + '] ' + RomMusic.name(id) + (replaced ? ' (바꾼 곡)' : '');
+        if (doPlay) play();
+      }, 10);
+    };
+    // 원곡 BGM 불러오기 (분류별)
+    const preset = el('select', { style: 'max-width:260px' });
+    preset.append(el('option', { value: '', text: '🎵 원곡 BGM 불러오기 ▼' }));
+    for (const [g, ids] of RomMusic.groups) {
+      const og = el('optgroup', { label: g });
+      for (const id of ids) if (id < n) og.append(el('option', { value: id, text: '[0x' + hex2(id) + '] ' + RomMusic.name(id) }));
+      preset.append(og);
+    }
+    const allG = el('optgroup', { label: '📋 전곡 (번호순)' });
+    for (let id = 1; id < n; id++) allG.append(el('option', { value: id, text: '[0x' + hex2(id) + '] ' + RomMusic.name(id) }));
+    preset.append(allG);
+    preset.addEventListener('change', () => { if (preset.value) loadRomSong(+preset.value, true, true); preset.value = ''; });
+    // 지금 구역 BGM
+    const curBgm = a ? rom.areaMusic(a) : -1;
+    const mapSel = sel(Array.from({ length: Math.max(0, n - 1) }, (_, i) => [i + 1, '[0x' + hex2(i + 1) + '] ' + RomMusic.name(i + 1)]), curBgm);
+    mapSel.style.width = '230px';
+    const top = el('div', { class: 'bar' }, playBtn, stopBtn, el('span', { text: '템포(BPM):' }), bpmIn, preset,
+      el('button', { text: '🎧 MP3/MIDI 도트 변환 🌟', style: 'font-weight:bold;background:#dcf0ff', onclick: () => this.audioImportDialog(t => {
+        stop(); st.track = t; bpmIn.value = t.bpm; rebuildRows(); status.textContent = '가져온 곡: 편집본으로 재생돼요';
+        alert('도트 칩튠으로 변환된 음악을 성공적으로 가져왔습니다!\n아래 건반과 표에서 음 하나하나를 자유롭게 수정할 수 있습니다.');
+      }) }),
+      el('b', { text: '현재 구역 BGM 지정:', style: 'margin-left:10px' }), mapSel,
+      el('button', { text: '▶ 들어보기', onclick: () => loadRomSong(+mapSel.value, true, false) }),
+      el('button', { text: '구역 BGM 적용', style: 'background:#ffe6a0', onclick: () => {
+        if (!a) { alert('선택된 구역이 없습니다.'); return; }
+        rom.setAreaMusic(a, +mapSel.value);
+        alert("'" + a.regionName + ' (' + a.name + ")' 구역의 배경음악이 [" + RomMusic.name(+mapSel.value) + ']로 변경되었습니다!\n\n메인 화면에서 [저장하기]를 누르면 파일에 기록됩니다.');
+        this.say(a.name + ' 배경음악 → ' + RomMusic.name(+mapSel.value) + '. [저장하기]를 눌러야 롬 파일에 기록돼요.');
+      } }),
+      el('button', { text: '🎮 지금 곡을 게임에 넣기 (타이틀·배틀·구역)...', style: 'font-weight:bold;background:#ffc878', onclick: () => { stop(); this.songAssignDialog(st.track, a, (id, msg) => {
+        if (st.track.romSongId < 0 || st.track.edited) {
+          // 새로 써 넣은 곡을 다시 읽어서, 이제부터는 롬에 들어간 그대로 재생
+          const r = RomMusic.render(rom.data, id, null);
+          if (r) { st.romSamples = r.samples; st.track.romSongId = id; st.track.edited = false; st.track.romOriginal = false; }
+        }
+        mapSel.value = id;
+        status.textContent = '🎮 게임에 곡을 넣었어요 · [저장하기]를 눌러야 기록돼요';
+        alert(msg);
+      }); } }), status);
+    // 채널 탭
+    const chNames = ['🔊 CH1: 리드 멜로디 (사각파)', '🎵 CH2: 화음·서브 (사각파)', '🎸 CH3: 베이스 라인 (웨이브)', '🥁 CH4: 퍼커션/드럼 (노이즈)'];
+    const chBtns = chNames.map((nm, i) => el('button', { text: nm, onclick: () => { st.ch = i; showCh(); updateGrid(); } }));
+    const showCh = () => chBtns.forEach((b, i) => { b.style.background = i === st.ch ? '#fff' : '#ebebeb'; b.style.fontWeight = i === st.ch ? 'bold' : ''; });
+    const chBar = el('div', { class: 'bar', style: 'background:#e4e8f0;padding:4px;border-radius:4px' });
+    chBtns.forEach((b, i) => { const [m, ml] = check('Mute', false); m.addEventListener('change', () => st.mute[i] = m.checked); chBar.append(b, ml); });
+    // 스텝 표
+    const tbody = el('tbody');
+    const grid = el('div', { style: 'max-height:42vh;overflow:auto;border:1px solid var(--line);background:#fff' },
+      el('table', { class: 'grid', style: 'width:100%' }, el('thead', null, el('tr', null, ...['스텝', '음표 / 드럼', '옥타브', '길이 (스텝)', '볼륨 (1~15)'].map(t => el('th', { text: t, style: 'position:sticky;top:0;background:#f4f4f4' })))), tbody));
+    const chColor = ['#e6f5ff', '#ebffeb', '#fff5e6', '#ffebeb'];
+    const rowCells = i => {
+      const nt = st.track.channels[st.ch][i], drum = st.ch === 3;
+      return [nt.pitch ? (drum ? (DRUM_NAMES[nt.pitch] || '드럼' + nt.pitch) : PITCH_NAMES[nt.pitch] + nt.octave) : '-',
+        drum || !nt.pitch ? '-' : String(nt.octave), nt.pitch ? nt.duration + ' 스텝' + durName(nt.duration) : '', nt.pitch ? String(nt.volume) : ''];
+    };
+    const paintRow = i => {
+      const tr = tbody.children[i]; if (!tr) return;
+      const c = rowCells(i), nt = st.track.channels[st.ch][i];
+      for (let k = 0; k < 4; k++) tr.children[k + 1].textContent = c[k];
+      tr.children[1].style.background = nt.pitch ? chColor[st.ch] : '';
+      tr.children[1].style.fontWeight = nt.pitch ? 'bold' : '';
+      tr.style.outline = i === st.sel ? '2px solid var(--accent)' : '';
+    };
+    const rebuildRows = () => {
+      tbody.replaceChildren();
+      st.sel = 0;
+      for (let i = 0; i < st.track.totalSteps; i++) {
+        const tr = el('tr', { style: 'cursor:pointer' }, el('th', { text: '#' + String(i + 1).padStart(2, '0') }), el('td'), el('td'), el('td'), el('td'));
+        tr.addEventListener('click', () => {
+          const old = st.sel; st.sel = i; paintRow(old); paintRow(i);
+          const nt = st.track.channels[st.ch][i];
+          if (nt.pitch) Player.play(RomMusic.previewNote(st.ch, nt.pitch, nt.octave), true);
+        });
+        tbody.append(tr);
+      }
+      updateGrid();
+    };
+    const updateGrid = () => { for (let i = 0; i < st.track.totalSteps; i++) paintRow(i); };
+    const advance = () => { if (st.sel < st.track.totalSteps - 1) { const old = st.sel; st.sel++; paintRow(old); paintRow(st.sel); tbody.children[st.sel].scrollIntoView({ block: 'nearest' }); } };
+    // 건반
+    const durSel = sel([[1, '1스텝 (16분)'], [2, '2스텝 (8분)'], [4, '4스텝 (4분)'], [8, '8스텝 (2분)']], 1);
+    const insertNote = (pitch, octave) => {
+      const nt = st.track.channels[st.ch][st.sel];
+      if (!nt) return;
+      Object.assign(nt, { pitch, octave, duration: +durSel.value, volume: 12 });
+      markEdited(); Player.play(RomMusic.previewNote(st.ch, pitch, octave), true); paintRow(st.sel); advance();
+    };
+    const insertDrum = type => {
+      st.ch = 3; showCh(); updateGrid();
+      const nt = st.track.channels[3][st.sel];
+      if (!nt) return;
+      Object.assign(nt, { pitch: type, duration: 1, volume: 14 });
+      markEdited(); Player.play(RomMusic.previewNote(3, type, 0), true); paintRow(st.sel); advance();
+    };
+    const keys = el('div', { style: 'position:relative;height:110px;background:#3c3c41;border-radius:4px;overflow-x:auto;overflow-y:hidden' });
+    const names = ['C', 'D', 'E', 'F', 'G', 'A', 'B'], white = [1, 3, 5, 6, 8, 10, 12], black = [2, 4, -1, 7, 9, 11, -1];
+    let wx = 8;
+    for (let oct = 3; oct <= 5; oct++) for (let w = 0; w < 7; w++) {
+      const p = white[w], o = oct;
+      keys.append(el('button', { text: names[w] + oct, style: 'position:absolute;left:' + wx + 'px;top:8px;width:36px;height:94px;background:#fff;color:#000;font:bold 11px Arial;padding:0;display:flex;align-items:flex-end;justify-content:center;border-radius:0 0 4px 4px', onclick: () => insertNote(p, o) }));
+      if (black[w] > 0) { const bp = black[w]; keys.append(el('button', { style: 'position:absolute;left:' + (wx + 24) + 'px;top:8px;width:24px;height:58px;background:#000;border-color:#000;z-index:2;padding:0', onclick: () => insertNote(bp, o) })); }
+      wx += 38;
+    }
+    ['🥁 킥', '🎯 스네어', '🔔 하이햇', '💥 크래시'].forEach((t, i) => keys.append(el('button', { text: t, style: 'position:absolute;left:' + (wx + 24 + Math.floor(i / 2) * 80) + 'px;top:' + (8 + (i % 2) * 48) + 'px;width:74px;height:44px;background:#ffebeb;font-weight:bold;padding:0', onclick: () => insertDrum(i + 1) })));
+    const kbBar = el('div', { class: 'bar' }, el('b', { style: 'color:navy', text: '🎹 마우스로 건반을 누르면 음이 연주되고 현재 스텝에 바로 기록됩니다! [Delete: 쉼표]' }),
+      el('button', { text: '현재 스텝 쉼표(지우기)', onclick: () => clearStep() }), el('span', { text: '음 길이:' }), durSel);
+    const clearStep = () => { const nt = st.track.channels[st.ch][st.sel]; if (nt) { nt.pitch = 0; markEdited(); paintRow(st.sel); } };
+    const onKey = e => { if (e.key === 'Delete' && e.target.tagName !== 'INPUT') { e.preventDefault(); e.stopPropagation(); clearStep(); } };
+    document.addEventListener('keydown', onKey, true);
+    this.dialog('포켓몬 2세대 BGM 칩튠 시퀀서 & 음표 에디터', () => el('div', null, top, chBar, grid, kbBar, keys), () => { stop(); document.removeEventListener('keydown', onKey, true); });
+    showCh();
+    // 처음엔 지금 구역의 BGM (없으면 연두마을) 을 원곡 그대로 불러옴
+    if (n > 0) loadRomSong(curBgm > 0 && curBgm < n ? curBgm : 0x3C, false, false); else rebuildRows();
+  },
+
+  // ---------------------------------------------------------------- 음악 파일 → 칩튠 변환 창 (AudioImportForm)
+  audioImportDialog(onDone) {
+    let file = null, conv = null;
+    const fileInfo = el('div', { class: 'hint', text: '선택된 파일 없음' }), result = el('div', { style: 'color:#1c3d9a;white-space:pre-line;margin:6px 0' }, '변환 준비 완료');
+    const fileInput = el('input', { type: 'file', accept: 'audio/*,.mid,.midi', style: 'display:none' });
+    const setFile = f => { file = f; fileInfo.textContent = '파일: ' + f.name + ' (' + (f.name.split('.').pop() || '').toUpperCase() + ')'; result.textContent = '파일이 선택되었습니다. [✨ 8비트 도트 칩튠으로 변환하기]를 누르세요.'; };
+    fileInput.addEventListener('change', () => { if (fileInput.files[0]) setFile(fileInput.files[0]); });
+    const [autoBpm, autoBpmL] = check('템포 자동 감지', true), [autoLen, autoLenL] = check('곡 전체 변환', true);
+    const bpmIn = num(120, 30, 400), stepIn = num(64, 16, AudioConverter.MAX_STEPS), transIn = num(0, -24, 24);
+    stepIn.step = 16; bpmIn.disabled = stepIn.disabled = true;
+    autoBpm.addEventListener('change', () => bpmIn.disabled = autoBpm.checked);
+    autoLen.addEventListener('change', () => stepIn.disabled = autoLen.checked);
+    const previewBtn = el('button', { text: '▶ 변환 사운드 미리듣기', onclick: () => { if (conv) Player.play(RomMusic.renderTrack(conv)); } });
+    const stopBtn = el('button', { text: '■ 정지', onclick: () => Player.stop() });
+    const importBtn = el('button', { class: 'apply', text: '✅ BGM 에디터로 가져오기', style: 'font-weight:bold', onclick: () => { Player.stop(); close(); onDone(conv); } });
+    previewBtn.disabled = stopBtn.disabled = importBtn.disabled = true;
+    const convBtn = el('button', { text: '✨ 8비트 도트 칩튠으로 변환하기', style: 'font-weight:bold;background:#dcf5e6', onclick: async () => {
+      if (!file) { alert('먼저 음악 파일을 선택해주세요.'); return; }
+      convBtn.disabled = true;
+      result.textContent = '오디오 멜로디와 비트를 분석하여 도트 칩튠 사운드로 변환하는 중...';
+      try {
+        const steps = autoLen.checked ? 0 : +stepIn.value, trans = +transIn.value, title = file.name.replace(/\.[^.]+$/, '');
+        const buf = await file.arrayBuffer();
+        if (/\.midi?$/i.test(file.name)) conv = AudioConverter.convertMidi(new Uint8Array(buf), title, steps, trans);
+        else {
+          result.textContent = '음악 파일을 여는 중…';
+          const { x, rate } = await AudioConverter.decodeFile(buf);
+          conv = await AudioConverter.convertAudio(x, rate, title, steps, autoBpm.checked ? 0 : +bpmIn.value, trans, m => result.textContent = m);
+        }
+        bpmIn.value = Math.max(30, Math.min(400, conv.bpm)); stepIn.value = Math.max(16, Math.min(AudioConverter.MAX_STEPS, conv.totalSteps));
+        const cnt = ch => conv.channels[ch].filter(x => x.pitch > 0).length;
+        result.textContent = '🎉 변환 성공! ' + AudioConverter.lastInfo + '\n[CH1 멜로디: ' + cnt(0) + '음, CH2 화음: ' + cnt(1) + '음, CH3 베이스: ' + cnt(2) + '음, CH4 드럼: ' + cnt(3) + '타]';
+        previewBtn.disabled = stopBtn.disabled = importBtn.disabled = false;
+        Player.play(RomMusic.renderTrack(conv));
+      } catch (e) { console.error(e); alert('변환 중 오류가 발생했습니다: ' + e.message); result.textContent = '변환 실패: ' + e.message; }
+      finally { convBtn.disabled = false; }
+    } });
+    const drop = el('div', { style: 'border:2px dashed var(--line);border-radius:8px;padding:14px;text-align:center;background:#fff' },
+      el('button', { text: '📂 파일 찾기...', style: 'background:#ebf0ff', onclick: () => fileInput.click() }), el('div', { class: 'hint', text: '또는 여기에 끌어다 놓기' }), fileInput);
+    drop.addEventListener('dragover', e => e.preventDefault());
+    drop.addEventListener('drop', e => { e.preventDefault(); e.stopPropagation(); if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]); });
+    let close;
+    close = this.dialog('음악 파일 (MP3 · FLAC · WAV · OGG · M4A · MIDI …) → 8비트 도트 게임 칩튠 BGM 변환기', () => el('div', null,
+      el('div', { style: 'font-weight:bold;color:#3b3b98;margin-bottom:10px;white-space:pre-line', text: '🎵 음악 파일(MP3, FLAC, WAV, OGG, M4A, MIDI 등)을 고르거나 끌어다 놓으세요.\n템포를 찾고 멜로디 · 화음 · 베이스 · 드럼을 나눠서 게임보이 4채널 칩튠으로 바꿔요.' }),
+      el('b', { text: '1. 음악 파일 선택:' }), drop, fileInfo,
+      el('fieldset', { style: 'margin-top:10px' }, el('legend', { text: '2. 변환 설정' }),
+        el('div', { class: 'bar' }, autoBpmL, el('span', { text: 'BPM:' }), bpmIn, el('span', { class: 'hint', text: '박자가 어긋나면 끄고 직접 적으세요' })),
+        el('div', { class: 'bar' }, autoLenL, el('span', { text: '스텝:' }), stepIn, el('span', { class: 'hint', text: '1스텝 = 16분음표 (최대 3분)' })),
+        el('div', { class: 'bar' }, el('span', { text: '조옮김  반음:' }), transIn, el('span', { class: 'hint', text: '멜로디가 너무 낮거나 높을 때' }))),
+      el('div', { class: 'bar', style: 'margin-top:10px' }, convBtn, previewBtn, stopBtn), result,
+      el('div', { class: 'bar', style: 'justify-content:space-between' }, el('button', { text: '닫기', onclick: () => { Player.stop(); close(); } }), importBtn)), () => Player.stop(), true);
+  },
+
+  // ---------------------------------------------------------------- 이 곡을 게임에 넣기 창 (SongAssignForm)
+  songAssignDialog(track, current, onDone) {
+    const rom = this.rom, count = RomMusic.songCount(rom.data);
+    const original = track.romSongId > 0 && !track.edited;
+    const usage = rom.musicUsage(), chosen = new Set();
+    const spare = [0x5B, 0x40, 0x4B, 0x5A, 0x3F, 0x1D, 0x55, 0x58];
+    const slotText = id => '[0x' + hex2(id) + '] ' + RomMusic.name(id) + (RomMusic.isReplaced(rom.data, id) ? '  ★바뀜' : '') + (usage.get(id) ? '  · 지도 ' + usage.get(id) + '곳' : '') + (spare.includes(id) ? '  (덜 쓰는 곡)' : '');
+    const slotSel = sel(Array.from({ length: count - 1 }, (_, i) => [i + 1, slotText(i + 1)]), original ? 0x01 : 0x5B);
+    slotSel.style.width = '330px';
+    const refreshSlots = () => { for (const o of slotSel.options) o.textContent = slotText(+o.value); };
+    const [useSlot, useSlotL] = check(original ? '① 게임 속 이 음악을 이 곡으로 바꾸기 (구역 없이)' : '① 게임 속 이 음악을 이 곡으로 바꾸기', !original);
+    useSlot.disabled = !original;   // 편집·가져온 곡은 음악 번호 하나에 꼭 써 넣어야 함
+    useSlotL.style.fontWeight = 'bold';
+    const warn = el('div', { style: 'color:#8b4513;margin-top:4px' });
+    const updateWarn = () => {
+      slotSel.disabled = !useSlot.checked;
+      const id = +slotSel.value, u = usage.get(id) || 0;
+      if (!useSlot.checked) { warn.textContent = '게임 속 음악은 그대로 두고, 아래에서 고른 구역의 배경음악만 바꿔요.'; return; }
+      warn.textContent = u > 0 ? "⚠ 게임에서 '" + RomMusic.name(id) + "' 이(가) 나오던 곳 (지도 " + u + '곳 포함)에서 이제 새 곡이 나와요. 그 구역들의 원래 곡을 살리고 싶으면 다른 번호를 고르세요.'
+        : "게임에서 '" + RomMusic.name(id) + "' 이(가) 나오는 장면에서 이제 새 곡이 나와요.";
+    };
+    slotSel.addEventListener('change', updateWarn); useSlot.addEventListener('change', updateWarn);
+    const scenes = [['🎬 타이틀 화면', 0x01], ['📋 메인 메뉴', 0x54], ['🎞 오프닝', 0x52], ['🌿 야생 배틀', 0x29], ['⚔ 트레이너 배틀', 0x2A], ['🏅 관장 배틀', 0x2E], ['😠 라이벌 배틀', 0x30], ['🏥 포켓몬센터', 0x09], ['🚲 자전거', 0x13], ['🌊 파도타기', 0x21]];
+    const quick = el('div', { class: 'bar' }, ...scenes.filter(s => s[1] < count).map(([t, id]) => el('button', { text: t, onclick: () => { if (!useSlot.disabled) useSlot.checked = true; slotSel.value = id; updateWarn(); } })));
+    const restore = el('button', { text: '↩ 이 번호 원곡으로 되돌리기', style: 'background:#e1f0e1', onclick: () => {
+      const id = +slotSel.value;
+      if (!RomMusic.isReplaced(rom.data, id)) { alert("'" + RomMusic.name(id) + "' 은(는) 이미 원곡이에요."); return; }
+      const err = rom.restoreSongSlot(id);
+      if (err) { alert(err); return; }
+      refreshSlots(); alert("게임 속 '" + RomMusic.name(id) + "' 음악을 원곡으로 되돌렸어요.\n\n메인 화면에서 [저장하기]를 눌러야 롬 파일에 기록돼요.");
+    } });
+    const restoreAll = el('button', { text: '↩ 모든 음악 원곡으로', onclick: () => {
+      let k = 0;
+      for (let id = 1; id < count; id++) if (RomMusic.isReplaced(rom.data, id) && !rom.restoreSongSlot(id)) k++;
+      refreshSlots(); alert(k === 0 ? '바뀐 음악이 없어요. 모두 원곡이에요.' : '바꿨던 음악 ' + k + '개를 모두 원곡으로 되돌렸어요.\n\n메인 화면에서 [저장하기]를 눌러야 롬 파일에 기록돼요.');
+    } });
+    // 구역 고르기
+    const q = el('input', { type: 'search', placeholder: '🔍 구역 찾기', style: 'width:180px' });
+    const list = el('div', { style: 'max-height:36vh;overflow:auto;border:1px solid var(--line);background:#fff;padding:4px' });
+    const title = el('span');
+    const fill = () => {
+      const s = q.value.trim();
+      list.replaceChildren();
+      for (const a of rom.allAreas) {
+        const nm = a.regionName + ' ' + a.name;
+        if (s && !nm.includes(s)) continue;
+        const m = rom.areaMusic(a), [c, l] = check(nm + '   — 지금: ' + (m >= 0 ? RomMusic.name(m) : '?'), chosen.has(a));
+        c.addEventListener('change', () => { if (c.checked) chosen.add(a); else chosen.delete(a); title.textContent = '(구역 ' + chosen.size + '곳 고름)'; });
+        list.append(el('div', null, l));
+      }
+      title.textContent = '(구역 ' + chosen.size + '곳 고름)';
+    };
+    q.addEventListener('input', fill);
+    let close;
+    const apply = () => {
+      const slot = useSlot.checked, slotId = +slotSel.value;
+      if (!slot && !chosen.size) { alert('① 바꿀 게임 음악을 고르거나, ② 곡을 틀 구역을 하나 이상 고르세요.'); return; }
+      const lines = [];
+      let id;
+      if (original) {
+        id = track.romSongId;
+        if (slot && (slotId !== id || (track.romOriginal && RomMusic.isReplaced(rom.data, id)))) {
+          // 원곡은 데이터를 복사할 필요 없이 그 음악 번호가 같은 곡을 가리키게
+          const perr = rom.setSongSlot(slotId, track.romOriginal ? RomMusic.originalOffset(rom.data, id) : RomMusic.songOffset(rom.data, id));
+          if (perr) { alert(perr); return; }
+          lines.push("게임 속 '" + RomMusic.name(slotId) + "' 음악이 이제 '" + RomMusic.name(id) + "' 원곡으로 나와요.");
+        }
+      } else {
+        id = slotId;
+        const err = rom.writeCustomSong(track, id);
+        if (err) { alert('곡을 넣지 못했어요: ' + err); return; }
+        lines.push("게임 속 '" + RomMusic.name(id) + "' 음악(0x" + hex2(id) + ")이 이제 '" + track.title + "' 로 나와요.");
+      }
+      // 원곡을 구역에 넣는데 그 곡 번호가 다른 곡으로 바뀌어 있으면, 원곡이 나오도록 그 번호를 되돌림
+      if (original && track.romOriginal && chosen.size && RomMusic.isReplaced(rom.data, id)) {
+        const rerr = rom.restoreSongSlot(id);
+        if (rerr) { alert(rerr); return; }
+        lines.push('곡 번호 0x' + hex2(id) + " 가 다른 곡으로 바뀌어 있어서 원곡 '" + RomMusic.name(id) + "' 으로 되돌렸어요.");
+      }
+      for (const a of chosen) rom.setAreaMusic(a, id);
+      if (chosen.size) lines.push('구역 ' + chosen.size + '곳의 배경음악도 이 곡으로 바꿨어요.');
+      close();
+      this.say('게임에 곡을 넣었어요. [저장하기]를 눌러야 롬 파일에 기록돼요.');
+      onDone(slot && original ? slotId : id, lines.join('\n') + '\n\n메인 화면에서 [저장하기]를 눌러야 롬 파일에 기록돼요.');
+    };
+    close = this.dialog('이 곡을 게임에 넣기', () => el('div', null,
+      el('div', { style: 'font-weight:bold;color:#1c3d9a;font-size:15px', text: original ? '🎶 넣을 곡: 원곡 [0x' + hex2(track.romSongId) + '] ' + RomMusic.name(track.romSongId)
+        : '🎶 넣을 곡: ' + track.title + ' (편집·가져온 곡, ' + track.totalSteps + '스텝 · 템포 ' + track.bpm + ')' }),
+      el('div', { style: 'margin-top:10px' }, useSlotL), quick, el('div', { class: 'bar' }, slotSel, restore, restoreAll), warn,
+      el('div', { style: 'font-weight:bold;margin-top:12px', text: '② (골라도 되고 안 골라도 돼요) 이 곡을 배경음악으로 틀 구역:' }),
+      el('div', { class: 'bar' }, q,
+        el('button', { text: '같은 지역 전체', onclick: () => { if (current) for (const a of rom.allAreas) if (a.regionName === current.regionName) chosen.add(a); fill(); } }),
+        el('button', { text: '지금 곡과 같은 곡 쓰는 곳 전부', onclick: () => { if (current) { const m = rom.areaMusic(current); for (const a of rom.allAreas) if (rom.areaMusic(a) === m) chosen.add(a); } fill(); } }),
+        el('button', { text: '모두 해제', onclick: () => { chosen.clear(); fill(); } }), title),
+      list,
+      el('div', { class: 'bar', style: 'justify-content:flex-end;margin-top:8px' }, el('button', { text: '취소', onclick: () => close() }), el('button', { class: 'apply', text: '✅ 게임에 넣기', style: 'font-weight:bold', onclick: apply }))));
+    updateWarn(); fill();
+  }
+});
+
+// ===== 99-blockpanel.js
+// ================================================================ [지도 블록] 탭 (BlockPanel.cs · MapView 블록 칠하기와 같음)
+Object.assign(App.prototype, {
+  blkState() {
+    if (!this.blk) this.blk = { area: null, blocks: [], sel: 0, stroke: [], undo: [], redo: [], okShared: new Set(), coll: false, painting: false, rectStart: null, hover: null, hoverText: '' };
+    return this.blk;
+  },
+  blockDisplay(a) {
+    const b = this.blkState(), rom = this.rom;
+    if (b.area === a) return b;
+    this.blockEndStroke(true);
+    b.area = a; b.hoverText = ''; b.hover = null;
+    b.blocks = a && rom.gfx.ok && rom.blocksValid(a) ? rom.gfx.renderBlocks(a, rom.blockCount(a)) : [];
+    if (b.sel < 0 || b.sel >= b.blocks.length) b.sel = 0;
+    return b;
+  },
+  describeBlock(blk) {
+    const b = this.blk;
+    if (!b || !b.area) return '';
+    const c = this.rom.blockCollision(b.area, blk);
+    return '블록 ' + blk + (c ? '  ·  충돌 ' + c.map(hex2).join(' ') : '');
+  },
+
+  pageBlock() {
+    const rom = this.rom, a = this.area, b = this.blockDisplay(a);
+    const box = el('div');
+    if (!a || !b.blocks.length) { box.append(el('b', { text: !a ? '왼쪽에서 구역을 고르세요' : '이 구역은 블록을 편집할 수 없어요' })); return box; }
+    const selPic = el('canvas', { width: 32, height: 32, style: 'width:64px;height:64px;image-rendering:pixelated;background:#282828' });
+    selPic.getContext('2d').drawImage(b.blocks[b.sel], 0, 0);
+    const [coll, collL] = check('지나갈 수 있는 곳 표시', b.coll);
+    coll.addEventListener('change', () => { b.coll = coll.checked; this.drawMap(); this.setTab(T_BLOCK); });
+    const undoBtn = el('button', { text: '되돌리기 (Ctrl+Z)', onclick: () => this.blockUndo() }); undoBtn.disabled = !b.undo.length;
+    const redoBtn = el('button', { text: '다시하기 (Ctrl+Y)', onclick: () => this.blockRedo() }); redoBtn.disabled = !b.redo.length;
+    box.append(el('div', { class: 'bar' }, selPic, el('b', { text: '고른 블록: ' + this.describeBlock(b.sel) }), collL, undoBtn, redoBtn),
+      el('div', { class: 'hint', text: '아래에서 블록을 고르고 위 지도에 칠하세요.   왼쪽 클릭·드래그: 칠하기   Shift+드래그: 네모로 채우기   오른쪽 클릭: 지도에 있는 블록 집기\n블록마다 지나갈 수 있는지가 정해져 있어서, 블록을 바꾸면 충돌(벽·물·풀숲)도 같이 바뀌어요.' }));
+    if (b.coll) {
+      const lg = el('div', { class: 'bar', style: 'font-size:12.5px' });
+      for (const [c, t] of [['rgb(230,40,40)', '못 지나감'], ['rgb(40,110,255)', '물'], ['rgb(40,220,60)', '풀숲'], ['rgb(200,60,255)', '문·계단·구멍'], ['rgb(255,210,0)', '턱']])
+        lg.append(el('span', { style: 'display:inline-block;width:14px;height:14px;background:' + c }), el('span', { text: t, style: 'margin-right:8px' }));
+      lg.append(el('span', { class: 'hint', text: '(색 없음: 걸을 수 있는 바닥)' }));
+      box.append(lg);
+    }
+    const others = rom.sharingBlocks(a);
+    if (others.length)
+      box.append(el('div', { class: 'bar' }, el('span', { style: 'color:#e8590c', text: '⚠ 이 지도 모양은 다른 구역 ' + others.length + '곳(' + others.slice(0, 3).map(x => x.regionName + ' ' + x.name).join(', ') + (others.length > 3 ? ' 등' : '') + ')과 같이 써요. 고치면 모두 같이 바뀌어요.' }),
+        el('button', { text: '이 구역만 따로 고치기', onclick: () => this.blockSeparate() })));
+    this.blkHoverLabel = el('div', { class: 'hint', text: b.hoverText || ' ' });
+    box.append(this.blkHoverLabel);
+    // 블록 팔레트
+    const pal = el('div', { style: 'background:#282828;border-radius:4px;padding:4px;display:grid;grid-template-columns:repeat(auto-fill,68px);gap:4px;max-height:360px;overflow:auto' });
+    b.blocks.forEach((blk, i) => {
+      const c = el('canvas', { width: 32, height: 32, title: this.describeBlock(i), style: 'width:64px;height:64px;image-rendering:pixelated;cursor:pointer;outline:' + (i === b.sel ? '3px solid red' : 'none') + ';outline-offset:1px' });
+      c.getContext('2d').drawImage(blk, 0, 0);
+      c.addEventListener('click', () => { b.sel = i; this.setTab(T_BLOCK); });
+      c.addEventListener('mouseenter', () => { if (i !== b.sel) c.style.outline = '2px solid #fff'; });
+      c.addEventListener('mouseleave', () => { if (i !== b.sel) c.style.outline = 'none'; });
+      pal.append(c);
+    });
+    box.append(pal);
+    setTimeout(() => { const s = pal.children[b.sel]; if (s) s.scrollIntoView({ block: 'nearest' }); }, 0);
+    return box;
+  },
+
+  // ---------------------------------------------------------------- 지도 위 (drawMap 이 부름)
+  drawBlockMode(g, T) {
+    const a = this.area, b = this.blockDisplay(a), s = this.scale;
+    // 블록을 칠할 때는 NPC 를 흐리게만 (표지판은 숨김)
+    g.globalAlpha = 0.5;
+    for (const o of a.extras.concat(a.owners)) if (o.x >= 0 && !o.isSign) { const sp = this.spriteImg(o.sprite, o.pal); if (sp) g.drawImage(sp, o.x * T, o.y * T, T, T); }
+    g.globalAlpha = 1;
+    if (b.coll) {
+      for (let y = 0; y < a.height * 2; y++)
+        for (let x = 0; x < a.width * 2; x++) {
+          const c = collColor(this.rom.collisionAt(a, x, y));
+          if (c) { g.fillStyle = c; g.fillRect(x * T, y * T, T, T); }
+        }
+    }
+    const B = 32 * s;
+    if (b.rectStart && b.hover) {
+      const x0 = Math.min(b.rectStart[0], b.hover[0]), y0 = Math.min(b.rectStart[1], b.hover[1]);
+      const x1 = Math.max(b.rectStart[0], b.hover[0]), y1 = Math.max(b.rectStart[1], b.hover[1]);
+      g.fillStyle = 'rgba(255,255,0,.27)'; g.fillRect(x0 * B, y0 * B, (x1 - x0 + 1) * B, (y1 - y0 + 1) * B);
+      g.strokeStyle = 'yellow'; g.lineWidth = 2; g.strokeRect(x0 * B, y0 * B, (x1 - x0 + 1) * B, (y1 - y0 + 1) * B);
+    } else if (b.hover) { g.strokeStyle = '#fff'; g.lineWidth = 2; g.strokeRect(b.hover[0] * B + 1, b.hover[1] * B + 1, B - 2, B - 2); }
+  },
+
+  blockAt(e) {
+    const a = this.area, r = this.canvas.getBoundingClientRect(), B = 32 * this.scale * (r.width / this.canvas.width);
+    const x = Math.floor((e.clientX - r.left) / B), y = Math.floor((e.clientY - r.top) / B);
+    return x >= 0 && y >= 0 && x < a.width && y < a.height ? [x, y] : null;
+  },
+  blockMouse(type, e) {
+    const b = this.blockDisplay(this.area), p = type === 'mouseleave' ? null : this.blockAt(e);
+    if (type === 'contextmenu') {
+      e.preventDefault();
+      if (p) { b.sel = this.rom.getBlock(this.area, p[0], p[1]); this.setTab(T_BLOCK); }
+      return;
+    }
+    if (type === 'mousedown') {
+      if (!p || e.button !== 0) return;
+      e.preventDefault();
+      if (e.shiftKey) { b.rectStart = p; b.hover = p; this.drawMap(); return; }
+      b.painting = true; this.blockPaintAt(p[0], p[1]);
+      return;
+    }
+    if (type === 'mousemove') {
+      const changed = !p !== !b.hover || (p && b.hover && (p[0] !== b.hover[0] || p[1] !== b.hover[1]));
+      if (!changed) return;
+      b.hover = p;
+      if (p) { b.hoverText = '지도 칸 (' + p[0] + ', ' + p[1] + ')  ·  ' + this.describeBlock(this.rom.getBlock(this.area, p[0], p[1])); if (this.blkHoverLabel) this.blkHoverLabel.textContent = b.hoverText; }
+      if (b.painting && p) this.blockPaintAt(p[0], p[1]); else this.drawMap();
+      return;
+    }
+    if (type === 'mouseup') {
+      if (b.rectStart) {
+        const q = p || b.hover;
+        if (q) {
+          const x0 = Math.min(b.rectStart[0], q[0]), y0 = Math.min(b.rectStart[1], q[1]), x1 = Math.max(b.rectStart[0], q[0]), y1 = Math.max(b.rectStart[1], q[1]);
+          b.rectStart = null;
+          for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (!this.blockPaintAt(x, y, true)) break;
+        }
+        b.rectStart = null;
+        this.blockEndStroke(); this.drawMap();
+      } else if (b.painting) { b.painting = false; this.blockEndStroke(); }
+      return;
+    }
+    if (type === 'mouseleave' && !b.painting && !b.rectStart && b.hover) { b.hover = null; this.drawMap(); }
+  },
+
+  // 같이 쓰는 블록이면 처음 칠할 때 한 번 물어봄. 칠해도 되면 true
+  blockConfirmShared() {
+    const b = this.blk, a = b.area, off = this.rom.blocksOff(a);
+    if (b.okShared.has(off)) return true;
+    const others = this.rom.sharingBlocks(a);
+    if (!others.length) { b.okShared.add(off); return true; }
+    if (confirm('이 지도 모양은 다른 구역 ' + others.length + '곳과 같이 써요.\n\n[확인] 모두 같이 바꾸기\n[취소] 다른 방법 고르기')) { b.okShared.add(off); return true; }
+    if (confirm('이 구역만 따로 고칠까요? (빈 공간에 복사)\n\n[확인] 이 구역만 따로 고치기\n[취소] 그만두기')) return this.blockSeparate();
+    return false;
+  },
+  blockPaintAt(x, y, noRedraw) {
+    const b = this.blk, a = b.area, rom = this.rom;
+    if (!a || b.sel < 0) return false;
+    if (!b.okShared.has(rom.blocksOff(a))) {
+      const was = b.painting; b.painting = false;
+      const go = this.blockConfirmShared();
+      if (!go) { b.rectStart = null; return false; }
+      b.painting = was;
+    }
+    if (rom.setBlock(a, x, y, b.sel, b.stroke)) {
+      const base = this.mapBase(a);
+      if (base) base.getContext('2d').drawImage(b.blocks[b.sel], x * 32, y * 32);
+      if (!noRedraw) this.drawMap();
+    }
+    return true;
+  },
+  blockEndStroke(quiet) {
+    const b = this.blk;
+    if (!b || !b.stroke.length || !b.area) return;
+    b.undo.push([b.area, b.stroke]); b.redo = [];
+    const n = b.stroke.length;
+    b.stroke = [];
+    for (const x of this.rom.sharingBlocks(b.area)) this.mapCache.delete(x);
+    this.say('블록 ' + n + '칸을 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.');
+    if (!quiet && this.tab === T_BLOCK) this.setTab(T_BLOCK);
+  },
+  blockRedrawAll() { this.mapCache = new Map(); this.drawMap(); if (this.tab === T_BLOCK) this.setTab(T_BLOCK); },
+  blockUndo() {
+    this.blockEndStroke();
+    const b = this.blkState(), u = b.undo.pop();
+    if (!u) { this.say('되돌릴 블록 편집이 없어요'); return; }
+    this.rom.applyBlockLog(u[1], true); b.redo.push(u);
+    this.blockRedrawAll();
+    this.say('블록 ' + u[1].length + '칸을 되돌렸어요');
+  },
+  blockRedo() {
+    const b = this.blkState(), u = b.redo.pop();
+    if (!u) { this.say('다시 할 블록 편집이 없어요'); return; }
+    this.rom.applyBlockLog(u[1], false); b.undo.push(u);
+    this.blockRedrawAll();
+    this.say('블록 ' + u[1].length + '칸을 다시 바꿨어요');
+  },
+  blockSeparate() {
+    const b = this.blk, a = b && b.area;
+    if (!a) return false;
+    const err = this.rom.separateBlocks(a);
+    if (err) { alert(err); return false; }
+    b.okShared.add(this.rom.blocksOff(a));
+    this.say('이 구역만 쓰는 지도 모양으로 복사했어요. 이제 다른 구역은 바뀌지 않아요.');
+    if (this.tab === T_BLOCK) this.setTab(T_BLOCK);
+    return true;
+  }
+});
+
+// ===== 99-owsprite.js
+// ================================================================ 필드 캐릭터 그림 창 (OwSpriteForm.cs)
+Object.assign(App.prototype, {
+  owDialog() {
+    const rom = this.rom;
+    let all = rom.owSprites();
+    if (!all.length) { alert('이 롬에서 필드 캐릭터 그림 데이터를 찾지 못했어요.'); return; }
+    const Z = 5;
+    const st = { cur: null, img: null, pals: new Map(), palNum: 0, imgDirty: false, palDirty: false };
+    const dirty = () => st.imgDirty || st.palDirty || st.pals.size > 0;
+    const palOf = p => st.pals.get(p) || rom.objPal(p);
+    const icon = s => { const im = rom.readOw(s), one = newPic(16, 16); for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) one.px[y * 16 + x] = im.px[y * im.w + x]; return picCanvas(one, palOf(s.pal), true, 2); };
+    const info = el('div'), share = el('div', { style: 'color:#e8590c' }), note = el('div', { style: 'color:#e8590c' }), err = el('div');
+    const frames = el('div', { class: 'bar', style: 'align-items:flex-start' });
+    const palSel = el('div', { class: 'bar' }), palNote = el('div', { class: 'hint' });
+    const sepBtn = el('button', { text: '이 캐릭터만 따로 쓰기', onclick: () => {
+      const e = rom.separateOw(st.cur);
+      if (e) { this.okMsg(err, e, true); return; }
+      all = rom.owSprites(); st.cur = all.find(x => x.id === st.cur.id);
+      show(); this.okMsg(err, '이 캐릭터만 쓰는 그림으로 복사했어요');
+    } });
+    const show = () => {
+      const s = st.cur;
+      if (!s) return;
+      info.textContent = hex2(s.id) + '번 ' + Names.sprite(s.id) + ' · ' + owKind(s) + ' · 그림 위치 ' + hex2(s.bank) + ':' + s.addr.toString(16).toUpperCase().padStart(4, '0');
+      const sh = rom.sharingOw(s, all);
+      share.textContent = sh.length ? '⚠ 이 그림을 다른 캐릭터 ' + sh.length + '개(' + sh.slice(0, 3).map(x => Names.sprite(x.id)).join(', ') + ')도 같이 써요. 고치면 같이 바뀌어요.' : '';
+      sepBtn.style.display = sh.length ? '' : 'none';
+      frames.replaceChildren();
+      const pal = palOf(st.palNum), names = owFrameNames(s);
+      for (let f = 0; f < owFrames(s); f++) {
+        const one = newPic(16, 16);
+        for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) one.px[y * 16 + x] = st.img.px[y * st.img.w + f * 16 + x];
+        const c = picCanvas(one, pal, true, Z);
+        c.style.background = 'repeating-conic-gradient(#e1e1e1 0% 25%, #bebebe 0% 50%) 0 0/20px 20px';
+        frames.append(el('div', { style: 'text-align:center;font-size:12px;color:#666' }, c, el('div', { text: names[f] })));
+      }
+      palSel.replaceChildren(el('span', { text: '색 묶음' }));
+      for (let p = 0; p < 8; p++) {
+        const c = palOf(p), n = all.filter(x => x.pal === p).length;
+        const b = el('button', { title: p + '번 묶음 (' + n + '명 사용)', style: 'padding:2px 6px;' + (p === st.palNum ? 'outline:3px solid var(--accent)' : ''), onclick: () => { if (p !== st.palNum) { st.palNum = p; st.palDirty = true; show(); } } },
+          ...[1, 2, 3].map(i => el('span', { style: 'display:inline-block;width:16px;height:16px;background:' + rgbCss(c[i]) })), el('span', { text: ' ' + p }));
+        palSel.append(b);
+      }
+      const users = all.filter(x => x.pal === st.palNum && x.id !== s.id).length;
+      palNote.textContent = '이 캐릭터는 ' + st.palNum + '번 색 묶음을 써요. 같은 묶음을 쓰는 캐릭터 ' + users + '명. 묶음의 색은 [도트로 그리기]에서 바꿀 수 있어요.';
+      note.textContent = dirty() ? '(아직 적용 안 함)' : '';
+    };
+    const load = s => { st.cur = s; st.img = rom.readOw(s); st.palNum = s.pal; st.imgDirty = st.palDirty = false; st.pals.clear(); err.textContent = ''; show(); };
+    const drawIt = () => {
+      const s = st.cur;
+      this.pixelEditor({ title: hex2(s.id) + ' ' + Names.sprite(s.id), pic: st.img, pal: palOf(st.palNum), editable: [false, true, true, true], transparent0: true, frameW: 16, frameNames: owFrameNames(s),
+        note: owKind(s) + ' — 16×16 장면 ' + owFrames(s) + '장 (빨간 세로줄로 나눔). 1번 색은 투명, 2~4번 색은 RGB 로 바꿀 수 있어요.\n색을 바꾸면 ' + st.palNum + '번 색 묶음을 쓰는 다른 캐릭터 ' +
+          all.filter(x => x.pal === st.palNum && x.id !== s.id).length + "명도 같이 바뀌어요. 걷는 장면은 '좌우 대칭'을 끄고, 정면은 켜고 그리면 편해요. 숫자키 1~4 = 색",
+        onOk: (p, pl, palChanged) => { st.img = p; st.imgDirty = true; if (palChanged) st.pals.set(st.palNum, pl); show(); } });
+    };
+    const copyFrom = () => {
+      const same = all.filter(x => x.id !== st.cur.id && owFrames(x) === owFrames(st.cur));
+      let close;
+      const lst = el('div', { class: 'list', style: 'max-height:60vh' });
+      for (const s of same) lst.append(el('div', { class: 'it', style: 'display:flex;align-items:center;gap:8px', onclick: () => { close(); st.img = rom.readOw(s); st.imgDirty = true; show(); } }, icon(s), el('span', { text: hex2(s.id) + ' ' + Names.sprite(s.id) })));
+      close = this.dialog('바탕으로 쓸 캐릭터 (누르면 그 그림으로 시작)', () => lst, null, true);
+    };
+    const apply = () => {
+      if (!st.cur || !dirty()) return;
+      if (st.imgDirty) {
+        const sh = rom.sharingOw(st.cur, all);
+        if (sh.length) {
+          if (!confirm('이 그림은 다른 캐릭터 ' + sh.length + '개도 같이 써요.\n\n[확인] 모두 같이 바꾸기\n[취소] 다른 방법 고르기')) {
+            if (!confirm('이 캐릭터만 따로 복사해서 바꿀까요?\n\n[확인] 이 캐릭터만 바꾸기\n[취소] 그만두기')) return;
+            const e = rom.separateOw(st.cur);
+            if (e) { this.okMsg(err, e, true); return; }
+            all = rom.owSprites(); st.cur = all.find(x => x.id === st.cur.id);
+          }
+        }
+        rom.writeOw(st.cur, st.img);
+      }
+      if (st.palDirty) rom.setOwPal(st.cur, st.palNum);
+      for (const [p, c] of st.pals) rom.setObjPal(p, c);
+      st.imgDirty = st.palDirty = false; st.pals.clear();
+      all = rom.owSprites(); st.cur = all.find(x => x.id === st.cur.id);
+      this.spriteCache.clear(); this.mapCache = new Map(); this.drawMap();
+      fillList(); show(); this.okMsg(err, '적용했어요');
+      this.say('캐릭터 그림을 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.');
+    };
+    const q = el('input', { type: 'search', placeholder: '캐릭터 찾기' }), lst = el('div', { class: 'list', style: 'max-height:62vh' });
+    const fillList = () => {
+      const s = q.value.trim();
+      lst.replaceChildren();
+      for (const o of all) {
+        if (s && !Names.sprite(o.id).includes(s) && String(o.id) !== s) continue;
+        const it = el('div', { class: 'it' + (st.cur && o.id === st.cur.id ? ' on' : ''), style: 'display:flex;align-items:center;gap:8px', onclick: () => {
+          if (st.cur && o.id === st.cur.id) return;
+          if (dirty() && !confirm('적용하지 않은 변경이 있어요. 버릴까요?')) return;
+          load(o); fillList();
+        } }, icon(o), el('span', { text: hex2(o.id) + ' ' + Names.sprite(o.id) }));
+        lst.append(it);
+      }
+    };
+    q.addEventListener('input', fillList);
+    load(all[0]); fillList();
+    const body = el('div', null, info, frames, el('div', { class: 'bar' }, share, sepBtn),
+      el('div', { class: 'bar' }, el('button', { text: '도트로 그리기…', style: 'background:#c8e6ff', onclick: drawIt }), el('button', { text: '다른 캐릭터 그림을 바탕으로…', onclick: copyFrom }),
+        el('button', { text: 'PNG로 저장…', onclick: () => downloadCanvas(picCanvas(st.img, palOf(st.palNum), true), hex2(st.cur.id) + '_' + Names.sprite(st.cur.id) + '.png') })),
+      note,
+      el('fieldset', null, el('legend', { text: '색' }), palSel, palNote),
+      el('div', { class: 'bar' }, el('button', { class: 'apply', text: '적용', onclick: apply }), err),
+      el('div', { class: 'hint', text: '· 필드 캐릭터는 16×16 장면 여러 장이고, 색은 투명 + 3색이에요 (2세대 규칙)\n· 색은 캐릭터마다 따로가 아니라 8개 색 묶음 중 하나를 골라 써요. 묶음의 색을 바꾸면 같은 묶음을 쓰는 모든 캐릭터 색이 바뀌어요\n· 새 캐릭터 번호를 늘릴 수는 없어서, 잘 안 쓰는 캐릭터 하나를 골라 새 모습으로 바꾸는 방식이에요\n· 적용한 뒤 메인 화면에서 [저장하기]를 눌러야 롬 파일에 기록돼요' }));
+    this.dialog('필드 캐릭터 그림 편집 (주인공·NPC·물건)', () => el('div', { class: 'side', style: 'grid-template-columns:250px minmax(0,1fr)' }, el('div', { class: 'box' }, q, lst), body));
+  }
+});
+
+// ===== 99-pixel.js
+// ================================================================ 도트 편집 창 (PixelEditor.cs) · 포켓몬 그림 창 (SpriteForm.cs)
+Object.assign(App.prototype, {
+  _spriteConvert: SpriteConvert,   // 자동 테스트용
+  // o = { title, pic, pal: [rgb×4], editable: [bool×4], transparent0, frameW, frameNames, note, onOk(pic, pal, palChanged) }
+  pixelEditor(o) {
+    const T0 = !!o.transparent0, editable = o.editable;
+    const pal = o.pal.map(c => c.slice());
+    let palChanged = false;
+    const preview = el('div'), pos = el('div', { class: 'hint' });
+    const pc = pixelCanvas({ pic: o.pic, palAt: () => pal, transparent0: T0, frameW: o.frameW || 0,
+      onHover: c => pos.textContent = c ? 'x ' + c[0] + ', y ' + c[1] + (o.frameW ? '  (장면 ' + (Math.floor(c[0] / o.frameW) + 1) + ')' : '') : '',
+      onPick: () => showColors(),
+      onChange: () => {
+        const c = picCanvas(pc.st.pic, pal, T0, 2);
+        if (T0) c.style.background = 'repeating-conic-gradient(#e1e1e1 0% 25%, #bebebe 0% 50%) 0 0/8px 8px';
+        preview.replaceChildren(c);
+      },
+      exportName: o.title });
+    // 색
+    const sw = [0, 1, 2, 3].map(i => el('button', { style: 'width:54px;height:40px;font-size:11px;text-align:right;vertical-align:bottom', onclick: () => { pc.st.color = i; showColors(); } }));
+    sw.forEach((b, i) => b.addEventListener('contextmenu', e => { e.preventDefault(); if (editable[i]) { pc.st.color = i; showColors(); pickInput.click(); } }));
+    const pickInput = el('input', { type: 'color', style: 'width:0;height:0;opacity:0;position:absolute' });
+    const setCol = c => { if (!editable[pc.st.color]) return; pal[pc.st.color] = SNAP(c); palChanged = true; showColors(true); pc.changed(); };
+    pickInput.addEventListener('input', () => setCol(hexRgb(pickInput.value)));
+    const rgb = rgbInputs(c => setCol(c));
+    const info = el('span', { class: 'hint' });
+    const showColors = keepNums => {
+      sw.forEach((b, i) => {
+        const c = pal[i];
+        b.style.background = T0 && i === 0 ? '#dcdcdc' : rgbCss(c);
+        b.style.color = SpriteConvert.hsl(c)[2] < 0.5 && !(T0 && i === 0) ? '#fff' : '#000';
+        b.textContent = (T0 && i === 0 ? '투명 ' : editable[i] ? '' : '고정 ') + (i + 1);
+        b.style.border = i === pc.st.color ? '4px solid red' : '1px solid gray';
+      });
+      const c = pal[pc.st.color];
+      if (!keepNums) rgb.set(c);
+      rgb.enable(editable[pc.st.color]);
+      pickInput.value = rgbHex(c);
+      info.textContent = editable[pc.st.color] ? rgbHex(c).toUpperCase() + '  ([색 고르기…], 색칸 오른쪽 클릭, R·G·B 로 바꾸기)' : '이 색은 2세대 규칙상 고정이라 바꿀 수 없어요';
+    };
+    pc.onColorKey = showColors;
+    const right = el('div', { style: 'width:240px;flex-shrink:0' }, el('b', { text: '게임 크기 미리보기 (×2)' }), preview,
+      o.frameNames ? el('div', { class: 'hint', text: '장면 순서 (왼쪽부터): ' + o.frameNames.join(', ') }) : null, pos);
+    const top = el('div', { class: 'bar' }, el('b', { text: '색' }), ...sw,
+      el('button', { text: '색 고르기…', onclick: () => { if (editable[pc.st.color]) pickInput.click(); } }), pickInput, ...rgb.els, info);
+    let close;
+    close = this.dialog(o.title, () => el('div', null, top, o.note ? el('div', { class: 'hint', style: 'margin-bottom:6px', text: o.note }) : null,
+      el('div', { style: 'display:flex;gap:10px;align-items:flex-start' }, pc.left, pc.wrap, right),
+      el('div', { class: 'bar', style: 'justify-content:flex-end;margin-top:8px' },
+        el('button', { class: 'apply', text: '확인', onclick: () => { close(); o.onOk(pc.st.pic, pal, palChanged); } }),
+        el('button', { text: '취소', onclick: () => close() }))), () => pc.dispose());
+    setTimeout(() => pc.fit(), 0);
+    showColors(); pc.changed();
+  },
+
+  // ---------------------------------------------------------------- 포켓몬 그림 창 (SpriteForm)
+  spriteDialog() {
+    const rom = this.rom;
+    if (!rom.spritesAvailable) { alert('이 롬에서 포켓몬 그림 데이터를 찾지 못했어요.'); return; }
+    const Z = 3;
+    const st = { mon: 0, front: null, back: null, frontTiles: 7, fd: false, bd: false, pd: false, normal: null, shiny: null, src: null, showShiny: false, outline: true, takeColors: true, autoBack: true };
+    const pal = () => st.showShiny ? st.shiny : st.normal;
+    const frontBox = el('div', { style: 'width:' + (56 * Z + 4) + 'px;height:' + (56 * Z + 4) + 'px;border:1px solid #888;background:#fff;position:relative' });
+    const backBox = el('div', { style: 'width:' + (56 * Z + 4) + 'px;height:' + (56 * Z + 4) + 'px;border:1px solid #888;background:#fff;position:relative' });
+    const frontNote = el('div', { style: 'color:#e8590c;font-size:12.5px;min-height:18px' }), backNote = el('div', { style: 'color:#e8590c;font-size:12.5px;min-height:18px' });
+    const err = el('div');
+    const sizeSel = sel([[5, '5×5 칸 (작음)'], [6, '6×6 칸 (보통)'], [7, '7×7 칸 (큼)']], 7, t => {
+      if (!st.front || t === st.frontTiles) return;
+      if (st.src) convertFront(st.src, t);
+      else { st.front = resizePic(st.front, st.frontTiles, t); st.frontTiles = t; st.fd = true; frontNote.textContent = '(아직 적용 안 함)'; redraw(); }
+    });
+    const swatches = [0, 1, 2, 3].map(k => { const i = el('input', { type: 'color', style: 'width:44px;height:28px' }); i.addEventListener('input', () => {
+      const c = SNAP(hexRgb(i.value));
+      if (k < 2) { st.normal = st.normal.slice(); st.normal[k + 1] = c; } else { st.shiny = st.shiny.slice(); st.shiny[k - 1] = c; }
+      st.pd = true; redraw();
+    }); return i; });
+    const show = (box, pic, tiles) => {
+      box.replaceChildren();
+      if (!pic) return;
+      const size = tiles * 8, c = picCanvas(pic, pal(), false, Z);
+      c.style.cssText = 'position:absolute;left:' + ((56 - size) / 2 * Z + 1) + 'px;top:' + ((56 - size) * Z + 1) + 'px';
+      box.append(c);
+    };
+    const redraw = () => {
+      for (let i = 0; i < 4; i++) swatches[i].value = rgbHex(i < 2 ? st.normal[i + 1] : st.shiny[i - 1]);
+      show(frontBox, st.front, st.frontTiles); show(backBox, st.back, 6);
+    };
+    const resizePic = (img, from, to) => {
+      const fs = from * 8, ts = to * 8, r = newPic(ts, ts), dx = Math.floor((ts - fs) / 2), dy = ts - fs;
+      for (let y = 0; y < fs; y++) for (let x = 0; x < fs; x++) { const nx = x + dx, ny = y + dy; if (nx >= 0 && ny >= 0 && nx < ts && ny < ts) r.px[ny * ts + nx] = img.px[y * fs + x]; }
+      return r;
+    };
+    const load = m => {
+      st.mon = m; err.textContent = ''; frontNote.textContent = backNote.textContent = '';
+      st.fd = st.bd = st.pd = false; st.src = null;
+      const f = rom.readPicP(m, false), b = rom.readPicP(m, true);
+      st.front = f; st.frontTiles = f.tiles; st.back = b;
+      st.normal = rom.monPaletteRGB(m, false); st.shiny = rom.monPaletteRGB(m, true);
+      sizeSel.value = st.frontTiles;
+      redraw();
+    };
+    const convertFront = (src, tiles) => {
+      const res = SpriteConvert.convert(src, tiles, st.takeColors ? null : st.normal, st.outline);
+      st.src = src; st.front = res.img; st.frontTiles = tiles; st.fd = true; frontNote.textContent = '(아직 적용 안 함)';
+      if (st.takeColors) { st.normal = [WHITE, res.c1, res.c2, BLACK]; st.pd = true; }
+      if (st.autoBack) { st.back = SpriteConvert.convert(SpriteConvert.backSource(src), 6, st.normal, st.outline).img; st.bd = true; backNote.textContent = '(앞모습 그림으로 만듦 · 아직 적용 안 함)'; }
+      sizeSel.value = tiles;
+      redraw();
+    };
+    const unown = () => { if (st.mon === 201) { alert('안농은 글자마다 그림이 따로 있어서 여기서는 바꿀 수 없어요.'); return true; } return false; };
+    const importPic = async isBack => {
+      if (unown()) return;
+      let src;
+      try { src = await pickImageFile(); } catch (e) { alert('그림을 열 수 없어요: ' + e.message); return; }
+      if (!src) return;
+      try {
+        if (!isBack) convertFront(src, +sizeSel.value);
+        else { st.back = SpriteConvert.convert(src, 6, st.normal, st.outline).img; st.bd = true; backNote.textContent = '(아직 적용 안 함)'; redraw(); }
+        err.textContent = '';
+      } catch (e) { this.okMsg(err, e.message, true); }
+    };
+    const drawPic = isBack => {
+      if (unown()) return;
+      const img = isBack ? st.back : st.front, sh = st.showShiny, px = isBack ? 48 : st.frontTiles * 8;
+      this.pixelEditor({ title: pad3(st.mon) + ' ' + rom.monName(st.mon) + ' ' + (isBack ? '뒷모습' : '앞모습'), pic: img, pal: pal(), editable: [false, true, true, false],
+        note: (isBack ? '뒷모습' : '앞모습') + ' ' + px + '×' + px + ' 픽셀 (' + px / 8 + '×' + px / 8 + ' 칸). 2세대 포켓몬 그림은 4색: 1번 흰색·4번 검정은 고정이고, 2·3번 색은 RGB 로 마음대로 바꿀 수 있어요.\n' +
+          (sh ? '빛나는' : '보통') + ' 색은 앞·뒷모습이 같이 써요. 앞모습 크기(5·6·7칸)는 창을 닫은 뒤 [크기]에서 바꿔요. 숫자키 1~4 = 색 고르기',
+        onOk: (p, pl, palChanged) => {
+          if (isBack) { st.back = p; st.bd = true; backNote.textContent = '(아직 적용 안 함)'; }
+          else { st.front = p; st.fd = true; frontNote.textContent = '(아직 적용 안 함)'; st.src = null; }
+          if (palChanged) { if (sh) st.shiny = pl; else st.normal = pl; st.pd = true; }
+          redraw();
+        } });
+    };
+    const exportPic = (img, what) => { if (img) downloadCanvas(picCanvas(img, pal(), false), pad3(st.mon) + '_' + rom.monName(st.mon) + '_' + what + '.png'); };
+    const apply = () => {
+      try {
+        if (st.fd) { const e = rom.writePic(st.mon, false, st.front, st.frontTiles); if (e) { this.okMsg(err, e, true); return; } }
+        if (st.bd) { const e = rom.writePic(st.mon, true, st.back, 6); if (e) { this.okMsg(err, e, true); return; } }
+        if (st.pd) { rom.setMonPalette(st.mon, false, st.normal[1], st.normal[2]); rom.setMonPalette(st.mon, true, st.shiny[1], st.shiny[2]); }
+        st.fd = st.bd = st.pd = false; st.src = null; frontNote.textContent = backNote.textContent = '';
+        this.okMsg(err, '적용했어요');
+        this.say('포켓몬 그림을 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.');
+      } catch (e) { this.okMsg(err, e.message, true); }
+    };
+    const items = this.monOptions(false).map(([v, t]) => ({ value: v, label: t }));
+    const list = listPanel(items, m => {
+      if (m === st.mon) return;
+      if ((st.fd || st.bd || st.pd) && !confirm('적용하지 않은 변경이 있어요. 버릴까요?')) return;
+      load(m);
+    }, '포켓몬 찾기', 1);
+    const opt = (label, key) => { const [c, l] = check(label, st[key]); c.addEventListener('change', () => { st[key] = c.checked; if (key === 'showShiny') redraw(); }); return l; };
+    const [dc, dl] = check('점무늬로 중간 명암 표현하기 (원작 도트 느낌)', SpriteConvert.dither);
+    dc.addEventListener('change', () => { SpriteConvert.dither = dc.checked; if (st.src) convertFront(st.src, st.frontTiles); });
+    const names = ['보통 밝은색', '보통 어두운색', '빛나는 밝은색', '빛나는 어두운색'];
+    const body = el('div', null,
+      el('div', { class: 'bar', style: 'align-items:flex-start;gap:12px' },
+        el('fieldset', null, el('legend', { text: '앞모습 (상대 쪽)' }), frontBox, frontNote,
+          el('div', { class: 'bar' }, el('button', { text: '도트로 그리기…', style: 'background:#c8e6ff', onclick: () => drawPic(false) }), el('button', { text: '앞모습 사진 가져오기…', onclick: () => importPic(false) }), el('button', { text: 'PNG로 저장', onclick: () => exportPic(st.front, '앞모습') })),
+          el('div', { class: 'bar' }, el('span', { text: '크기' }), sizeSel)),
+        el('fieldset', null, el('legend', { text: '뒷모습 (내 쪽)' }), backBox, backNote,
+          el('div', { class: 'bar' }, el('button', { text: '도트로 그리기…', style: 'background:#c8e6ff', onclick: () => drawPic(true) }), el('button', { text: '뒷모습 사진 가져오기…', onclick: () => importPic(true) }), el('button', { text: 'PNG로 저장', onclick: () => exportPic(st.back, '뒷모습') })),
+          el('div', { class: 'hint', text: '뒷모습은 6×6 칸 고정' }))),
+      el('fieldset', null, el('legend', { text: '색' }),
+        el('div', { class: 'bar' }, ...names.flatMap((n, i) => [el('span', { text: n }), swatches[i]])), opt('빛나는(색이 다른) 포켓몬 색으로 보기', 'showShiny'),
+        el('div', { class: 'hint', text: '흰색과 검정은 고정이고, 포켓몬마다 색 2개를 정할 수 있어요 (2세대 규칙). 색 칸을 누르면 바꿀 수 있어요.' })),
+      el('fieldset', null, el('legend', { text: '사진 바꾸기 설정' }),
+        el('div', null, opt('검은 테두리 자동으로 넣기 (큰 사진·그림일 때 추천)', 'outline')), el('div', null, opt('앞모습 사진의 색으로 포켓몬 색도 바꾸기', 'takeColors')),
+        el('div', null, opt('앞모습 그림 한 장으로 뒷모습도 자동으로 만들기 (좌우 뒤집고 윗부분 확대)', 'autoBack')), el('div', null, dl),
+        el('div', { class: 'hint', text: '· 배경이 투명한 PNG가 제일 좋아요. 배경이 있으면 모서리 색을 배경으로 보고 자동으로 지워요\n· 큰 그림은 칸 크기에 맞게 줄이고, 원작처럼 4색으로 또렷하게 바꿔요 (흐릿한 번짐 없음)\n· 이미 도트로 된 작은 그림(56×56 이하)은 줄이지 않고 그대로 써요' })),
+      el('div', { class: 'bar' }, el('button', { class: 'apply', text: '적용', onclick: apply }), err),
+      el('div', { class: 'hint', text: '적용한 뒤 메인 화면에서 [저장하기]를 눌러야 롬 파일에 기록돼요' }));
+    load(1);
+    this.dialog('포켓몬 그림 편집', () => el('div', { class: 'side', style: 'grid-template-columns:200px minmax(0,1fr)' }, list, body));
+  }
+});
+
+// ===== 99-playtest.js
+// ================================================================ [▶ 게임으로 확인] (TestRun.cs 의 웹판)
+// 지금 고친 내용을 테스트 롬으로 만들어 브라우저 안 에뮬레이터(EmulatorJS, 오픈소스)로 바로 켬. 원래 롬 파일은 그대로
+const EMU_DATA = 'https://cdn.emulatorjs.org/stable/data/';
+
+mixin(Rom.prototype, {
+  // 고친 대사를 롬 데이터에 넣음 ([저장하기]와 같은 방법). 파일로는 아직 안 썼으니 저장할 게 남아 있다고 표시 → 넣지 못한 대사 목록
+  commitTexts() {
+    const errors = [];
+    let n = 0;
+    for (const t of this.texts.values()) {
+      if (!t.modified) continue;
+      this.validate(t);
+      if (t.error) { errors.push(t.current.split('\n')[0] + ' … : ' + t.error); continue; }
+      const e = this.writeText(t);
+      if (e) errors.push(t.current.split('\n')[0] + ' … : ' + e);
+      else { t.original = t.current; t.edited = null; n++; }
+    }
+    if (n) this.dirty = true;
+    this.fixChecksum();
+    return errors;
+  }
+});
+
+Object.assign(App.prototype, {
+  playTest() {
+    const rom = this.rom;
+    if (!rom) return;
+    const bad = [...rom.texts.values()].filter(t => t.modified && (rom.validate(t), t.error));
+    if (bad.length) { alert('고쳐야 할 대사가 ' + bad.length + '개 있어요 (빨간 글씨). 먼저 고쳐주세요.'); return; }
+    const errors = rom.commitTexts();
+    if (errors.length) alert('넣지 못한 대사가 있어요:\n\n' + errors.slice(0, 10).join('\n'));
+    this.buildTree();
+    const bytes = rom.data.slice();
+    const romUrl = URL.createObjectURL(new Blob([bytes], { type: 'application/octet-stream' }));
+    this.playSaveSlot = this.playSaveSlot || 'GSCTool-테스트';
+    const frameBox = el('div', { style: 'position:relative;width:100%;max-width:640px;aspect-ratio:10/9;background:#000;margin:0 auto' });
+    const note = el('div', { class: 'hint' });
+    let frame = null;
+    const start = () => {
+      if (frame) frame.remove();
+      frame = el('iframe', { allow: 'autoplay; gamepad; fullscreen', style: 'position:absolute;inset:0;width:100%;height:100%;border:0' });
+      // 에뮬레이터는 따로 떨어진 틀 안에서 돌려서 툴 화면과 섞이지 않게 함. 세이브는 같은 이름이면 다음 테스트에도 이어짐
+      frame.srcdoc = '<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;height:100%;background:#000;overflow:hidden}#wrap{width:100%;height:100%}</style></head><body><div id="wrap"><div id="game"></div></div>' +
+        '<script>EJS_player="#game";EJS_core="gambatte";EJS_gameName=' + JSON.stringify(this.playSaveSlot) + ';EJS_gameUrl=' + JSON.stringify(romUrl) +
+        ';EJS_pathtodata=' + JSON.stringify(EMU_DATA) + ';EJS_startOnLoaded=true;EJS_color="#2f6fec";<\/script>' +
+        '<script src="' + EMU_DATA + 'loader.js"><\/script></body></html>';
+      frameBox.append(frame);
+      setTimeout(() => { try { frame.focus(); } catch (e) { } }, 500);
+    };
+    const download = () => {
+      const a = el('a', { href: romUrl, download: rom.fileName.replace(/(\.gbc?)$/i, '') + '_테스트.gbc' });
+      document.body.append(a); a.click(); a.remove();
+    };
+    const fresh = el('button', { text: '🆕 테스트 세이브 지우고 새 게임으로', onclick: () => {
+      if (!confirm('테스트용 세이브를 새로 시작할까요? (원래 게임 세이브와는 상관없어요)')) return;
+      this.playSaveSlot = 'GSCTool-테스트-' + Date.now();
+      start();
+    } });
+    let close;
+    close = this.dialog('▶ 게임으로 확인 — 지금 고친 내용으로 테스트', () => el('div', null,
+      el('div', { class: 'bar' },
+        el('button', { text: '🔄 다시 켜기', onclick: start }), fresh,
+        el('button', { text: '💾 테스트 롬 내려받기 (내 에뮬레이터로 열기)', onclick: download })),
+      frameBox,
+      el('div', { class: 'hint', style: 'margin-top:8px', text:
+        '· 고친 내용(대사·NPC·지도·음악 등)을 넣은 테스트 롬으로 켜요. 원래 롬 파일은 그대로고, 고친 걸 남기려면 메인 화면 [저장하기]를 눌러요\n' +
+        '· 키보드: 방향키 이동, Z = A 버튼, X = B 버튼, Enter = START, Shift(오른쪽) = SELECT (에뮬레이터 화면 아래 메뉴에서 키를 바꿀 수 있어요)\n' +
+        '· 테스트 세이브는 이 브라우저에 남아서 다음에 [▶ 게임으로 확인]을 눌러도 이어서 할 수 있어요. 진행 중인 세이브(.sav)는 에뮬레이터 메뉴의 세이브 불러오기로 넣을 수 있어요\n' +
+        '· 에뮬레이터는 오픈소스 EmulatorJS 를 그 사이트(cdn.emulatorjs.org)에서 불러와요. 롬 파일은 내 컴퓨터 안에서만 쓰이고 어디로도 올라가지 않아요\n' +
+        '· 화면이 안 나오면 [테스트 롬 내려받기]로 받아서 쓰던 에뮬레이터로 열어 보세요' }), note),
+      () => { if (frame) frame.remove(); setTimeout(() => URL.revokeObjectURL(romUrl), 1000); });
+    start();
+    this.say('▶ 테스트 롬으로 게임을 켰어요 (원래 롬 파일은 그대로 · 고친 걸 남기려면 [저장하기])');
+  }
+});
+
+// ===== 99-title.js
+// ================================================================ 타이틀 화면 그리기 창 (TitleForm.cs)
+Object.assign(App.prototype, {
+  titleDialog() {
+    const rom = this.rom, t = rom.findTitle();
+    if (!t) { alert('이 롬에서 타이틀 화면 데이터를 찾지 못했어요 (타이틀 코드를 크게 바꾼 개조롬일 수 있어요).'); return; }
+    let pals = rom.titlePals(t), selPal = 0, dirty = false, palDirty = false, showRegions = false;
+    const attrAt = (x, y) => t.attr[Math.floor(y / 8) * 32 + Math.floor(x / 8)] % 5;
+    const count = el('b'), pos = el('span', { class: 'hint' }), err = el('span');
+    const palLabels = [];
+    const updateCount = () => { const n = rom.titleTileCount(pc.st.pic), mx = titleMaxTiles(t); count.textContent = '서로 다른 8×8 칸 ' + n + ' / ' + mx; count.style.color = n > mx ? 'var(--warn)' : 'var(--ok)'; };
+    const [rg, rgl] = check('색 영역 보기', false);
+    rg.addEventListener('change', () => { showRegions = rg.checked; pc.draw(); });
+    const pc = pixelCanvas({ pic: rom.titleImage(t), palAt: (x, y) => pals[attrAt(x, y)], exportName: '타이틀화면', zoomStep: 1, noClear: true, hideFrames: true,
+      mirrorLabel: '좌우 대칭', onMirror: on => { pc.st.frameW = on ? 160 : 0; }, leftExtra: [rgl],
+      overlay: (g, z) => {
+        g.strokeStyle = 'red'; g.lineWidth = 2; g.beginPath(); g.moveTo(160 * z, 0); g.lineTo(160 * z, 144 * z); g.stroke();
+        if (!showRegions) return;
+        const rc = [null, 'rgba(255,0,255,.27)', 'rgba(255,0,0,.27)', 'rgba(255,200,0,.27)', 'rgba(0,160,255,.27)'];
+        for (let i = 0; i < t.attr.length; i++) { const a = t.attr[i] % 5; if (!a) continue; g.fillStyle = rc[a]; g.fillRect(i % 32 * 8 * z, Math.floor(i / 32) * 8 * z, 8 * z, 8 * z); }
+      },
+      onChange: () => { dirty = true; updateCount(); },
+      onPick: (x, y) => { selPal = attrAt(x, y); showColors(); },
+      onHover: c => {
+        if (!c) { pos.textContent = ''; return; }
+        const a = attrAt(c[0], c[1]);
+        pos.textContent = 'x ' + c[0] + ', y ' + c[1] + ' · 색 묶음 ' + (a + 1) + (c[0] >= 160 ? ' · 화면 밖 (구름 줄은 흘러가며 보임)' : '');
+        palLabels.forEach((l, i) => l.style.color = i === a ? 'red' : '');
+      },
+      // 160×144 그림이면 화면 부분만, 아니면 256×144 전체에 맞춤
+      importPic: (src, cur) => {
+        const pic = clonePic(cur), w = src.w * 144 / Math.max(1, src.h) <= 200 ? 160 : 256;
+        for (let y = 0; y < 144; y++) for (let x = 0; x < w; x++) {
+          const i = (Math.floor(y * src.h / 144) * src.w + Math.floor(x * src.w / w)) * 4;
+          let c = [src.data[i], src.data[i + 1], src.data[i + 2]];
+          if (src.data[i + 3] < 128) c = WHITE;
+          const pal = pals[attrAt(x, y)];
+          let best = 0, bd = Infinity;
+          for (let k = 0; k < 4; k++) { const dd = (c[0] - pal[k][0]) ** 2 * 0.3 + (c[1] - pal[k][1]) ** 2 * 0.59 + (c[2] - pal[k][2]) ** 2 * 0.11; if (dd < bd) { bd = dd; best = k; } }
+          pic.px[y * pic.w + x] = best;
+        }
+        return pic;
+      } });
+    pc.st.color = 3;
+    // 위: 색 묶음 5개
+    const sw = [];
+    const top = el('div', { class: 'bar' });
+    for (let p = 0; p < 5; p++) {
+      palLabels[p] = el('span', { text: '묶음 ' + (p + 1) });
+      const box = el('span', { style: 'margin-right:12px;display:inline-flex;align-items:center;gap:2px' }, palLabels[p]);
+      sw[p] = [];
+      for (let i = 0; i < 4; i++) {
+        const b = el('button', { style: 'width:34px;height:34px;padding:0;font-size:10px;text-align:right;vertical-align:bottom', onclick: () => { selPal = p; pc.st.color = i; showColors(); } });
+        b.addEventListener('contextmenu', e => { e.preventDefault(); selPal = p; pc.st.color = i; showColors(); pickColor(); });
+        sw[p].push(b); box.append(b);
+      }
+      top.append(box);
+    }
+    const pickInput = el('input', { type: 'color', style: 'width:0;height:0;opacity:0;position:absolute' });
+    const setColor = c => { if (t.palOff < 0) return; pals[selPal] = pals[selPal].slice(); pals[selPal][pc.st.color] = SNAP(c); palDirty = true; showColors(true); pc.draw(); };
+    pickInput.addEventListener('input', () => setColor(hexRgb(pickInput.value)));
+    const pickColor = () => { if (t.palOff < 0) { alert('이 롬에서는 타이틀 색 위치를 찾지 못해서 색은 바꿀 수 없어요 (그림은 바꿀 수 있어요).'); return; } pickInput.click(); };
+    const rgb = rgbInputs(c => setColor(c));
+    const selLabel = el('b'), hexLabel = el('span', { class: 'hint' });
+    const showColors = keepNums => {
+      for (let p = 0; p < 5; p++) for (let i = 0; i < 4; i++) {
+        const b = sw[p][i], c = pals[p][i], on = i === pc.st.color;
+        b.style.background = rgbCss(c); b.textContent = i + 1;
+        b.style.color = SpriteConvert.hsl(c)[2] < 0.5 ? '#fff' : '#000';
+        b.style.border = on ? (p === selPal ? '4px solid red' : '2px solid lightcoral') : '1px solid gray';
+      }
+      const c = pals[selPal][pc.st.color];
+      if (!keepNums) rgb.set(c);
+      rgb.enable(t.palOff >= 0);
+      pickInput.value = rgbHex(c);
+      selLabel.textContent = '바꿀 색: 묶음 ' + (selPal + 1) + '의 ' + (pc.st.color + 1) + '번';
+      hexLabel.textContent = t.palOff >= 0 ? rgbHex(c).toUpperCase() : '이 롬은 타이틀 색 위치를 못 찾아서 색은 못 바꿔요';
+      pc.draw();
+    };
+    pc.onColorKey = showColors;
+    const colorRow = el('div', { class: 'bar' }, selLabel, el('button', { text: '색 바꾸기…', style: 'background:#c8e6ff', onclick: pickColor }), pickInput, ...rgb.els, hexLabel);
+    const note = el('div', { class: 'hint', text:
+      "· 화면을 영역으로 나눠 영역마다 4색 묶음 하나를 써요 (2세대 규칙). 찍는 색은 1~4번 '자리'이고, 실제 색은 그 자리가 속한 영역의 묶음 색이에요\n" +
+      '· 색칸을 누르면 그 자리 색으로 찍고, 그 색을 [색 바꾸기…]나 R·G·B 숫자로 바꿀 수 있어요 (색칸 오른쪽 클릭 = 바로 바꾸기). 숫자키 1~4 = 색 자리\n' +
+      '· 왼쪽 160픽셀(빨간 선 안)이 화면에 보여요. 구름 줄은 옆으로 흘러가서 256픽셀 전체가 보여요' +
+      (t.loads.length === 1 && t.loads[0].dest === 0x9000 ? '\n· 날아다니는 호오는 그림 위에 따로 움직이는 스프라이트라 여기엔 안 보여요 (가운데 빈 하늘)' : '') });
+    let close;
+    const apply = () => {
+      const e = rom.writeTitle(t, pc.st.pic, pals);
+      if (e) { this.okMsg(err, e, true); return; }
+      dirty = palDirty = false;
+      this.okMsg(err, '적용했어요. 메인 화면에서 [저장하기]를 눌러야 롬 파일에 기록돼요');
+      this.say('타이틀 화면을 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.');
+    };
+    const tryClose = () => { if ((dirty || palDirty) && !confirm('적용하지 않은 변경이 있어요. 닫을까요?')) return; close(); };
+    close = this.dialog('타이틀 화면 그리기', () => el('div', null, top, colorRow, note,
+      el('div', { style: 'display:flex;gap:10px;align-items:flex-start;margin-top:6px' }, pc.left, pc.wrap),
+      el('div', { class: 'bar', style: 'margin-top:8px' }, el('button', { class: 'apply', text: '적용', onclick: apply }), el('button', { text: '닫기', onclick: tryClose }), count, err, pos)), () => pc.dispose());
+    dirty = false;
+    setTimeout(() => pc.fit(), 0);
+    showColors(); pc.changed(); dirty = false;
+  }
+});
+
+// ===== zz-mount.js
 // ================================================================ 블로그 글에 붙이기 (모든 조각이 정의된 뒤 마지막에)
 function mount() {
   const hosts = document.querySelectorAll('#gsc-tool, .gsc-tool');
