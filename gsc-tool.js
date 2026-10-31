@@ -168,7 +168,7 @@ const I18N = (() => {
     '사진의 색으로 트레이너 색도 바꾸기': "Also take the trainer's colors from the picture",
     '이 롬에서는 트레이너 그림을 바꿀 수 없어요 (지금은 금·은만 돼요).': "This ROM's trainer pictures can't be edited (Gold/Silver only for now).",
     '트레이너 그림을 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.': 'Trainer picture changed. Press [Save] to write it to the ROM file.',
-    '메뉴에서 내 이름(트레이너 카드)을 열면 나오는 주인공 그림이에요. 40×56 픽셀 (5×7 칸). 색은 게임이 정해 둔 색을 써요.': 'The player picture shown on the Trainer Card (your name in the menu). 40×56 pixels (5×7 tiles). Its colors are fixed by the game.',
+    '메뉴에서 내 이름(트레이너 카드)을 열면 나오는 주인공 그림이에요. 40×56 픽셀 (5×7 칸). 색은 게임 시작 때 주인공 그림 색과 따로 정해요.': 'The player picture shown on the Trainer Card (your name in the menu). 40×56 pixels (5×7 tiles). Its colors are set separately from the intro player picture.',
     '게임을 처음 시작할 때 오박사가 이름을 물어볼 때, 그리고 명예의 전당에 나오는 주인공 그림이에요. 56×56 픽셀 (7×7 칸).': 'The player picture shown when Prof. Oak asks your name at the start, and in the Hall of Fame. 56×56 pixels (7×7 tiles).',
     '배틀할 때 나오는 이 직업의 트레이너 그림이에요. 56×56 픽셀 (7×7 칸). 같은 직업 트레이너가 모두 같이 바뀌어요.': 'The battle picture for this trainer class. 56×56 pixels (7×7 tiles). Every trainer of this class changes together.',
     '· 배경이 투명한 PNG가 제일 좋아요\n· 트레이너 카드 그림은 가로 40픽셀이라 사진 가운데 부분을 써요': '· A PNG with a transparent background works best\n· The Trainer Card picture is 40 pixels wide, so the middle of the picture is used', '찾는 게 없어요': 'No matches',
@@ -7722,9 +7722,9 @@ mixin(Rom.prototype, {
     this.dirty = true;
     return null;
   },
-  // 트레이너 색 2개 (흰색·검정은 고정). 카드 그림은 칼의 색으로 보여 줌
+  // 트레이너 색 2개 (흰색·검정은 고정). 0번 = 트레이너 카드 색 (_CGB_TrainerCard: xor a / call GetTrainerPalettePointer)
   trainerPaletteRGB(cls) {
-    const o = this.loadTrainerPics().pal + (cls || CAL_CLASS) * 4;
+    const o = this.loadTrainerPics().pal + cls * 4;
     return [WHITE, C555(this.w(o)), C555(this.w(o + 2)), BLACK];
   },
   setTrainerPalette(cls, c1, c2) {
@@ -7750,7 +7750,7 @@ Object.assign(App.prototype, {
     const palBox = el('div', { class: 'bar' }, el('span', { text: '밝은색' }), swatches[0], el('span', { text: '어두운색' }), swatches[1]);
     const redraw = () => {
       box.replaceChildren();
-      swatches.forEach((s, i) => { s.value = rgbHex(st.pal[i + 1]); s.disabled = st.cls === 0 || !hasPal; });
+      swatches.forEach((s, i) => { s.value = rgbHex(st.pal[i + 1]); s.disabled = !hasPal; });
       if (!st.pic) return;
       const c = picCanvas(st.pic, st.pal, false, Z);
       c.style.cssText = 'position:absolute;left:' + ((56 - W()) / 2 * Z + 1) + 'px;top:1px';
@@ -7762,21 +7762,21 @@ Object.assign(App.prototype, {
       st.pic = rom.readTrainerPic(c);
       st.pal = hasPal ? rom.trainerPaletteRGB(c) : [WHITE, [170, 170, 170], [85, 85, 85], BLACK];
       title.textContent = label(c);
-      info.textContent = c === 0 ? '메뉴에서 내 이름(트레이너 카드)을 열면 나오는 주인공 그림이에요. 40×56 픽셀 (5×7 칸). 색은 게임이 정해 둔 색을 써요.'
+      info.textContent = c === 0 ? '메뉴에서 내 이름(트레이너 카드)을 열면 나오는 주인공 그림이에요. 40×56 픽셀 (5×7 칸). 색은 게임 시작 때 주인공 그림 색과 따로 정해요.'
         : c === CAL_CLASS ? '게임을 처음 시작할 때 오박사가 이름을 물어볼 때, 그리고 명예의 전당에 나오는 주인공 그림이에요. 56×56 픽셀 (7×7 칸).'
           : '배틀할 때 나오는 이 직업의 트레이너 그림이에요. 56×56 픽셀 (7×7 칸). 같은 직업 트레이너가 모두 같이 바뀌어요.';
       redraw();
     };
     const changed = () => { st.dirty = true; note.textContent = '(아직 적용 안 함)'; redraw(); };
-    const draw = () => this.pixelEditor({ title: label(st.cls), pic: st.pic, pal: st.pal, editable: [false, st.cls !== 0 && hasPal, st.cls !== 0 && hasPal, false],
-      note: W() + '×56 픽셀. 1번 흰색·4번 검정은 고정' + (st.cls === 0 ? '이고 2·3번 색도 게임이 정해 둔 색이에요.' : '이고, 2·3번 색은 마음대로 바꿀 수 있어요.') + ' 숫자키 1~4 = 색 고르기',
+    const draw = () => this.pixelEditor({ title: label(st.cls), pic: st.pic, pal: st.pal, editable: [false, hasPal, hasPal, false],
+      note: W() + '×56 픽셀. 1번 흰색·4번 검정은 고정이고, 2·3번 색은 마음대로 바꿀 수 있어요. 숫자키 1~4 = 색 고르기',
       onOk: (p, pl, palChanged) => { st.pic = p; if (palChanged) { st.pal = pl; st.palDirty = true; } changed(); } });
     const importPic = async () => {
       let src;
       try { src = await pickImageFile(); } catch (e) { alert('그림을 열 수 없어요: ' + e.message); return; }
       if (!src) return;
       try {
-        const take = st.takeColors && st.cls !== 0 && hasPal;
+        const take = st.takeColors && hasPal;
         const res = SpriteConvert.convert(src, 7, take ? null : st.pal, st.outline);
         if (take) { st.pal = [WHITE, res.c1, res.c2, BLACK]; st.palDirty = true; }
         if (st.cls === 0) { const p = newPic(40, 56); for (let y = 0; y < 56; y++) for (let x = 0; x < 40; x++) p.px[y * 40 + x] = res.img.px[y * 56 + x + 8]; st.pic = p; }
@@ -7787,7 +7787,7 @@ Object.assign(App.prototype, {
     const apply = () => {
       try {
         if (st.dirty) { const e = rom.writeTrainerPic(st.cls, st.pic); if (e) { this.okMsg(err, e, true); return; } }
-        if (st.palDirty && st.cls !== 0) rom.setTrainerPalette(st.cls, st.pal[1], st.pal[2]);
+        if (st.palDirty) rom.setTrainerPalette(st.cls, st.pal[1], st.pal[2]);
         st.dirty = st.palDirty = false; note.textContent = '';
         this.okMsg(err, '적용했어요');
         this.say('트레이너 그림을 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.');
