@@ -176,6 +176,14 @@ const I18N = (() => {
     '앞뒤 조용한 부분은 자동으로 잘라요': 'Silence at the start and end is trimmed automatically', '소리가 너무 낮거나 높을 때': 'If the sound is too low or high', '변환 설정': 'Conversion settings', '먼저 소리 파일을 선택해주세요.': 'Please choose a sound file first.',
     '🐾 동물 소리·목소리·효과음 파일(MP3, WAV, OGG, M4A 등)을 고르세요.\n소리의 높낮이와 크기를 따라가는 사각파 2개 + 노이즈로 바꿔요.': '🐾 Choose an animal sound, voice or sound effect (MP3, WAV, OGG, M4A …).\nIt becomes 2 square waves + noise that follow its pitch and loudness.',
     '소리가 거의 없는 파일이에요': 'The file is almost silent',
+    '🎼 한눈에 보기 (파랑·초록 = 사각파, 빨강 = 노이즈 · 진할수록 큰 소리) — 막대를 누르면 그 음을 골라요': '🎼 Overview (blue/green = square, red = noise · darker = louder) — click a bar to select that note',
+    '🎼 피아노 롤 — 막대를 위아래로 끌면 음 높이 (Shift = 더 잘게) · 오른쪽 끝을 끌면 길이 · 마우스 휠 = 볼륨 · 빈 곳을 두 번 누르면 음 넣기 · 파랑·초록 = 사각파, 빨강 = 노이즈': '🎼 Piano roll — drag a bar up/down for pitch (Shift = finer) · drag its right edge for length · mouse wheel = volume · double-click empty space to add a note · blue/green = square, red = noise',
+    '🎼 피아노 롤 — 막대를 위아래로 끌면 음 높이 · 좌우로 끌면 자리 옮기기 · 오른쪽 끝을 끌면 길이 · 마우스 휠 = 볼륨 · 오른쪽 클릭 = 지우기 · 빈 곳을 두 번 누르면 음 넣기 (아래 빨간 칸 = 드럼) · 진한 막대 = 지금 채널': '🎼 Piano roll — drag a bar up/down for pitch · left/right to move it · drag its right edge for length · mouse wheel = volume · right-click = delete · double-click empty space to add a note (red rows at the bottom = drums) · dark bars = current channel',
+    '🎹 건반을 누르면:': '🎹 Piano key:', '고른 음의 높이 바꾸기': 'changes the selected note', '고른 음 뒤에 새 음 넣기': 'inserts a new note after it', '새 음 길이:': 'New note length:', '볼륨:': 'Volume:', '볼륨 변화:': 'Fade:',
+    '＋ 끝에 음 추가': '＋ Add note at end', '⧉ 복사': '⧉ Duplicate', '▲ 위로': '▲ Up', '▼ 아래로': '▼ Down', '🗑 지우기 (Delete)': '🗑 Delete', '채널 비우기': 'Clear channel', '⇧ 전체 반음 올리기': '⇧ All up a semitone', '⇩ 전체 반음 내리기': '⇩ All down a semitone',
+    '이 채널의 음을 모두 지울까요?': 'Delete all notes in this channel?', '음이 없어요. 아래 건반을 누르면 음이 들어가요': 'No notes. Press a piano key below to add one',
+    '표에서 음을 누르면 골라져요 (↑↓ 키로 옮기기 · Delete 키로 지우기) · 길이 1프레임 = 1/60초 · 볼륨 변화: −면 점점 작게, +면 점점 크게 (숫자가 작을수록 빠르게)': 'Click a note in the table to select it (↑↓ to move · Delete to remove) · 1 frame = 1/60 s · Fade: − gets quieter, + gets louder (smaller = faster)',
+    '🥁 쉭 (아주 높음)': '🥁 Hiss (highest)', '🥁 치익': '🥁 Tsss', '🥁 스윽': '🥁 Swish', '🥁 샤아': '🥁 Shaa', '🥁 쏴아': '🥁 Whoosh', '🥁 후우': '🥁 Hoo', '🥁 부우': '🥁 Booo', '🥁 쿠웅 (아주 낮음)': '🥁 Boom (lowest)',
     '트레이너 그림': 'Trainer Pics', '트레이너 그림 편집': 'Trainer Picture Editor', '트레이너 찾기': 'Find trainer', '주인공': 'Player', '트레이너 직업': 'Trainer classes',
     '★ 주인공 — 트레이너 카드': '★ Player — Trainer Card', ' ★ 주인공': ' ★ Player', '밝은색': 'Light', '어두운색': 'Dark', '사진 가져오기…': 'Import picture…',
     '사진의 색으로 트레이너 색도 바꾸기': "Also take the trainer's colors from the picture",
@@ -1813,19 +1821,32 @@ const RomMusic = (() => {
 })();
 
 // 브라우저에서 곡 재생 (한 번에 하나)
+// once: 짧은 미리듣기 (멈추기·재생 위치에 안 잡힘). playOnce: 한 번만 재생하지만 위치를 알 수 있음
 const Player = {
-  ctx: null, src: null, onEnd: null,
-  play(samples, once) {
-    if (!once) this.stop();
+  ctx: null, src: null, onEnd: null, t0: 0, dur: 0, loop: false,
+  play(samples, once) { this._start(samples, !once, once); },
+  playOnce(samples) { this._start(samples, false, false); },
+  _start(samples, loop, preview) {
+    if (!preview) this.stop();
     if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
     if (!samples.length) return;
     const buf = this.ctx.createBuffer(1, samples.length, RomMusic.SAMPLE_RATE);
     buf.copyToChannel(samples, 0);
     const s = this.ctx.createBufferSource();
-    s.buffer = buf; s.loop = !once; s.connect(this.ctx.destination); s.start();
-    if (!once) this.src = s;
+    s.buffer = buf; s.loop = loop; s.connect(this.ctx.destination); s.start();
+    if (preview) return;
+    this.src = s; this.t0 = this.ctx.currentTime; this.dur = buf.duration; this.loop = loop;
+    s.onended = () => { if (this.src === s) this.src = null; };
   },
-  stop() { if (this.src) { try { this.src.stop(); } catch (e) { } this.src = null; } }
+  stop() { if (this.src) { try { this.src.stop(); } catch (e) { } this.src = null; } },
+  get playing() { return !!this.src; },
+  // 지금 재생 위치 (초). 재생 중이 아니면 -1
+  pos() {
+    if (!this.src) return -1;
+    const t = this.ctx.currentTime - this.t0;
+    if (this.loop) return this.dur ? t % this.dur : 0;
+    return t <= this.dur ? t : -1;
+  }
 };
 
 // ===== 41-cry.js
@@ -6956,7 +6977,8 @@ Object.assign(App.prototype, {
         // 고치지 않은 원곡은 롬 데이터를 그대로 합성 (음소거한 채널만 빼고)
         if (st.mute.some(x => x)) { const r = RomMusic.render(rom.data, t.romSongId, st.mute, 240, t.romOriginal); samples = r && r.samples; }
         else samples = st.romSamples;
-      } else samples = RomMusic.renderTrack(t, st.mute);
+        st.stepsPerSec = RomMusic.FRAME_RATE / (st.unit || 1);   // 원곡: 프레임 → 스텝
+      } else { samples = RomMusic.renderTrack(t, st.mute); st.stepsPerSec = Math.max(30, Math.min(400, t.bpm)) * 4 / 60; }
       if (!samples) return;
       Player.play(samples); playBtn.style.background = '#b4ffb4';
     };
@@ -6968,7 +6990,7 @@ Object.assign(App.prototype, {
       setTimeout(() => {
         const r = RomMusic.render(rom.data, id, null, 240, original);
         if (!r) { status.textContent = '이 곡은 읽을 수 없어요'; return; }
-        st.romSamples = r.samples;
+        st.romSamples = r.samples; st.unit = r.unitFrames;
         st.track = RomMusic.toTrack(r, id); st.track.romOriginal = original;
         bpmIn.value = Math.max(30, Math.min(400, st.track.bpm));
         rebuildRows();
@@ -7012,7 +7034,7 @@ Object.assign(App.prototype, {
         if (st.track.romSongId < 0 || st.track.edited) {
           // 새로 써 넣은 곡을 다시 읽어서, 이제부터는 롬에 들어간 그대로 재생
           const r = RomMusic.render(rom.data, id, null);
-          if (r) { st.romSamples = r.samples; st.track.romSongId = id; st.track.edited = false; st.track.romOriginal = false; }
+          if (r) { st.romSamples = r.samples; st.unit = r.unitFrames; st.track.romSongId = id; st.track.edited = false; st.track.romOriginal = false; }
         }
         mapSel.value = id;
         status.textContent = '🎮 게임에 곡을 넣었어요 · [저장하기]를 눌러야 기록돼요';
@@ -7020,6 +7042,7 @@ Object.assign(App.prototype, {
       }); } }), status);
     // 채널 탭
     const chNames = ['🔊 CH1: 리드 멜로디 (사각파)', '🎵 CH2: 화음·서브 (사각파)', '🎸 CH3: 베이스 라인 (웨이브)', '🥁 CH4: 퍼커션/드럼 (노이즈)'];
+    let drawRoll = () => {};
     const chBtns = chNames.map((nm, i) => el('button', { text: nm, onclick: () => { st.ch = i; showCh(); updateGrid(); } }));
     const showCh = () => chBtns.forEach((b, i) => { b.style.background = i === st.ch ? '#fff' : '#ebebeb'; b.style.fontWeight = i === st.ch ? 'bold' : ''; });
     const chBar = el('div', { class: 'bar', style: 'background:#e4e8f0;padding:4px;border-radius:4px' });
@@ -7048,7 +7071,7 @@ Object.assign(App.prototype, {
       for (let i = 0; i < st.track.totalSteps; i++) {
         const tr = el('tr', { style: 'cursor:pointer' }, el('th', { text: '#' + String(i + 1).padStart(2, '0') }), el('td'), el('td'), el('td'), el('td'));
         tr.addEventListener('click', () => {
-          const old = st.sel; st.sel = i; paintRow(old); paintRow(i);
+          const old = st.sel; st.sel = i; paintRow(old); paintRow(i); drawRoll(true);
           const nt = st.track.channels[st.ch][i];
           if (nt.pitch) Player.play(RomMusic.previewNote(st.ch, nt.pitch, nt.octave), true);
         });
@@ -7056,8 +7079,8 @@ Object.assign(App.prototype, {
       }
       updateGrid();
     };
-    const updateGrid = () => { for (let i = 0; i < st.track.totalSteps; i++) paintRow(i); };
-    const advance = () => { if (st.sel < st.track.totalSteps - 1) { const old = st.sel; st.sel++; paintRow(old); paintRow(st.sel); tbody.children[st.sel].scrollIntoView({ block: 'nearest' }); } };
+    const updateGrid = () => { for (let i = 0; i < st.track.totalSteps; i++) paintRow(i); drawRoll(); };
+    const advance = () => { if (st.sel < st.track.totalSteps - 1) { const old = st.sel; st.sel++; paintRow(old); paintRow(st.sel); tbody.children[st.sel].scrollIntoView({ block: 'nearest' }); drawRoll(true); } };
     // 건반
     const durSel = sel([[1, '1스텝 (16분)'], [2, '2스텝 (8분)'], [4, '4스텝 (4분)'], [8, '8스텝 (2분)']], 1);
     const insertNote = (pitch, octave) => {
@@ -7085,10 +7108,203 @@ Object.assign(App.prototype, {
     ['🥁 킥', '🎯 스네어', '🔔 하이햇', '💥 크래시'].forEach((t, i) => keys.append(el('button', { text: t, style: 'position:absolute;left:' + (wx + 24 + Math.floor(i / 2) * 80) + 'px;top:' + (8 + (i % 2) * 48) + 'px;width:74px;height:44px;background:#ffebeb;font-weight:bold;padding:0', onclick: () => insertDrum(i + 1) })));
     const kbBar = el('div', { class: 'bar' }, el('b', { style: 'color:navy', text: '🎹 마우스로 건반을 누르면 음이 연주되고 현재 스텝에 바로 기록됩니다! [Delete: 쉼표]' }),
       el('button', { text: '현재 스텝 쉼표(지우기)', onclick: () => clearStep() }), el('span', { text: '음 길이:' }), durSel);
-    const clearStep = () => { const nt = st.track.channels[st.ch][st.sel]; if (nt) { nt.pitch = 0; markEdited(); paintRow(st.sel); } };
-    const onKey = e => { if (e.key === 'Delete' && e.target.tagName !== 'INPUT') { e.preventDefault(); e.stopPropagation(); clearStep(); } };
+    const clearStep = () => { const nt = st.track.channels[st.ch][st.sel]; if (nt) { nt.pitch = 0; markEdited(); paintRow(st.sel); drawRoll(); } };
+    // ---- 피아노 롤 (작곡 프로그램처럼): 가로 = 스텝, 세로 = 음 높이, 왼쪽 = 건반·음 이름
+    // 막대 끌기: 위아래 = 음 높이 · 좌우 = 자리 옮기기 · 오른쪽 끝 = 길이 · 휠 = 볼륨 · 오른쪽 클릭 = 지우기 · 빈 곳 두 번 누르기 = 음 넣기
+    const R_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'], R_BLACK = [1, 3, 6, 8, 10];
+    const R_COLORS = [[47, 111, 236], [30, 135, 75], [200, 120, 20], [192, 57, 43]];
+    const R_GUT = 50, R_DRUM_ROWS = 4, R_DRUM_H = 12;
+    const rCanvas = el('canvas', { style: 'position:sticky;left:0;display:block' });
+    // 재생 위치 선 (작곡 프로그램처럼 오른쪽으로 움직임)
+    const rHead = el('div', { style: 'position:absolute;top:0;left:0;width:2px;background:#e8590c;box-shadow:0 0 3px #e8590c;pointer-events:none;display:none;z-index:3' });
+    const rSpacer = el('div', { style: 'position:relative' }, rCanvas, rHead);
+    const rWrap = el('div', { style: 'overflow-x:auto;flex:1;min-width:0' }, rSpacer);
+    const rGut = el('canvas', { width: R_GUT, style: 'display:block;flex-shrink:0;border-right:1px solid var(--line)' });
+    const rInfo = el('div', { class: 'hint', style: 'min-height:18px' });
+    const rBox = el('div', { style: 'display:flex;align-items:flex-start;border:1px solid var(--line);background:#fff;max-height:400px;overflow-y:auto' }, rGut, rWrap);
+    const midiOfN = n => (n.octave + 1) * 12 + n.pitch - 1;
+    const nameOf = m => R_NAMES[((m % 12) + 12) % 12] + (Math.floor(m / 12) - 1);
+    const DRUM_SHORT = ['', '킥', '스네어', '하이햇', '크래시'];
+    let rView = null, rDrag = null, rHits = [];
+    // 실제로 울리는 길이 (다음 음이 나오면 거기서 끊김)
+    const realDur = (l, s) => { let d = Math.max(1, Math.min(16, l[s].duration)); for (let k = s + 1; k < s + d && k < l.length; k++) if (l[k].pitch > 0) return k - s; return Math.min(d, st.track.totalSteps - s); };
+    drawRoll = scrollToSel => {
+      const t = st.track; if (!t) return;
+      if (!rDrag || !rView) {
+        let lo = 200, hi = -200;
+        for (let c = 0; c < 3; c++) for (const n of t.channels[c]) if (n.pitch > 0) { const m = midiOfN(n); lo = Math.min(lo, m); hi = Math.max(hi, m); }
+        if (lo > hi) { lo = 48; hi = 72; }
+        lo -= 3; hi += 3;
+        if (hi - lo < 24) { const c = Math.round((lo + hi) / 2); lo = c - 12; hi = c + 12; }
+        lo = Math.max(24, lo); hi = Math.min(108, hi);
+        const rowH = Math.max(9, Math.min(14, Math.floor(340 / (hi - lo + 1))));   // 넘치면 위아래로 스크롤
+        rView = { lo, hi, rowH, PX: 14, top: 2 };
+      }
+      const { lo, hi, rowH, PX, top } = rView, pianoH = (hi - lo + 1) * rowH, dTop = top + pianoH, H = dTop + R_DRUM_ROWS * R_DRUM_H + 14;
+      const W = Math.max(200, rWrap.clientWidth || 600);
+      rSpacer.style.width = (t.totalSteps * PX + 20) + 'px'; rSpacer.style.height = H + 'px'; rHead.style.height = H + 'px';
+      if (rCanvas.width !== W) rCanvas.width = W;
+      rCanvas.height = rGut.height = H;
+      if (scrollToSel === true) { const x = st.sel * PX; if (x < rWrap.scrollLeft || x > rWrap.scrollLeft + W - 40) rWrap.scrollLeft = Math.max(0, x - W / 3); }
+      const sx = rWrap.scrollLeft, s0 = Math.max(0, Math.floor(sx / PX) - 16), s1 = Math.min(t.totalSteps, Math.ceil((sx + W) / PX) + 1);
+      const g = rCanvas.getContext('2d'), gg = rGut.getContext('2d');
+      const yM = m => top + (hi - m) * rowH;
+      g.fillStyle = '#fff'; g.fillRect(0, 0, W, H); gg.fillStyle = '#fff'; gg.fillRect(0, 0, R_GUT, H);
+      for (let m = lo; m <= hi; m++) {
+        const y = yM(m), black = R_BLACK.includes(((m % 12) + 12) % 12);
+        if (black) { g.fillStyle = '#f2f4f8'; g.fillRect(0, y, W, rowH); }
+        g.fillStyle = m % 12 === 0 ? '#c9ced6' : '#eceef2'; g.fillRect(0, y + rowH - 1, W, 1);
+        gg.fillStyle = black ? '#333' : '#fff'; gg.fillRect(0, y, black ? 30 : R_GUT, rowH);
+        gg.fillStyle = '#d0d0d0'; gg.fillRect(0, y + rowH - 1, R_GUT, 1);
+        if (m % 12 === 0 || (rowH >= 9 && !black)) { gg.fillStyle = m % 12 === 0 ? '#000' : '#888'; gg.font = (m % 12 === 0 ? 'bold ' : '') + Math.min(11, rowH + 1) + 'px Arial'; gg.textBaseline = 'middle'; gg.fillText(nameOf(m), black ? 32 : 20, y + rowH / 2); }
+      }
+      g.fillStyle = '#f7f0ef'; g.fillRect(0, dTop, W, R_DRUM_ROWS * R_DRUM_H);
+      gg.font = 'bold 10px Arial'; gg.textBaseline = 'middle';
+      for (let k = 1; k <= R_DRUM_ROWS; k++) { const y = dTop + (k - 1) * R_DRUM_H; gg.fillStyle = '#f7f0ef'; gg.fillRect(0, y, R_GUT, R_DRUM_H); gg.fillStyle = '#c0392b'; gg.fillText(I18N.lang === 'en' ? ['', 'Kick', 'Snare', 'HiHat', 'Crash'][k] : DRUM_SHORT[k], 4, y + R_DRUM_H / 2); g.fillStyle = '#ead9d6'; g.fillRect(0, y + R_DRUM_H - 1, W, 1); }
+      // 마디 줄 (16스텝) · 박 줄 (4스텝)
+      for (let s = Math.floor(s0 / 4) * 4; s <= s1; s += 4) { g.fillStyle = s % 16 === 0 ? '#bfc5ce' : '#e3e6eb'; g.fillRect(s * PX - sx, 0, 1, H - 14); }
+      g.fillStyle = '#888'; g.font = '9px Arial'; g.textBaseline = 'top';
+      for (let s = Math.ceil(s0 / 16) * 16; s <= s1; s += 16) g.fillText(String(s / 16 + 1), s * PX - sx + 2, H - 12);
+      // 고른 스텝
+      g.fillStyle = 'rgba(47,111,236,.10)'; g.fillRect(st.sel * PX - sx, 0, PX, H - 14);
+      rHits = [];
+      let selM = null;
+      const order = [0, 1, 2, 3].filter(c => c !== st.ch).concat([st.ch]);
+      for (const c of order) {
+        if (st.mute[c]) continue;
+        const l = t.channels[c], mine = c === st.ch, col = R_COLORS[c];
+        for (let s = s0; s < s1 && s < l.length; s++) {
+          const n = l[s]; if (!n.pitch) continue;
+          const d = realDur(l, s), x = s * PX - sx, w = d * PX - 1;
+          let y, h, label;
+          if (c === 3) { y = dTop + (Math.max(1, Math.min(4, n.pitch)) - 1) * R_DRUM_H + 1; h = R_DRUM_H - 2; label = ''; }
+          else { const m = midiOfN(n); y = yM(m) + 1; h = rowH - 2; label = nameOf(m); }
+          g.fillStyle = 'rgba(' + col.join(',') + ',' + ((mine ? 0.35 : 0.12) + (mine ? 0.65 : 0.28) * n.volume / 15) + ')';
+          g.fillRect(x, y, w, h);
+          if (mine) { g.fillStyle = 'rgb(' + col.join(',') + ')'; g.fillRect(x, y, 2, h); g.fillRect(x + w - 2, y, 2, h); }
+          if (mine && s === st.sel) { g.strokeStyle = '#000'; g.lineWidth = 2; g.strokeRect(x - 1, y - 1, w + 2, h + 2); g.lineWidth = 1; if (c !== 3) selM = midiOfN(n); }
+          if (mine && label && w > 22 && h >= 5) { g.fillStyle = n.volume > 7 ? '#fff' : '#000'; g.font = 'bold ' + Math.max(8, Math.min(11, h + 1)) + 'px Arial'; g.textBaseline = 'middle'; g.fillText(label, x + 4, y + h / 2 + 0.5); }
+          rHits.push({ x: x + sx, y, w, h, c, s });
+        }
+      }
+      if (selM != null && selM >= lo && selM <= hi) { gg.fillStyle = 'rgba(47,111,236,.45)'; gg.fillRect(0, yM(selM), R_GUT, rowH); }
+    };
+    rWrap.addEventListener('scroll', () => drawRoll());
+    this.host.gscBgmRoll = () => ({ hits: rHits, canvas: rCanvas, wrap: rWrap });   // 자동 테스트용
+    const rPos = e => { const r = rCanvas.getBoundingClientRect(); return [e.clientX - r.left + rWrap.scrollLeft, e.clientY - r.top]; };
+    const rHit = (x, y) => { for (let k = rHits.length - 1; k >= 0; k--) { const h = rHits[k]; if (x >= h.x - 2 && x <= h.x + h.w + 2 && y >= h.y - 2 && y <= h.y + h.h + 2) return h; } return null; };
+    const rDescribe = (c, s) => {
+      const n = st.track.channels[c][s]; if (!n || !n.pitch) return '';
+      return chNames[c].replace(/^\S+\s/, '') + ' · ' + (s + 1) + '번째 스텝 · ' + (c === 3 ? DRUM_NAMES[n.pitch] : nameOf(midiOfN(n))) + ' · 길이 ' + n.duration + '스텝 · 볼륨 ' + n.volume;
+    };
+    const selectStep = (c, s) => {
+      if (c !== st.ch) { st.ch = c; showCh(); updateGrid(); }
+      const old = st.sel; st.sel = s; paintRow(old); paintRow(s);
+      if (tbody.children[s]) tbody.children[s].scrollIntoView({ block: 'nearest' });
+    };
+    const blank = c => ({ pitch: 0, octave: c === 2 ? 3 : 4, duration: 1, volume: 12 });
+    const preview = (c, n) => Player.play(RomMusic.previewNote(c, n.pitch, n.octave), true);
+    rCanvas.addEventListener('mousemove', e => {
+      if (rDrag) return;
+      const [x, y] = rPos(e), h = rHit(x, y);
+      rCanvas.style.cursor = !h ? 'crosshair' : x > h.x + h.w - 6 ? 'ew-resize' : 'grab';
+    });
+    rCanvas.addEventListener('contextmenu', e => {
+      const [x, y] = rPos(e), h = rHit(x, y);
+      if (!h) return;
+      e.preventDefault();
+      selectStep(h.c, h.s); st.track.channels[h.c][h.s].pitch = 0; markEdited(); paintRow(h.s); drawRoll();
+    });
+    rCanvas.addEventListener('mousedown', e => {
+      if (e.button !== 0) return;
+      const [x, y] = rPos(e), h = rHit(x, y);
+      if (!h) return;
+      e.preventDefault();
+      selectStep(h.c, h.s);
+      const l = st.track.channels[h.c], n = l[h.s];
+      rDrag = { mode: x > h.x + h.w - 6 ? 'len' : 'move', c: h.c, s: h.s, x0: e.clientX, y0: e.clientY, snap: l.map(o => Object.assign({}, o)), note: Object.assign({}, n), m: h.c === 3 ? n.pitch : midiOfN(n), key: '', at: h.s };
+      rCanvas.style.cursor = rDrag.mode === 'len' ? 'ew-resize' : 'grabbing';
+      rInfo.textContent = rDescribe(h.c, h.s);
+      preview(h.c, n);
+      const move = ev => {
+        const d = rDrag, dx = ev.clientX - d.x0, dy = ev.clientY - d.y0, L = st.track.channels[d.c];
+        for (let i = 0; i < L.length; i++) Object.assign(L[i], d.snap[i]);   // 처음 상태에서 다시 계산
+        let at = d.s;
+        if (d.mode === 'len') L[d.s].duration = Math.max(1, Math.min(16, d.note.duration + Math.round(dx / rView.PX)));
+        else {
+          at = Math.max(0, Math.min(st.track.totalSteps - 1, d.s + Math.round(dx / rView.PX)));
+          const nn = Object.assign({}, d.note);
+          if (d.c === 3) nn.pitch = Math.max(1, Math.min(4, d.m + Math.round(dy / R_DRUM_H)));
+          else { const m = Math.max(24, Math.min(107, d.m - Math.round(dy / rView.rowH))); nn.pitch = m % 12 + 1; nn.octave = Math.max(1, Math.min(7, Math.floor(m / 12) - 1)); }
+          if (at !== d.s) Object.assign(L[d.s], blank(d.c));
+          Object.assign(L[at], nn);
+        }
+        const key = at + ':' + L[at].pitch + ':' + L[at].octave + ':' + L[at].duration;
+        if (key !== d.key) {
+          const pitchChanged = d.key && key.split(':').slice(1, 3).join() !== d.key.split(':').slice(1, 3).join();
+          d.key = key; d.at = at;
+          const old = st.sel; st.sel = at; paintRow(old);
+          drawRoll(); rInfo.textContent = rDescribe(d.c, at);
+          if (pitchChanged) preview(d.c, L[at]);
+        }
+      };
+      const up = () => {
+        document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up);
+        const d = rDrag; rDrag = null; rCanvas.style.cursor = 'grab';
+        const L = st.track.channels[d.c], changed = L.some((o, i) => o.pitch !== d.snap[i].pitch || o.octave !== d.snap[i].octave || o.duration !== d.snap[i].duration);
+        if (changed) { markEdited(); updateGrid(); }
+        selectStep(d.c, d.at); drawRoll();
+      };
+      document.addEventListener('mousemove', move); document.addEventListener('mouseup', up);
+    });
+    rCanvas.addEventListener('wheel', e => {
+      const [x, y] = rPos(e), h = rHit(x, y);
+      if (!h) return;
+      e.preventDefault();
+      selectStep(h.c, h.s);
+      const n = st.track.channels[h.c][h.s];
+      n.volume = Math.max(1, Math.min(15, n.volume + (e.deltaY < 0 ? 1 : -1)));
+      markEdited(); paintRow(h.s); drawRoll(); rInfo.textContent = rDescribe(h.c, h.s);
+    }, { passive: false });
+    rCanvas.addEventListener('dblclick', e => {
+      const [x, y] = rPos(e);
+      if (rHit(x, y)) return;
+      const s = Math.max(0, Math.min(st.track.totalSteps - 1, Math.floor(x / rView.PX)));
+      const pianoBottom = rView.top + (rView.hi - rView.lo + 1) * rView.rowH;
+      let c = st.ch, n;
+      if (y >= pianoBottom) { c = 3; n = { pitch: Math.max(1, Math.min(4, Math.floor((y - pianoBottom) / R_DRUM_H) + 1)), octave: 0, duration: 1, volume: 14 }; }
+      else {
+        if (c === 3) c = 0;
+        const m = rView.hi - Math.floor((y - rView.top) / rView.rowH);
+        n = { pitch: m % 12 + 1, octave: Math.max(1, Math.min(7, Math.floor(m / 12) - 1)), duration: +durSel.value, volume: 12 };
+      }
+      Object.assign(st.track.channels[c][s], n);
+      markEdited(); selectStep(c, s); paintRow(s); drawRoll(); preview(c, n); rInfo.textContent = rDescribe(c, s);
+    });
+    const onKey = e => {
+      if (e.key === 'Delete' && e.target.tagName !== 'INPUT') { e.preventDefault(); e.stopPropagation(); clearStep(); }
+      // 스페이스바 = 재생 / 멈춤 (글자 칸에 쓰는 중이면 빼고)
+      else if (e.key === ' ' && !/INPUT|SELECT|TEXTAREA/.test(e.target.tagName) && !e.target.isContentEditable) { e.preventDefault(); e.stopPropagation(); if (Player.playing) stop(); else play(); }
+    };
+    // 재생 위치 선 움직이기 · 화면 밖으로 나가면 따라가기
+    let alive = true;
+    const tick = () => {
+      if (!alive || (rBox.isConnected === false && st.shown)) { document.removeEventListener('keydown', onKey, true); return; }
+      if (rBox.isConnected) st.shown = true;
+      const t = Player.pos();
+      if (t < 0 || !st.stepsPerSec || !rView) { rHead.style.display = 'none'; if (!Player.playing) playBtn.style.background = '#dcf5dc'; }
+      else {
+        const x = t * st.stepsPerSec * rView.PX, W = rWrap.clientWidth;
+        rHead.style.display = ''; rHead.style.left = x + 'px';
+        if (x < rWrap.scrollLeft || x > rWrap.scrollLeft + W * 0.85) rWrap.scrollLeft = Math.max(0, x - W * 0.15);
+      }
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
     document.addEventListener('keydown', onKey, true);
-    this.dialog('포켓몬 2세대 BGM 칩튠 시퀀서 & 음표 에디터', () => el('div', null, top, chBar, grid, kbBar, keys), () => { stop(); document.removeEventListener('keydown', onKey, true); });
+    grid.style.maxHeight = '26vh';
+    const rollHint = el('div', { class: 'hint', text: '🎼 피아노 롤 — 막대를 위아래로 끌면 음 높이 · 좌우로 끌면 자리 옮기기 · 오른쪽 끝을 끌면 길이 · 마우스 휠 = 볼륨 · 오른쪽 클릭 = 지우기 · 빈 곳을 두 번 누르면 음 넣기 (아래 빨간 칸 = 드럼) · 진한 막대 = 지금 채널' });
+    this.dialog('포켓몬 2세대 BGM 칩튠 시퀀서 & 음표 에디터', () => el('div', null, top, chBar, rollHint, rBox, rInfo, grid, kbBar, keys), () => { alive = false; stop(); document.removeEventListener('keydown', onKey, true); });
     showCh();
     // 처음엔 지금 구역의 BGM (없으면 연두마을) 을 원곡 그대로 불러옴
     if (n > 0) loadRomSong(curBgm > 0 && curBgm < n ? curBgm : 0x3C, false, false); else rebuildRows();
@@ -7452,9 +7668,9 @@ Object.assign(App.prototype, {
     if (!t) { alert('이 롬에서 울음소리 데이터를 찾지 못했어요.'); return; }
     const users = () => { const u = Array.from({ length: t.count }, () => []); for (let m = 1; m <= 251; m++) { const b = RomCry.header(d, t, m).base; if (b < t.count) u[b].push(m); } return u; };
     let U = users();
-    const st = { mon: 0, h: null, cry: null, edited: false, ch: 0 };
+    const st = { mon: 0, h: null, cry: null, edited: false, ch: 0, sel: 0 };
     const err = el('div'), title = el('b', { style: 'font-size:15px' }), status = el('div', { class: 'hint' });
-    const play = (cry, h) => { Player.stop(); const s = RomCry.render(cry, h.pitch, h.length); if (s.length) Player.play(s, true); };
+    const play = (cry, h) => { Player.stop(); const s = RomCry.render(cry, h.pitch, h.length); if (s.length) Player.playOnce(s); };
     const monLabel = m => pad3(m) + ' ' + rom.monName(m);
     const baseLabel = id => '#' + String(id).padStart(2, '0') + '  (' + (U[id].length ? U[id].slice(0, 3).map(m => rom.monName(m)).join(', ') + (U[id].length > 3 ? (I18N.lang === 'en' ? ' +' + (U[id].length - 3) + ' more' : ' 외 ' + (U[id].length - 3) + '마리') : '') : (I18N.lang === 'en' ? 'unused' : '쓰는 포켓몬 없음')) + ')';
     const baseOpts = () => Array.from({ length: t.count }, (_, i) => [i, baseLabel(i)]);
@@ -7462,14 +7678,15 @@ Object.assign(App.prototype, {
     baseSel.style.maxWidth = '360px';
     // 음높이 · 길이 (숫자 + 밀대)
     const pair = (min, max, key) => {
-      const n = num(0, min, max, v => { st.h[key] = v; r.value = v; markHeader(); });
+      const after = () => { markHeader(); if (key === 'pitch') rows(); };   // 표의 음 이름도 들리는 높이로
+      const n = num(0, min, max, v => { st.h[key] = v; r.value = v; after(); });
       const r = el('input', { type: 'range', min, max, style: 'width:180px;vertical-align:middle' });
-      r.addEventListener('input', () => { st.h[key] = +r.value; n.value = r.value; markHeader(); });
+      r.addEventListener('input', () => { st.h[key] = +r.value; n.value = r.value; after(); });
       r.addEventListener('change', () => play(st.cry, st.h));
       return { n, r, set: v => { n.value = v; r.value = v; } };
     };
     const pitchIn = pair(-512, 512, 'pitch'), lenIn = pair(32, 768, 'length');
-    const markHeader = () => { status.textContent = '(아직 적용 안 함)'; };
+    const markHeader = () => { status.textContent = '(아직 적용 안 함)'; drawRoll(); };
     const copySel = sel([[0, '(다른 포켓몬 울음소리 그대로 쓰기 ▼)']].concat(this.monOptions(false).filter(o => o[0] > 0)), 0, m => {
       if (!m) return;
       st.h = RomCry.header(d, t, m); st.cry = RomCry.decode(d, RomCry.baseOff(d, t, st.h.base)); st.edited = false;
@@ -7481,16 +7698,33 @@ Object.assign(App.prototype, {
     const tbody = el('tbody');
     const grid = el('div', { style: 'max-height:34vh;overflow:auto;border:1px solid var(--line);background:#fff' },
       el('table', { class: 'grid', style: 'width:100%' }, el('thead', null, el('tr', null, ...['#', '길이 (프레임)', '볼륨 (0~15)', '볼륨 변화 (−7~7)', '소리 높이', '음색', ''].map(s => el('th', { text: s, style: 'position:sticky;top:0;background:#f4f4f4' })))), tbody));
-    const edit = () => { st.edited = true; markHeader(); slotRow.style.display = ''; updateSlot(); };
+    const edit = () => {
+      if (!st.edited) { st.edited = true; slotSel.value = pickSlot(); }
+      markHeader(); slotRow.style.display = ''; updateSlot(); drawRoll();
+    };
     const fade = n => (n.env & 7) * ((n.env & 8) ? 1 : -1);
+    const cur = () => st.cry.channels[st.ch];
+    const isNoise = c => c && (c.id & 3) === 3;
+    const cloneNote = n => Object.assign({}, n, { pattern: n.pattern && n.pattern.slice() });
+    // 음 하나만 들려주기 (이 포켓몬의 음높이·길이 그대로)
+    const playNote = n => { const c = cur(); if (!c || !n) return; Player.stop(); const s = RomCry.render({ channels: [{ id: c.id, notes: [n] }] }, st.h.pitch, st.h.length); if (s.length) Player.play(s, true); };
+    const select = (i, scroll) => {
+      const old = tbody.children[st.sel]; if (old) old.style.outline = '';
+      st.sel = i;
+      const tr = tbody.children[i];
+      if (tr) { tr.style.outline = '2px solid var(--accent)'; if (scroll) tr.scrollIntoView({ block: 'nearest' }); }
+      drawRoll();
+    };
     const rows = () => {
       tbody.replaceChildren();
-      const c = st.cry.channels[st.ch];
+      const c = cur();
       if (!c) return;
-      const noise = (c.id & 3) === 3;
+      const noise = isNoise(c);
+      st.sel = Math.max(0, Math.min(st.sel, c.notes.length - 1));
       c.notes.forEach((n, i) => {
         const hz = el('span', { class: 'hint' });
-        const showHz = () => { hz.textContent = noise ? '' : ' ≈ ' + Math.round(131072 / (2048 - (n.freq & 0x7FF))) + 'Hz'; };
+        // 음 이름은 이 포켓몬의 음높이를 더한, 실제로 들리는 높이
+        const showHz = () => { hz.textContent = noise ? ' ' + noiseName((n.freq + st.h.pitch) & 0xFF) : ' ' + regName((n.freq + st.h.pitch) & 0x7FF); };
         const lenN = num(n.len + 1, 1, 64, v => { n.len = v - 1; edit(); });
         const volN = num(n.env >> 4, 0, 15, v => { n.env = (v << 4) | (n.env & 15); edit(); });
         const fadeN = num(fade(n), -7, 7, v => { n.env = (n.env & 0xF0) | (v > 0 ? 8 | v : -v); edit(); });
@@ -7498,15 +7732,248 @@ Object.assign(App.prototype, {
         const dutyS = noise ? el('span', { text: '-' }) : sel(CRY_DUTY.map((s, k) => [k, s]).concat(n.pattern ? [[9, '바뀜 ' + n.pattern.map(k => CRY_DUTY[k]).join('→')]] : []), n.pattern ? 9 : n.duty, v => { if (v < 4) { n.duty = v; n.pattern = null; } edit(); });
         [lenN, volN, fadeN, frN].forEach(x => x.style.width = '64px');
         showHz();
-        tbody.append(el('tr', null, el('th', { text: String(i + 1) }), el('td', null, lenN), el('td', null, volN), el('td', null, fadeN), el('td', null, frN, hz), el('td', null, dutyS),
-          el('td', null, el('button', { text: '＋', title: '아래에 음 추가', onclick: () => { c.notes.splice(i + 1, 0, Object.assign({}, n, { pattern: n.pattern && n.pattern.slice() })); edit(); rows(); } }),
-            el('button', { text: '🗑', title: '이 음 지우기', onclick: () => { c.notes.splice(i, 1); edit(); rows(); } }))));
+        const tr = el('tr', { style: 'cursor:pointer' }, el('th', { text: String(i + 1) }), el('td', null, lenN), el('td', null, volN), el('td', null, fadeN), el('td', null, frN, hz), el('td', null, dutyS),
+          el('td', null, el('button', { text: '▶', title: '이 음만 듣기', onclick: () => playNote(n) })));
+        tr.addEventListener('mousedown', () => { if (st.sel !== i) select(i); });
+        tbody.append(tr);
       });
-      if (!c.notes.length) tbody.append(el('tr', null, el('td', { colspan: 7, class: 'hint', text: '음이 없어요' })));
+      if (!c.notes.length) tbody.append(el('tr', null, el('td', { colspan: 7, class: 'hint', text: '음이 없어요. 아래 건반을 누르면 음이 들어가요' })));
+      select(st.sel);
+      pianoBox.style.display = noise ? 'none' : '';
+      noiseBox.style.display = noise ? '' : 'none';
     };
     const chTabs = () => {
-      chBar.replaceChildren(...st.cry.channels.map((c, i) => el('button', { text: (CRY_CH_NAMES[c.id] || 'CH' + c.id) + ' · ' + c.notes.length + '음', style: i === st.ch ? 'background:#fff;font-weight:bold' : 'background:#ebebeb', onclick: () => { st.ch = i; chTabs(); rows(); } })));
+      chBar.replaceChildren(...st.cry.channels.map((c, i) => el('button', { text: (CRY_CH_NAMES[c.id] || 'CH' + c.id) + ' · ' + c.notes.length + '음', style: i === st.ch ? 'background:#fff;font-weight:bold' : 'background:#ebebeb', onclick: () => { if (st.ch !== i) { st.ch = i; st.sel = 0; chTabs(); rows(); } } })));
     };
+    const reflow = () => { chTabs(); rows(); };
+    // 소리 높이 ↔ 음 이름
+    const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+    const regHz = r => 131072 / (2048 - (r & 0x7FF));
+    const regName = r => { const hz = regHz(r), m = Math.round(69 + 12 * Math.log2(hz / 440)); return NOTE_NAMES[((m % 12) + 12) % 12] + (Math.floor(m / 12) - 1) + ' (' + Math.round(hz) + 'Hz)'; };
+    const midiReg = m => Math.max(0, Math.min(2047, Math.round(2048 - 131072 / (440 * Math.pow(2, (m - 69) / 12)))));
+    const NOISE_PADS = [[0x10, '쉭 (아주 높음)'], [0x21, '치익'], [0x32, '스윽'], [0x43, '샤아'], [0x54, '쏴아'], [0x65, '후우'], [0x76, '부우'], [0x87, '쿠웅 (아주 낮음)']];
+    const noiseName = v => { let best = NOISE_PADS[0]; for (const p of NOISE_PADS) if (Math.abs((p[0] >> 4) - (v >> 4)) < Math.abs((best[0] >> 4) - (v >> 4))) best = p; return '≈ ' + best[1]; };
+    // 건반·노이즈 버튼: 고른 음 바꾸기 또는 뒤에 새 음 넣기
+    const modeSel = sel([[0, '고른 음의 높이 바꾸기'], [1, '고른 음 뒤에 새 음 넣기']], 0);
+    const newLen = sel([[1, '1프레임'], [2, '2프레임'], [3, '3프레임'], [4, '4프레임'], [6, '6프레임'], [8, '8프레임'], [12, '12프레임'], [16, '16프레임']], 4);
+    const newVol = num(12, 0, 15), newFade = num(-1, -7, 7);
+    newVol.style.width = newFade.style.width = '56px';
+    const press = (freq, isNoiseKey) => {
+      const c = cur();
+      if (!c || isNoise(c) !== isNoiseKey) return;
+      const v = +newVol.value, f = +newFade.value, env = (v << 4) | (f > 0 ? 8 | f : -f);
+      freq = isNoiseKey ? (freq - st.h.pitch) & 0xFF : Math.max(0, Math.min(2047, freq - st.h.pitch));   // 누른 높이 그대로 들리게
+      let n = c.notes[st.sel];
+      if (+modeSel.value === 0 && n) n.freq = freq;
+      else {
+        n = n ? Object.assign(cloneNote(n), { freq, len: +newLen.value - 1, env }) : { len: +newLen.value - 1, env, freq, duty: 2, pattern: null, sweep: 0 };
+        c.notes.splice(c.notes.length ? st.sel + 1 : 0, 0, n);
+        if (c.notes.length > 1) st.sel++;
+      }
+      edit(); reflow(); select(st.sel, true); playNote(n);
+    };
+    const pianoBox = el('div', { style: 'position:relative;height:96px;background:#3c3c41;border-radius:4px;overflow-x:auto;overflow-y:hidden' });
+    {
+      const white = [0, 2, 4, 5, 7, 9, 11], black = [1, 3, -1, 6, 8, 10, -1];
+      let wx = 6;
+      for (let oct = 2; oct <= 6; oct++) for (let w = 0; w < 7; w++) {
+        const m = (oct + 1) * 12 + white[w];
+        pianoBox.append(el('button', { text: NOTE_NAMES[white[w]] + oct, style: 'position:absolute;left:' + wx + 'px;top:6px;width:28px;height:84px;background:#fff;color:#000;font:bold 10px Arial;padding:0;display:flex;align-items:flex-end;justify-content:center;border-radius:0 0 4px 4px', onclick: () => press(midiReg(m), false) }));
+        if (black[w] > 0) { const bm = (oct + 1) * 12 + black[w]; pianoBox.append(el('button', { style: 'position:absolute;left:' + (wx + 19) + 'px;top:6px;width:18px;height:52px;background:#000;border-color:#000;z-index:2;padding:0', onclick: () => press(midiReg(bm), false) })); }
+        wx += 30;
+      }
+    }
+    const noiseBox = el('div', { class: 'bar', style: 'display:none;background:#3c3c41;border-radius:4px;padding:8px' },
+      ...NOISE_PADS.map(([v, s]) => el('button', { text: '🥁 ' + s, style: 'background:#ffebeb;font-weight:bold', onclick: () => press(v, true) })));
+    // 고른 음 다루기
+    const tools = el('div', { class: 'bar' },
+      el('button', { text: '＋ 끝에 음 추가', onclick: () => { const c = cur(); if (!c) return; const l = c.notes[c.notes.length - 1]; c.notes.push(l ? cloneNote(l) : { len: +newLen.value - 1, env: 0xC1, freq: isNoise(c) ? 0x43 : midiReg(69), duty: 2, pattern: null, sweep: 0 }); st.sel = c.notes.length - 1; edit(); reflow(); select(st.sel, true); } }),
+      el('button', { text: '⧉ 복사', title: '고른 음을 바로 뒤에 복사', onclick: () => { const c = cur(), n = c && c.notes[st.sel]; if (!n) return; c.notes.splice(st.sel + 1, 0, cloneNote(n)); st.sel++; edit(); reflow(); select(st.sel, true); } }),
+      el('button', { text: '▲ 위로', onclick: () => move(-1) }), el('button', { text: '▼ 아래로', onclick: () => move(1) }),
+      el('button', { text: '🗑 지우기 (Delete)', onclick: () => del() }),
+      el('button', { text: '채널 비우기', onclick: () => { const c = cur(); if (c && c.notes.length && confirm('이 채널의 음을 모두 지울까요?')) { c.notes.length = 0; edit(); reflow(); } } }),
+      el('button', { text: '⇧ 전체 반음 올리기', onclick: () => transpose(1) }), el('button', { text: '⇩ 전체 반음 내리기', onclick: () => transpose(-1) }));
+    const move = dir => { const c = cur(), j = st.sel + dir; if (!c || j < 0 || j >= c.notes.length) return; [c.notes[st.sel], c.notes[j]] = [c.notes[j], c.notes[st.sel]]; st.sel = j; edit(); reflow(); select(j, true); };
+    const del = () => { const c = cur(); if (!c || !c.notes[st.sel]) return; c.notes.splice(st.sel, 1); st.sel = Math.max(0, st.sel - 1); edit(); reflow(); };
+    const transpose = k => {
+      const c = cur(); if (!c || isNoise(c)) return;
+      for (const n of c.notes) { const hz = regHz(n.freq) * Math.pow(2, k / 12); n.freq = Math.max(0, Math.min(2047, Math.round(2048 - 131072 / hz))); }
+      edit(); rows();
+    };
+    const onKey = e => {
+      if (!host.contains(e.target) && e.target !== document.body) return;
+      if (/INPUT|SELECT|TEXTAREA/.test(e.target.tagName) || e.target.isContentEditable) return;
+      // 스페이스바 = 재생 / 멈춤
+      if (e.key === ' ') { e.preventDefault(); e.stopPropagation(); if (Player.playing) Player.stop(); else play(st.cry, st.h); }
+      else if (e.key === 'Delete') { e.preventDefault(); e.stopPropagation(); del(); }
+      else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { const c = cur(); if (!c) return; e.preventDefault(); select(Math.max(0, Math.min(c.notes.length - 1, st.sel + (e.key === 'ArrowDown' ? 1 : -1))), true); playNote(c.notes[st.sel]); }
+    };
+    const host = this.host;
+    document.addEventListener('keydown', onKey, true);
+    // 피아노 롤 (작곡 프로그램처럼): 가로 = 시간, 세로 = 음 높이, 왼쪽 = 건반·음 이름
+    // 막대 끌기: 위아래 = 음 높이 (Shift = 반음보다 잘게) · 오른쪽 끝 끌기 = 길이 · 휠 = 볼륨 · 빈 곳 두 번 누르기 = 지금 채널에 음 넣기
+    const ROLL_COLORS = { 4: [47, 111, 236], 5: [30, 135, 75], 6: [200, 120, 20], 7: [192, 57, 43] };
+    const GUT = 46, NH = 44;
+    const roll = el('canvas', { style: 'display:block;cursor:default' });
+    const gutter = el('canvas', { width: GUT, style: 'display:block;flex-shrink:0;border-right:1px solid var(--line)' });
+    // 재생 위치 선 (작곡 프로그램처럼 오른쪽으로 움직임)
+    const rollHead = el('div', { style: 'position:absolute;top:0;left:0;width:2px;background:#e8590c;box-shadow:0 0 3px #e8590c;pointer-events:none;display:none;z-index:3' });
+    const rollWrap = el('div', { style: 'overflow-x:auto;flex:1;min-width:0;position:relative' }, roll, rollHead);
+    const rollInfo = el('div', { class: 'hint', style: 'min-height:18px' });
+    const rollBox = el('div', { style: 'display:flex;border:1px solid var(--line);background:#fff;margin-bottom:2px' }, gutter, rollWrap);
+    const midiOf = r => 69 + 12 * Math.log2(regHz(r) / 440);
+    const noteName = m => NOTE_NAMES[((m % 12) + 12) % 12] + (Math.floor(m / 12) - 1);
+    const BLACK = [1, 3, 6, 8, 10];
+    let rollHits = [], view = null, drag = null;
+    const tempoOf = c => isNoise(c) ? 0x100 : st.h.length;
+    const layout = () => {
+      const timeline = [];
+      let total = 0, lo = 200, hi = -200;
+      st.cry.channels.forEach((c, ci) => {
+        const noise = isNoise(c), tempo = tempoOf(c);
+        let f = 0, frac = 0;
+        c.notes.forEach((n, i) => {
+          const r = frac + (((n.len + 1) & 0xFF) * tempo); frac = r & 0xFF;
+          const fr = Math.max(1, r >> 8);
+          timeline.push({ ci, i, n, noise, f, fr }); f += fr;
+          if (!noise) { const m = midiOf((n.freq + st.h.pitch) & 0x7FF); lo = Math.min(lo, Math.floor(m)); hi = Math.max(hi, Math.ceil(m)); }
+        });
+        total = Math.max(total, f);
+      });
+      return { timeline, total, lo, hi };
+    };
+    const drawRoll = () => {
+      if (!st.cry) return;
+      const L = layout();
+      // 세로 범위: 끌고 있을 때는 고정, 아니면 음에 맞춰 (위아래 여유 3반음, 최소 2옥타브)
+      if (!drag || !view) {
+        let lo = L.lo > L.hi ? 57 : L.lo - 3, hi = L.lo > L.hi ? 81 : L.hi + 3;
+        if (hi - lo < 24) { const c = Math.round((lo + hi) / 2); lo = c - 12; hi = c + 12; }
+        lo = Math.max(24, lo); hi = Math.min(108, hi);
+        const rowH = Math.max(7, Math.min(16, Math.floor(380 / (hi - lo + 1))));
+        const PX = Math.max(6, Math.min(16, Math.floor(((rollWrap.clientWidth || 600) - 40) / Math.max(1, L.total))));
+        view = { lo, hi, rowH, PX, top: 4 };
+      }
+      const { lo, hi, rowH, PX, top } = view, pianoH = (hi - lo + 1) * rowH, H = top + pianoH + NH;
+      view.total = L.total;
+      roll.width = Math.max(rollWrap.clientWidth || 300, (L.total + 8) * PX); roll.height = gutter.height = H;
+      const yM = m => top + (hi - m) * rowH;   // 반음 줄의 위쪽
+      const g = roll.getContext('2d'), gg = gutter.getContext('2d');
+      g.fillStyle = '#fff'; g.fillRect(0, 0, roll.width, H);
+      gg.fillStyle = '#fff'; gg.fillRect(0, 0, GUT, H);
+      for (let m = lo; m <= hi; m++) {
+        const y = yM(m), black = BLACK.includes(((m % 12) + 12) % 12);
+        if (black) { g.fillStyle = '#f2f4f8'; g.fillRect(0, y, roll.width, rowH); }
+        g.fillStyle = m % 12 === 0 ? '#c9ced6' : '#eceef2'; g.fillRect(0, y + rowH - 1, roll.width, 1);
+        gg.fillStyle = black ? '#333' : '#fff'; gg.fillRect(0, y, black ? 28 : GUT, rowH);
+        gg.fillStyle = '#d0d0d0'; gg.fillRect(0, y + rowH - 1, GUT, 1);
+        if (m % 12 === 0 || (rowH >= 9 && !black)) { gg.fillStyle = m % 12 === 0 ? '#000' : '#888'; gg.font = (m % 12 === 0 ? 'bold ' : '') + Math.min(11, rowH + 1) + 'px Arial'; gg.textBaseline = 'middle'; gg.fillText(noteName(m), black ? 30 : 18, y + rowH / 2); }
+      }
+      // 노이즈 칸
+      const ny = top + pianoH;
+      g.fillStyle = '#f7f0ef'; g.fillRect(0, ny, roll.width, NH);
+      gg.fillStyle = '#f7f0ef'; gg.fillRect(0, ny, GUT, NH); gg.fillStyle = '#c0392b'; gg.font = 'bold 10px Arial'; gg.fillText(I18N.lang === 'en' ? 'Noise' : '노이즈', 4, ny + NH / 2);
+      // 시간 눈금 (10프레임마다)
+      g.fillStyle = '#e3e6eb';
+      for (let f = 0; f <= L.total + 30; f += 10) g.fillRect(f * PX, 0, 1, H);
+      g.fillStyle = '#999'; g.font = '9px Arial'; g.textBaseline = 'top';
+      for (let f = 10; f <= L.total + 30; f += 10) g.fillText((f / FRAME_RATE_CRY).toFixed(2) + 's', f * PX + 2, ny + NH - 11);
+      rollHits = [];
+      let selM = null;
+      // 지금 채널은 맨 위에 그림
+      const order = L.timeline.filter(s => s.ci !== st.ch).concat(L.timeline.filter(s => s.ci === st.ch));
+      for (const s of order) {
+        const col = ROLL_COLORS[st.cry.channels[s.ci].id] || [90, 90, 90], vol = s.n.env >> 4, mine = s.ci === st.ch;
+        const x = s.f * PX, w = Math.max(3, s.fr * PX - 1);
+        let y, h, label;
+        if (s.noise) { const k = ((s.n.freq + st.h.pitch) >> 4) & 15; y = ny + 3 + k * (NH - 16) / 15; h = 9; label = noiseName((s.n.freq + st.h.pitch) & 0xFF).replace('≈ ', ''); }
+        else { const m = midiOf((s.n.freq + st.h.pitch) & 0x7FF); y = yM(m) + 1; h = rowH - 2; label = noteName(Math.round(m)); }
+        g.fillStyle = 'rgba(' + col.join(',') + ',' + ((mine ? 0.35 : 0.15) + (mine ? 0.65 : 0.3) * vol / 15) + ')';
+        g.fillRect(x, y, w, h);
+        if (mine) { g.fillStyle = 'rgba(' + col.join(',') + ',1)'; g.fillRect(x, y, 2, h); g.fillRect(x + w - 2, y, 2, h); }
+        const isSel = mine && s.i === st.sel;
+        if (isSel) { g.strokeStyle = '#000'; g.lineWidth = 2; g.strokeRect(x - 1, y - 1, w + 2, h + 2); g.lineWidth = 1; if (!s.noise) selM = Math.round(midiOf((s.n.freq + st.h.pitch) & 0x7FF)); }
+        if (mine && w > 20 && h >= 5) { g.fillStyle = vol > 7 ? '#fff' : '#000'; g.font = 'bold ' + Math.max(8, Math.min(11, h + 1)) + 'px Arial'; g.textBaseline = 'middle'; g.fillText(label, x + 4, y + h / 2 + 0.5); }
+        rollHits.push({ x, y, w, h, ci: s.ci, i: s.i, noise: s.noise });
+      }
+      if (selM != null && selM >= lo && selM <= hi) { gg.fillStyle = 'rgba(47,111,236,.45)'; gg.fillRect(0, yM(selM), GUT, rowH); }
+    };
+    const FRAME_RATE_CRY = RomMusic.FRAME_RATE;
+    const hitAt = (x, y) => { for (let k = rollHits.length - 1; k >= 0; k--) { const h = rollHits[k]; if (x >= h.x - 2 && x <= h.x + h.w + 2 && y >= h.y - 2 && y <= h.y + h.h + 2) return h; } return null; };
+    const pos = e => { const r = roll.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+    const describe = (c, n) => {
+      if (!n) return '';
+      const noise = isNoise(c);
+      return (CRY_CH_NAMES[c.id] || '') + ' · ' + (st.sel + 1) + '번째 음 · ' + (noise ? noiseName((n.freq + st.h.pitch) & 0xFF) : regName((n.freq + st.h.pitch) & 0x7FF)) + ' · 길이 ' + (n.len + 1) + ' · 볼륨 ' + (n.env >> 4);
+    };
+    roll.addEventListener('mousemove', e => {
+      if (drag) return;
+      const [x, y] = pos(e), h = hitAt(x, y);
+      roll.style.cursor = !h ? 'crosshair' : x > h.x + h.w - 6 ? 'ew-resize' : 'grab';
+    });
+    roll.addEventListener('mousedown', e => {
+      if (e.button !== 0) return;
+      const [x, y] = pos(e), h = hitAt(x, y);
+      if (!h) return;
+      e.preventDefault();
+      if (h.ci !== st.ch) { st.ch = h.ci; st.sel = h.i; reflow(); }
+      select(h.i, true);
+      const c = cur(), n = c.notes[h.i];
+      drag = { mode: x > h.x + h.w - 6 ? 'len' : 'pitch', x0: e.clientX, y0: e.clientY, n, c, freq: n.freq, len: n.len, lastKey: null, moved: false };
+      roll.style.cursor = drag.mode === 'len' ? 'ew-resize' : 'grabbing';
+      rollInfo.textContent = describe(c, n);
+      playNote(n);
+      const move = ev => {
+        const dx = ev.clientX - drag.x0, dy = ev.clientY - drag.y0, d = drag;
+        if (Math.abs(dx) + Math.abs(dy) > 2) d.moved = true;
+        if (d.mode === 'len') d.n.len = Math.max(0, Math.min(63, d.len + Math.round(dx / view.PX * 256 / tempoOf(d.c))));
+        else if (isNoise(d.c)) {
+          const k = Math.max(0, Math.min(15, ((d.freq + st.h.pitch) >> 4 & 15) + Math.round(dy / ((NH - 16) / 15))));
+          d.n.freq = ((k << 4) | (d.freq & 15)) - st.h.pitch & 0xFF;
+        } else if (ev.shiftKey) d.n.freq = Math.max(0, Math.min(2047, d.freq - Math.round(dy)));
+        else {
+          const m = Math.round(midiOf((d.freq + st.h.pitch) & 0x7FF) - dy / view.rowH);
+          d.n.freq = Math.max(0, Math.min(2047, midiReg(m) - st.h.pitch));
+        }
+        const key = d.n.freq + ':' + d.n.len;
+        if (key !== d.lastKey) { d.lastKey = key; drawRoll(); rollInfo.textContent = describe(d.c, d.n); if (d.mode === 'pitch' && d.moved) playNote(d.n); }
+      };
+      const up = () => {
+        document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up);
+        const d = drag; drag = null; roll.style.cursor = 'grab';
+        if (d.n.freq !== d.freq || d.n.len !== d.len) { edit(); rows(); select(st.sel); }
+        else drawRoll();
+      };
+      document.addEventListener('mousemove', move); document.addEventListener('mouseup', up);
+    });
+    // 휠 = 볼륨
+    roll.addEventListener('wheel', e => {
+      const [x, y] = pos(e), h = hitAt(x, y);
+      if (!h) return;
+      e.preventDefault();
+      if (h.ci !== st.ch) { st.ch = h.ci; reflow(); }
+      const n = cur().notes[h.i], v = Math.max(0, Math.min(15, (n.env >> 4) + (e.deltaY < 0 ? 1 : -1)));
+      n.env = (v << 4) | (n.env & 15);
+      st.sel = h.i; edit(); rows(); select(h.i); rollInfo.textContent = describe(cur(), n);
+    }, { passive: false });
+    // 빈 곳 두 번 누르기 = 그 시간·높이에 음 넣기 (지금 채널)
+    roll.addEventListener('dblclick', e => {
+      const [x, y] = pos(e);
+      if (hitAt(x, y)) return;
+      const c = cur(); if (!c) return;
+      const t = x / view.PX, noise = isNoise(c), tempo = tempoOf(c);
+      let f = 0, frac = 0, at = c.notes.length;
+      for (let i = 0; i < c.notes.length; i++) { const r = frac + (((c.notes[i].len + 1) & 0xFF) * tempo); frac = r & 0xFF; f += Math.max(1, r >> 8); if (t < f) { at = i + 1; break; } }
+      const pianoBottom = view.top + (view.hi - view.lo + 1) * view.rowH;
+      let freq;
+      if (noise) freq = (Math.max(0, Math.min(15, Math.round((y - pianoBottom - 3) / ((NH - 16) / 15)))) << 4 | 1) - st.h.pitch & 0xFF;
+      else { if (y > pianoBottom) return; freq = Math.max(0, Math.min(2047, midiReg(view.hi - Math.floor((y - view.top) / view.rowH)) - st.h.pitch)); }
+      const v = +newVol.value, fd = +newFade.value;
+      const n = { len: +newLen.value - 1, env: (v << 4) | (fd > 0 ? 8 | fd : -fd), freq, duty: 2, pattern: null, sweep: 0 };
+      const prev = c.notes[at - 1]; if (prev && !noise) { n.duty = prev.duty; n.pattern = prev.pattern && prev.pattern.slice(); }
+      c.notes.splice(at, 0, n); st.sel = at;
+      edit(); reflow(); select(at, true); playNote(n);
+    });
     // 새 울음소리를 넣을 자리 (기본 울음소리 번호)
     const slotSel = sel(baseOpts(), 0, () => updateSlot());
     slotSel.style.maxWidth = '360px';
@@ -7528,12 +7995,12 @@ Object.assign(App.prototype, {
     const refresh = () => {
       baseSel.value = st.h.base; pitchIn.set(st.h.pitch); lenIn.set(st.h.length);
       st.ch = Math.min(st.ch, st.cry.channels.length - 1);
-      chTabs(); rows();
+      chTabs(); rows(); drawRoll();
       slotRow.style.display = st.edited ? '' : 'none';
       if (st.edited) { slotSel.value = pickSlot(); updateSlot(); }
     };
     const load = m => {
-      st.mon = m; st.h = RomCry.header(d, t, m); st.cry = RomCry.decode(d, RomCry.baseOff(d, t, st.h.base)); st.edited = false; st.ch = 0;
+      st.mon = m; st.h = RomCry.header(d, t, m); st.cry = RomCry.decode(d, RomCry.baseOff(d, t, st.h.base)); st.edited = false; st.ch = 0; st.sel = 0;
       title.textContent = monLabel(m); status.textContent = ''; err.textContent = '';
       refresh();
     };
@@ -7560,7 +8027,7 @@ Object.assign(App.prototype, {
       } catch (e) { console.error(e); this.okMsg(err, e.message, true); }
     };
     const importAudio = () => this.cryImportDialog(cry => {
-      st.cry = cry; st.h.pitch = 0; st.h.length = 0x100; st.edited = true; st.ch = 0;
+      st.cry = cry; st.h.pitch = 0; st.h.length = 0x100; st.edited = true; st.ch = 0; st.sel = 0; markHeader();
       refresh(); play(st.cry, st.h);
     });
     const list = listPanel(this.monOptions(false).filter(o => o[0] > 0).map(([v, s]) => ({ value: v, label: s })), m => {
@@ -7580,12 +8047,33 @@ Object.assign(App.prototype, {
         el('div', { class: 'bar' }, el('span', { text: '음높이:' }), pitchIn.n, pitchIn.r, el('span', { class: 'hint', text: '0 = 그대로, 클수록 높은 소리' })),
         el('div', { class: 'bar' }, el('span', { text: '길이:' }), lenIn.n, lenIn.r, el('span', { class: 'hint', text: '256 = 보통, 클수록 느리고 길게' })),
         el('div', { class: 'hint', text: '2세대 포켓몬 울음소리는 기본 울음소리 68개 중 하나에 음높이·길이만 바꿔서 만들어요. 위 세 가지만 바꾸면 다른 포켓몬에는 영향이 없어요.' })),
-      el('fieldset', null, el('legend', { text: '기본 울음소리 음표 (고치면 새 소리로 넣어요)' }), chBar, grid,
-        el('div', { class: 'hint', text: '길이 1프레임 = 1/60초 · 볼륨 변화: −면 점점 작게, +면 점점 크게 (숫자가 작을수록 빠르게) · 소리 높이: 사각파는 0~2047 (클수록 높음), 노이즈는 0~255 (작을수록 높은 쉭 소리)' }), slotRow),
+      el('fieldset', null, el('legend', { text: '기본 울음소리 음표 (고치면 새 소리로 넣어요)' }),
+        el('div', { class: 'hint', text: '🎼 피아노 롤 — 막대를 위아래로 끌면 음 높이 (Shift = 더 잘게) · 오른쪽 끝을 끌면 길이 · 마우스 휠 = 볼륨 · 빈 곳을 두 번 누르면 음 넣기 · 파랑·초록 = 사각파, 빨강 = 노이즈' }), rollBox, rollInfo,
+        chBar, grid, tools,
+        el('div', { class: 'bar', style: 'margin-top:4px' }, el('b', { style: 'color:navy', text: '🎹 건반을 누르면:' }), modeSel,
+          el('span', { text: '새 음 길이:' }), newLen, el('span', { text: '볼륨:' }), newVol, el('span', { text: '볼륨 변화:' }), newFade),
+        pianoBox, noiseBox,
+        el('div', { class: 'hint', text: '표에서 음을 누르면 골라져요 (↑↓ 키로 옮기기 · Delete 키로 지우기) · 길이 1프레임 = 1/60초 · 볼륨 변화: −면 점점 작게, +면 점점 크게 (숫자가 작을수록 빠르게)' }), slotRow),
       el('div', { class: 'bar' }, el('button', { class: 'apply', text: '적용', onclick: apply }), err),
       el('div', { class: 'hint', text: '적용한 뒤 메인 화면에서 [저장하기]를 눌러야 롬 파일에 기록돼요' }));
     load(25);
-    this.dialog('포켓몬 울음소리 에디터', () => el('div', { class: 'side', style: 'grid-template-columns:200px minmax(0,1fr)' }, list, body), () => Player.stop());
+    this.dialog('포켓몬 울음소리 에디터', () => el('div', { class: 'side', style: 'grid-template-columns:200px minmax(0,1fr)' }, list, body), () => { Player.stop(); document.removeEventListener('keydown', onKey, true); alive = false; });
+    setTimeout(drawRoll, 0);
+    // 재생 위치 선 움직이기 (1프레임 = 1/60초)
+    let alive = true, shown = false;
+    const tick = () => {
+      if (!alive || (shown && !rollWrap.isConnected)) { document.removeEventListener('keydown', onKey, true); return; }
+      if (rollWrap.isConnected) shown = true;
+      const t = Player.pos();
+      if (t < 0 || !view) rollHead.style.display = 'none';
+      else {
+        const x = t * RomMusic.FRAME_RATE * view.PX, W = rollWrap.clientWidth;
+        rollHead.style.display = ''; rollHead.style.left = x + 'px'; rollHead.style.height = roll.height + 'px';
+        if (x < rollWrap.scrollLeft || x > rollWrap.scrollLeft + W * 0.85) rollWrap.scrollLeft = Math.max(0, x - W * 0.15);
+      }
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
   },
 
   // ---------------------------------------------------------------- 소리 파일 → 울음소리
