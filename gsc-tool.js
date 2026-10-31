@@ -178,7 +178,9 @@ const I18N = (() => {
     '소리가 거의 없는 파일이에요': 'The file is almost silent',
     '🎼 한눈에 보기 (파랑·초록 = 사각파, 빨강 = 노이즈 · 진할수록 큰 소리) — 막대를 누르면 그 음을 골라요': '🎼 Overview (blue/green = square, red = noise · darker = louder) — click a bar to select that note',
     '🎼 피아노 롤 — 막대를 위아래로 끌면 음 높이 (Shift = 더 잘게) · 오른쪽 끝을 끌면 길이 · 마우스 휠 = 볼륨 · 빈 곳을 두 번 누르면 음 넣기 · 파랑·초록 = 사각파, 빨강 = 노이즈': '🎼 Piano roll — drag a bar up/down for pitch (Shift = finer) · drag its right edge for length · mouse wheel = volume · double-click empty space to add a note · blue/green = square, red = noise',
-    '🎼 피아노 롤 — 막대를 위아래로 끌면 음 높이 · 좌우로 끌면 자리 옮기기 · 오른쪽 끝을 끌면 길이 · 마우스 휠 = 볼륨 · 오른쪽 클릭 = 지우기 · 빈 곳을 두 번 누르면 음 넣기 (아래 빨간 칸 = 드럼) · 진한 막대 = 지금 채널': '🎼 Piano roll — drag a bar up/down for pitch · left/right to move it · drag its right edge for length · mouse wheel = volume · right-click = delete · double-click empty space to add a note (red rows at the bottom = drums) · dark bars = current channel',
+    '🎼 피아노 롤 — 막대를 위아래로 끌면 음 높이 · 좌우로 끌면 자리 옮기기 · 오른쪽 끝을 끌면 길이 · 마우스 휠 = 볼륨 · 오른쪽 클릭 = 지우기 · 빈 곳을 두 번 누르면 음 넣기 (아래 빨간 칸 = 드럼) · 진한 막대 = 지금 채널 · 빈 곳 클릭 = 재생 줄 옮기기 · 스페이스바 = 재생/멈춤 · Home = 처음으로': '🎼 Piano roll — drag a bar up/down for pitch · left/right to move it · drag its right edge for length · mouse wheel = volume · right-click = delete · double-click empty space to add a note (red rows at the bottom = drums) · dark bars = current channel · click empty space = move the playhead · Space = play/pause · Home = go to start',
+    '⏮ 처음으로': '⏮ To start', '■ 정지': '■ Stop',
+    '🎼 피아노 롤 — 막대를 위아래로 끌면 음 높이 (Shift = 더 잘게) · 오른쪽 끝을 끌면 길이 · 마우스 휠 = 볼륨 · 빈 곳을 두 번 누르면 음 넣기 · 파랑·초록 = 사각파, 빨강 = 노이즈 · 빈 곳 클릭 = 재생 줄 옮기기 · 스페이스바 = 재생/멈춤 · Home = 처음으로': '🎼 Piano roll — drag a bar up/down for pitch (Shift = finer) · drag its right edge for length · mouse wheel = volume · double-click empty space to add a note · blue/green = square, red = noise · click empty space = move the playhead · Space = play/pause · Home = go to start',
     '🎹 건반을 누르면:': '🎹 Piano key:', '✕ 원래 크기로': '✕ Normal size', '고른 음의 높이 바꾸기': 'changes the selected note', '고른 음 뒤에 새 음 넣기': 'inserts a new note after it', '새 음 길이:': 'New note length:', '볼륨:': 'Volume:', '볼륨 변화:': 'Fade:',
     '＋ 끝에 음 추가': '＋ Add note at end', '⧉ 복사': '⧉ Duplicate', '▲ 위로': '▲ Up', '▼ 아래로': '▼ Down', '🗑 지우기 (Delete)': '🗑 Delete', '채널 비우기': 'Clear channel', '⇧ 전체 반음 올리기': '⇧ All up a semitone', '⇩ 전체 반음 내리기': '⇩ All down a semitone',
     '이 채널의 음을 모두 지울까요?': 'Delete all notes in this channel?', '음이 없어요. 아래 건반을 누르면 음이 들어가요': 'No notes. Press a piano key below to add one',
@@ -1824,18 +1826,21 @@ const RomMusic = (() => {
 // once: 짧은 미리듣기 (멈추기·재생 위치에 안 잡힘). playOnce: 한 번만 재생하지만 위치를 알 수 있음
 const Player = {
   ctx: null, src: null, onEnd: null, t0: 0, dur: 0, loop: false,
-  play(samples, once) { this._start(samples, !once, once); },
-  playOnce(samples) { this._start(samples, false, false); },
-  _start(samples, loop, preview) {
+  // from: 시작 위치 (초)
+  play(samples, once, from) { this._start(samples, !once, once, from); },
+  playOnce(samples, from) { this._start(samples, false, false, from); },
+  _start(samples, loop, preview, from) {
     if (!preview) this.stop();
     if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
     if (!samples.length) return;
     const buf = this.ctx.createBuffer(1, samples.length, RomMusic.SAMPLE_RATE);
     buf.copyToChannel(samples, 0);
     const s = this.ctx.createBufferSource();
-    s.buffer = buf; s.loop = loop; s.connect(this.ctx.destination); s.start();
+    let off = Math.max(0, from || 0);
+    if (off >= buf.duration) off = loop ? off % buf.duration : 0;
+    s.buffer = buf; s.loop = loop; s.connect(this.ctx.destination); s.start(0, off);
     if (preview) return;
-    this.src = s; this.t0 = this.ctx.currentTime; this.dur = buf.duration; this.loop = loop;
+    this.src = s; this.t0 = this.ctx.currentTime - off; this.dur = buf.duration; this.loop = loop;
     s.onended = () => { if (this.src === s) this.src = null; };
   },
   stop() { if (this.src) { try { this.src.stop(); } catch (e) { } this.src = null; } },
@@ -6975,9 +6980,16 @@ Object.assign(App.prototype, {
     const st = { track: RomMusic.newTrack('새 BGM', 32, 130), ch: 0, sel: 0, mute: [false, false, false, false], romSamples: null, playing: false };
     const status = el('b', { style: 'color:var(--ok)' });
     const playBtn = el('button', { text: '▶ 전체 재생', style: 'font-weight:bold;background:#dcf5dc', onclick: () => play() });
-    const stopBtn = el('button', { text: '■ 정지', style: 'font-weight:bold;background:#ffdcdc', onclick: () => stop() });
+    const stopBtn = el('button', { text: '■ 정지', style: 'font-weight:bold;background:#ffdcdc', onclick: () => pause() });
+    const homeBtn = el('button', { text: '⏮ 처음으로', title: '빨간 줄을 맨 앞으로 (Home 키)', onclick: () => seek(0) });
     const bpmIn = num(130, 30, 400, v => { if (st.track.bpm !== v) markEdited(); st.track.bpm = v; });
     const stop = () => { Player.stop(); playBtn.style.background = '#dcf5dc'; };
+    // 재생 위치 (스텝). 멈추면 그 자리에 서 있고, 다시 재생하면 거기서부터
+    st.cursor = 0;
+    const sps = () => { const t = st.track; return t.romSongId >= 0 && !t.edited ? RomMusic.FRAME_RATE / (st.unit || 1) : Math.max(30, Math.min(400, t.bpm)) * 4 / 60; };
+    const nowStep = () => { const p = Player.pos(); return p >= 0 && st.stepsPerSec ? p * st.stepsPerSec : st.cursor; };
+    const pause = () => { if (Player.playing) st.cursor = nowStep() % Math.max(1, st.track.totalSteps); stop(); };
+    const seek = step => { st.cursor = Math.max(0, Math.min(st.track.totalSteps - 1, step)); if (Player.playing) play(); };
     const play = () => {
       stop();
       const t = st.track;
@@ -6989,12 +7001,12 @@ Object.assign(App.prototype, {
         st.stepsPerSec = RomMusic.FRAME_RATE / (st.unit || 1);   // 원곡: 프레임 → 스텝
       } else { samples = RomMusic.renderTrack(t, st.mute); st.stepsPerSec = Math.max(30, Math.min(400, t.bpm)) * 4 / 60; }
       if (!samples) return;
-      Player.play(samples); playBtn.style.background = '#b4ffb4';
+      Player.play(samples, false, st.cursor / sps()); playBtn.style.background = '#b4ffb4';
     };
     const markEdited = () => { if (st.track.edited) return; st.track.edited = true; if (st.track.romSongId >= 0) status.textContent = '✏ 편집본: 고친 음표로 재생돼요 (원곡 음색 일부 생략)'; };
     // 롬에 들어있는 진짜 BGM 을 불러와 원곡 그대로 재생 + 편집 표에 펼침. original: 곡 번호를 바꿨어도 처음 원곡
     const loadRomSong = (id, doPlay, original) => {
-      stop();
+      stop(); st.cursor = 0;
       status.textContent = '불러오는 중…';
       setTimeout(() => {
         const r = RomMusic.render(rom.data, id, null, 240, original);
@@ -7026,9 +7038,9 @@ Object.assign(App.prototype, {
     const curBgm = a ? rom.areaMusic(a) : -1;
     const mapSel = sel(Array.from({ length: Math.max(0, n - 1) }, (_, i) => [i + 1, '[0x' + hex2(i + 1) + '] ' + RomMusic.name(i + 1)]), curBgm);
     mapSel.style.width = '230px';
-    const top = el('div', { class: 'bar' }, playBtn, stopBtn, el('span', { text: '템포(BPM):' }), bpmIn, preset,
+    const top = el('div', { class: 'bar' }, playBtn, stopBtn, homeBtn, el('span', { text: '템포(BPM):' }), bpmIn, preset,
       el('button', { text: '🎧 MP3/MIDI 도트 변환 🌟', style: 'font-weight:bold;background:#dcf0ff', onclick: () => this.audioImportDialog(t => {
-        stop(); st.track = t; bpmIn.value = t.bpm; rebuildRows(); status.textContent = '가져온 곡: 편집본으로 재생돼요';
+        stop(); st.cursor = 0; st.track = t; bpmIn.value = t.bpm; rebuildRows(); status.textContent = '가져온 곡: 편집본으로 재생돼요';
         alert('도트 칩튠으로 변환된 음악을 성공적으로 가져왔습니다!\n아래 건반과 표에서 음 하나하나를 자유롭게 수정할 수 있습니다.');
       }) }),
       el('b', { text: '현재 구역 BGM 지정:', style: 'margin-left:10px' }), mapSel,
@@ -7230,7 +7242,7 @@ Object.assign(App.prototype, {
     rCanvas.addEventListener('mousedown', e => {
       if (e.button !== 0) return;
       const [x, y] = rPos(e), h = rHit(x, y);
-      if (!h) return;
+      if (!h) { seek(x / rView.PX); return; }   // 빈 곳 클릭 = 빨간 줄을 거기로
       e.preventDefault();
       selectStep(h.c, h.s);
       const l = st.track.channels[h.c], n = l[h.s];
@@ -7296,7 +7308,8 @@ Object.assign(App.prototype, {
     const onKey = e => {
       if (e.key === 'Delete' && e.target.tagName !== 'INPUT') { e.preventDefault(); e.stopPropagation(); clearStep(); }
       // 스페이스바 = 재생 / 멈춤 (글자 칸에 쓰는 중이면 빼고)
-      else if (e.key === ' ' && !/INPUT|SELECT|TEXTAREA/.test(e.target.tagName) && !e.target.isContentEditable) { e.preventDefault(); e.stopPropagation(); if (Player.playing) stop(); else play(); }
+      else if (e.key === ' ' && !/INPUT|SELECT|TEXTAREA/.test(e.target.tagName) && !e.target.isContentEditable) { e.preventDefault(); e.stopPropagation(); if (Player.playing) pause(); else play(); }
+      else if (e.key === 'Home' && !/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) { e.preventDefault(); seek(0); }
     };
     // 재생 위치 선 움직이기 · 화면 밖으로 나가면 따라가기
     let alive = true;
@@ -7304,8 +7317,12 @@ Object.assign(App.prototype, {
       if (!alive || (rBox.isConnected === false && st.shown)) { document.removeEventListener('keydown', onKey, true); return; }
       if (rBox.isConnected) st.shown = true;
       const t = Player.pos();
-      if (t < 0 || !st.stepsPerSec || !rView) { rHead.style.display = 'none'; if (!Player.playing) playBtn.style.background = '#dcf5dc'; }
-      else {
+      if (!rView) rHead.style.display = 'none';
+      else if (t < 0 || !st.stepsPerSec) {
+        // 멈춰 있을 때: 멈춘 자리 (또는 클릭한 자리)에 서 있음
+        if (!Player.playing) playBtn.style.background = '#dcf5dc';
+        rHead.style.display = ''; rHead.style.left = st.cursor * rView.PX + 'px';
+      } else {
         const x = t * st.stepsPerSec * rView.PX, W = rWrap.clientWidth;
         rHead.style.display = ''; rHead.style.left = x + 'px';
         if (x < rWrap.scrollLeft || x > rWrap.scrollLeft + W * 0.85) rWrap.scrollLeft = Math.max(0, x - W * 0.15);
@@ -7315,7 +7332,7 @@ Object.assign(App.prototype, {
     requestAnimationFrame(tick);
     document.addEventListener('keydown', onKey, true);
     grid.style.maxHeight = '26vh';
-    const rollHint = el('div', { class: 'hint', text: '🎼 피아노 롤 — 막대를 위아래로 끌면 음 높이 · 좌우로 끌면 자리 옮기기 · 오른쪽 끝을 끌면 길이 · 마우스 휠 = 볼륨 · 오른쪽 클릭 = 지우기 · 빈 곳을 두 번 누르면 음 넣기 (아래 빨간 칸 = 드럼) · 진한 막대 = 지금 채널' });
+    const rollHint = el('div', { class: 'hint', text: '🎼 피아노 롤 — 막대를 위아래로 끌면 음 높이 · 좌우로 끌면 자리 옮기기 · 오른쪽 끝을 끌면 길이 · 마우스 휠 = 볼륨 · 오른쪽 클릭 = 지우기 · 빈 곳을 두 번 누르면 음 넣기 (아래 빨간 칸 = 드럼) · 진한 막대 = 지금 채널 · 빈 곳 클릭 = 재생 줄 옮기기 · 스페이스바 = 재생/멈춤 · Home = 처음으로' });
     this.dialog('포켓몬 2세대 BGM 칩튠 시퀀서 & 음표 에디터', () => el('div', null, top, chBar, rollHint, rBox, rInfo, grid, kbBar, keys), () => { alive = false; stop(); document.removeEventListener('keydown', onKey, true); }, false, true);
     showCh();
     // 처음엔 지금 구역의 BGM (없으면 연두마을) 을 원곡 그대로 불러옴
@@ -7682,7 +7699,11 @@ Object.assign(App.prototype, {
     let U = users();
     const st = { mon: 0, h: null, cry: null, edited: false, ch: 0, sel: 0 };
     const err = el('div'), title = el('b', { style: 'font-size:15px' }), status = el('div', { class: 'hint' });
-    const play = (cry, h) => { Player.stop(); const s = RomCry.render(cry, h.pitch, h.length); if (s.length) Player.playOnce(s); };
+    // 재생 줄 자리 (프레임). 멈추면 거기 서 있고, 다시 재생하면 거기서부터. 끝까지 가면 출발한 자리로 돌아감
+    let cursorF = 0;
+    const play = (cry, h, fromCursor) => { Player.stop(); const s = RomCry.render(cry, h.pitch, h.length); if (s.length) Player.playOnce(s, fromCursor ? cursorF / RomMusic.FRAME_RATE : 0); };
+    const pause = () => { const p = Player.pos(); if (p >= 0) cursorF = p * RomMusic.FRAME_RATE; Player.stop(); };
+    const seekF = f => { cursorF = Math.max(0, f); if (Player.playing) play(st.cry, st.h, true); };
     const monLabel = m => pad3(m) + ' ' + rom.monName(m);
     const baseLabel = id => '#' + String(id).padStart(2, '0') + '  (' + (U[id].length ? U[id].slice(0, 3).map(m => rom.monName(m)).join(', ') + (U[id].length > 3 ? (I18N.lang === 'en' ? ' +' + (U[id].length - 3) + ' more' : ' 외 ' + (U[id].length - 3) + '마리') : '') : (I18N.lang === 'en' ? 'unused' : '쓰는 포켓몬 없음')) + ')';
     const baseOpts = () => Array.from({ length: t.count }, (_, i) => [i, baseLabel(i)]);
@@ -7816,7 +7837,8 @@ Object.assign(App.prototype, {
       if (!host.contains(e.target) && e.target !== document.body) return;
       if (/INPUT|SELECT|TEXTAREA/.test(e.target.tagName) || e.target.isContentEditable) return;
       // 스페이스바 = 재생 / 멈춤
-      if (e.key === ' ') { e.preventDefault(); e.stopPropagation(); if (Player.playing) Player.stop(); else play(st.cry, st.h); }
+      if (e.key === ' ') { e.preventDefault(); e.stopPropagation(); if (Player.playing) pause(); else play(st.cry, st.h, true); }
+      else if (e.key === 'Home') { e.preventDefault(); seekF(0); }
       else if (e.key === 'Delete') { e.preventDefault(); e.stopPropagation(); del(); }
       else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { const c = cur(); if (!c) return; e.preventDefault(); select(Math.max(0, Math.min(c.notes.length - 1, st.sel + (e.key === 'ArrowDown' ? 1 : -1))), true); playNote(c.notes[st.sel]); }
     };
@@ -7929,7 +7951,7 @@ Object.assign(App.prototype, {
     roll.addEventListener('mousedown', e => {
       if (e.button !== 0) return;
       const [x, y] = pos(e), h = hitAt(x, y);
-      if (!h) return;
+      if (!h) { seekF(x / view.PX); return; }   // 빈 곳 클릭 = 재생 줄을 거기로
       e.preventDefault();
       if (h.ci !== st.ch) { st.ch = h.ci; st.sel = h.i; reflow(); }
       select(h.i, true);
@@ -8015,7 +8037,7 @@ Object.assign(App.prototype, {
       if (st.edited) { slotSel.value = pickSlot(); updateSlot(); }
     };
     const load = m => {
-      st.mon = m; st.h = RomCry.header(d, t, m); st.cry = RomCry.decode(d, RomCry.baseOff(d, t, st.h.base)); st.edited = false; st.ch = 0; st.sel = 0;
+      cursorF = 0; st.mon = m; st.h = RomCry.header(d, t, m); st.cry = RomCry.decode(d, RomCry.baseOff(d, t, st.h.base)); st.edited = false; st.ch = 0; st.sel = 0;
       title.textContent = monLabel(m); status.textContent = ''; err.textContent = '';
       refresh();
     };
@@ -8052,7 +8074,9 @@ Object.assign(App.prototype, {
     }, '포켓몬 찾기', 25);
     const body = el('div', null,
       el('div', { class: 'bar' }, title,
-        el('button', { text: '▶ 들어보기', style: 'font-weight:bold;background:#dcf5dc', onclick: () => play(st.cry, st.h) }),
+        el('button', { text: '▶ 들어보기', style: 'font-weight:bold;background:#dcf5dc', onclick: () => play(st.cry, st.h, true) }),
+        el('button', { text: '■ 정지', style: 'font-weight:bold;background:#ffdcdc', onclick: () => pause() }),
+        el('button', { text: '⏮ 처음으로', title: '재생 줄을 맨 앞으로 (Home 키)', onclick: () => seekF(0) }),
         el('button', { text: '▶ 원래 소리', onclick: () => { const h = RomCry.header(d, t, st.mon); play(RomCry.decode(d, RomCry.baseOff(d, t, h.base)), h); } }),
         el('button', { text: '↩ 되돌리기', onclick: () => load(st.mon) }), status),
       el('div', { class: 'bar' },
@@ -8063,7 +8087,7 @@ Object.assign(App.prototype, {
         el('div', { class: 'bar' }, el('span', { text: '길이:' }), lenIn.n, lenIn.r, el('span', { class: 'hint', text: '256 = 보통, 클수록 느리고 길게' })),
         el('div', { class: 'hint', text: '2세대 포켓몬 울음소리는 기본 울음소리 68개 중 하나에 음높이·길이만 바꿔서 만들어요. 위 세 가지만 바꾸면 다른 포켓몬에는 영향이 없어요.' })),
       el('fieldset', null, el('legend', { text: '기본 울음소리 음표 (고치면 새 소리로 넣어요)' }),
-        el('div', { class: 'hint', text: '🎼 피아노 롤 — 막대를 위아래로 끌면 음 높이 (Shift = 더 잘게) · 오른쪽 끝을 끌면 길이 · 마우스 휠 = 볼륨 · 빈 곳을 두 번 누르면 음 넣기 · 파랑·초록 = 사각파, 빨강 = 노이즈' }), rollBox, rollInfo,
+        el('div', { class: 'hint', text: '🎼 피아노 롤 — 막대를 위아래로 끌면 음 높이 (Shift = 더 잘게) · 오른쪽 끝을 끌면 길이 · 마우스 휠 = 볼륨 · 빈 곳을 두 번 누르면 음 넣기 · 파랑·초록 = 사각파, 빨강 = 노이즈 · 빈 곳 클릭 = 재생 줄 옮기기 · 스페이스바 = 재생/멈춤 · Home = 처음으로' }), rollBox, rollInfo,
         chBar, grid, tools,
         el('div', { class: 'bar', style: 'margin-top:4px' }, el('b', { style: 'color:navy', text: '🎹 건반을 누르면:' }), modeSel,
           el('span', { text: '새 음 길이:' }), newLen, el('span', { text: '볼륨:' }), newVol, el('span', { text: '볼륨 변화:' }), newFade),
@@ -8080,11 +8104,11 @@ Object.assign(App.prototype, {
       if (!alive || (shown && !rollWrap.isConnected)) { document.removeEventListener('keydown', onKey, true); return; }
       if (rollWrap.isConnected) shown = true;
       const t = Player.pos();
-      if (t < 0 || !view) rollHead.style.display = 'none';
+      if (!view) rollHead.style.display = 'none';
       else {
-        const x = t * RomMusic.FRAME_RATE * view.PX, W = rollWrap.clientWidth;
+        const x = (t < 0 ? cursorF : t * RomMusic.FRAME_RATE) * view.PX, W = rollWrap.clientWidth;   // 멈춰 있으면 멈춘 자리
         rollHead.style.display = ''; rollHead.style.left = x + 'px'; rollHead.style.height = roll.height + 'px';
-        if (x < rollWrap.scrollLeft || x > rollWrap.scrollLeft + W * 0.85) rollWrap.scrollLeft = Math.max(0, x - W * 0.15);
+        if (t >= 0 && (x < rollWrap.scrollLeft || x > rollWrap.scrollLeft + W * 0.85)) rollWrap.scrollLeft = Math.max(0, x - W * 0.15);
       }
       requestAnimationFrame(tick);
     };
