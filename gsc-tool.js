@@ -179,7 +179,30 @@ const I18N = (() => {
     '🎼 한눈에 보기 (파랑·초록 = 사각파, 빨강 = 노이즈 · 진할수록 큰 소리) — 막대를 누르면 그 음을 골라요': '🎼 Overview (blue/green = square, red = noise · darker = louder) — click a bar to select that note',
     '🎼 피아노 롤 — 막대를 위아래로 끌면 음 높이 (Shift = 더 잘게) · 오른쪽 끝을 끌면 길이 · 마우스 휠 = 볼륨 · 빈 곳을 두 번 누르면 음 넣기 · 파랑·초록 = 사각파, 빨강 = 노이즈': '🎼 Piano roll — drag a bar up/down for pitch (Shift = finer) · drag its right edge for length · mouse wheel = volume · double-click empty space to add a note · blue/green = square, red = noise',
     '🎼 피아노 롤 — 막대를 위아래로 끌면 음 높이 · 좌우로 끌면 자리 옮기기 · 오른쪽 끝을 끌면 길이 · 마우스 휠 = 볼륨 · 오른쪽 클릭 = 지우기 · 빈 곳을 두 번 누르면 음 넣기 (아래 빨간 칸 = 드럼) · 진한 막대 = 지금 채널 · 빈 곳 클릭 = 재생 줄 옮기기 · 스페이스바 = 재생/멈춤 · Home = 처음으로': '🎼 Piano roll — drag a bar up/down for pitch · left/right to move it · drag its right edge for length · mouse wheel = volume · right-click = delete · double-click empty space to add a note (red rows at the bottom = drums) · dark bars = current channel · click empty space = move the playhead · Space = play/pause · Home = go to start',
-    '⏮ 처음으로': '⏮ To start', '■ 정지': '■ Stop',
+    '⏮ 처음으로': '⏮ To start',
+    '🎬 기술 애니메이션': '🎬 Move Animation', '🗑 여러 개 지우기…': '🗑 Delete several…', '모두 체크': 'Check all', '모두 해제': 'Uncheck all', '종류별로 체크:': 'Check by kind:',
+    '✨ 물체': '✨ Objects', '🔊 효과음': '🔊 Sounds', '⏳ 기다리기': '⏳ Waits', '🧹 모두 지우기 (끝만 남기기)': '🧹 Delete all (keep End)', '🗑 체크한 명령 지우기': '🗑 Delete checked',
+    '적용하지 않은 변경이 있어요': 'You have unapplied changes', '취소 (계속 고치기)': 'Cancel (keep editing)', '버리고 이동': 'Discard and switch', '💾 적용하고 이동': '💾 Apply and switch', '기술 애니메이션 편집기': 'Move Animation Editor', '🎬 이 기술 애니메이션 편집기로 열기 (실제 게임처럼 재생)': '🎬 Open in the Move Animation Editor (plays like the real game)',
+    '▶ 재생': '▶ Play', '⏸ 멈춤': '⏸ Pause', '반복': 'Loop', '소리': 'Sound', '물체 위치 표시': 'Show object positions', '내 포켓몬': 'My Pokémon', '상대': 'Opponent',
+    '내가 쓰기 (나 → 상대)': 'I use it (me → opponent)', '상대가 쓰기 (상대 → 나)': 'Opponent uses it (opponent → me)', '＋ 명령 넣기 ▼': '＋ Add command ▼', '✨ 물체 나타내기': '✨ Show object',
+    '🔊 효과음': '🔊 Sound effect', '🌈 화면 효과': '🌈 Screen effect', '⏳ 기다리기': '⏳ Wait', '🧹 물체 모두 지우기': '🧹 Clear all objects', '🐾 울음소리': '🐾 Cry',
+    '📥 다른 기술에서 가져오기…': '📥 Import from another move…', '💾 적용 (롬에 넣기)': '💾 Apply (write to ROM)', '↩ 원래대로': '↩ Revert', '다른 기술에서 효과 가져오기': 'Import effects from another move',
+    '가져올 기술:': 'Move to import from:', '✅ 넣기': '✅ Insert', '📦 이 기술 전용으로 풀어 넣기': '📦 Unpack into this move only', '🖌 이 기술 그림·색 고치기…': "🖌 Edit this move's graphics/colors…",
+    '내 포켓몬 쪽': 'My side', '상대 포켓몬 쪽': 'Opponent side', '화면 가운데': 'Screen center', '⧉ 복제': '⧉ Duplicate', '🗑 지우기': '🗑 Delete', '＋ 그림 더 불러오기': '＋ Load another graphic',
+    '기술 그림 (배틀 애니메이션)': 'Move graphics (battle animation)', '이 롬에서 기술 애니메이션 그림을 찾지 못했어요': "Couldn't find move animation graphics in this ROM",
+    '이 기술 애니메이션은 따로 불러오는 그림이 없어요 (화면 흔들기·색 바꾸기만 써요)': "This move's animation loads no graphics (it only shakes the screen or changes colors)",
+    '그림 묶음은 여러 기술이 같이 써요. 바꾸면 같은 그림을 쓰는 기술이 모두 바뀌어요. 1번(흰색)은 투명, 나머지 3색은 기술마다 게임이 정한 색으로 나와요 (여기서는 회색으로 보여요).': 'Graphic sets are shared by several moves; changing one changes every move that uses it. Color 1 (white) is transparent; the other 3 colors are set by the game per move (shown in gray here).',
+    '이 기술만 쓰는 그림이에요': 'Only this move uses this graphic', '게임에서 조각을 붙이고 뒤집어서 만드는 모양': 'Shapes the game builds by joining and flipping the pieces',
+    '그림 묶음은 여러 기술이 같이 써요. 바꾸면 같은 그림을 쓰는 기술이 모두 바뀌어요. 1번 색은 투명이고, 나머지 3색은 색 묶음(회색·노랑·빨강·초록·파랑·갈색)에서 정해져요.': 'Graphic sets are shared by several moves; changing one changes every move that uses it. Color 1 is transparent; the other 3 come from a color set (gray, yellow, red, green, blue, brown).',
+    '색 묶음:': 'Color set:', '중간색': 'Mid', '이 색은 배틀 중인 포켓몬 색을 그대로 써서 여기서는 못 바꿔요.': "This uses the battling Pokémon's own colors, so it can't be changed here.", '이 그림만 쓰는 색 묶음이에요': 'Only this graphic uses this color set',
+    '▶ 움직임 미리보기 (게임 프레임 그대로 반복)': '▶ Motion preview (game frames, looping)', '보통 속도': 'Normal speed', '느리게 (½)': 'Slow (½)', '아주 느리게 (¼)': 'Very slow (¼)', '그림 파일 불러오기…': 'Load image file…',
+    '기술 사운드 에디터': 'Move Sound Editor', '이 롬에서 효과음 데이터를 찾지 못했어요.': "Couldn't find sound effect data in this ROM.", '(다른 효과음 그대로 가져오기 ▼)': '(Copy another sound effect ▼)',
+    '🎧 소리 파일로 효과음 만들기 🌟': '🎧 Make a sound effect from a file 🌟', '이 소리를 쓰는 기술': 'Moves using this sound', '효과음 음표 (고치면 새 소리로 넣어요)': 'Sound effect notes (edits are saved as a new sound)',
+    '⚔ 기술 소리': '⚔ Move sounds', '🔔 그 밖의 효과음': '🔔 Other sound effects', '기술·소리 찾기': 'Find move / sound', '→ 소리:': '→ Sound:', '이 기술의 첫 소리 듣기': "Play this move's first sound",
+    '기술 애니메이션 표를 찾지 못했어요': "Couldn't find the move animation table", '이 소리를 쓰는 기술이 없어요 (메뉴·필드 등에서 나는 효과음이에요)': 'No move uses this sound (it plays in menus, the field, etc.)',
+    '여러 기술이 같은 효과음을 같이 쓸 수 있어요. 이 소리를 고치면 위 기술들 소리가 모두 바뀌어요. 기술 하나만 다른 소리로 바꾸려면 [→ 소리]에서 다른 효과음을 고르세요.': 'Several moves can share one sound effect. Editing it changes all the moves above. To change just one move, pick a different sound in [→ Sound].',
+    '⚠ 이 효과음은 음악 형식(팡파르·멜로디)이라 여기서는 미리듣기·편집이 안 돼요. 다른 효과음을 가져오거나 소리 파일로 새로 만들면 바꿀 수 있어요.': "⚠ This sound effect is in music format (fanfare/melody), so it can't be previewed or edited here. You can still replace it by copying another sound effect or making one from a file.",
+    '바꾼 게 없어요': 'Nothing changed', '음악 형식 효과음은 여기서 고칠 수 없어요': "Music-format sound effects can't be edited here", '롬에 소리를 넣을 빈 공간이 부족해요': 'Not enough free space in the ROM for the sound', '■ 정지': '■ Stop',
     '🎼 피아노 롤 — 막대를 위아래로 끌면 음 높이 (Shift = 더 잘게) · 오른쪽 끝을 끌면 길이 · 마우스 휠 = 볼륨 · 빈 곳을 두 번 누르면 음 넣기 · 파랑·초록 = 사각파, 빨강 = 노이즈 · 빈 곳 클릭 = 재생 줄 옮기기 · 스페이스바 = 재생/멈춤 · Home = 처음으로': '🎼 Piano roll — drag a bar up/down for pitch (Shift = finer) · drag its right edge for length · mouse wheel = volume · double-click empty space to add a note · blue/green = square, red = noise · click empty space = move the playhead · Space = play/pause · Home = go to start',
     '🎹 건반을 누르면:': '🎹 Piano key:', '✕ 원래 크기로': '✕ Normal size', '고른 음의 높이 바꾸기': 'changes the selected note', '고른 음 뒤에 새 음 넣기': 'inserts a new note after it', '새 음 길이:': 'New note length:', '볼륨:': 'Volume:', '볼륨 변화:': 'Fade:',
     '＋ 끝에 음 추가': '＋ Add note at end', '⧉ 복사': '⧉ Duplicate', '▲ 위로': '▲ Up', '▼ 아래로': '▼ Down', '🗑 지우기 (Delete)': '🗑 Delete', '채널 비우기': 'Clear channel', '⇧ 전체 반음 올리기': '⇧ All up a semitone', '⇩ 전체 반음 내리기': '⇩ All down a semitone',
@@ -187,7 +210,9 @@ const I18N = (() => {
     '표에서 음을 누르면 골라져요 (↑↓ 키로 옮기기 · Delete 키로 지우기) · 길이 1프레임 = 1/60초 · 볼륨 변화: −면 점점 작게, +면 점점 크게 (숫자가 작을수록 빠르게)': 'Click a note in the table to select it (↑↓ to move · Delete to remove) · 1 frame = 1/60 s · Fade: − gets quieter, + gets louder (smaller = faster)',
     '🥁 쉭 (아주 높음)': '🥁 Hiss (highest)', '🥁 치익': '🥁 Tsss', '🥁 스윽': '🥁 Swish', '🥁 샤아': '🥁 Shaa', '🥁 쏴아': '🥁 Whoosh', '🥁 후우': '🥁 Hoo', '🥁 부우': '🥁 Booo', '🥁 쿠웅 (아주 낮음)': '🥁 Boom (lowest)',
     '트레이너 그림': 'Trainer Pics', '트레이너 그림 편집': 'Trainer Picture Editor', '트레이너 찾기': 'Find trainer', '주인공': 'Player', '트레이너 직업': 'Trainer classes',
-    '★ 주인공 — 트레이너 카드': '★ Player — Trainer Card', ' ★ 주인공': ' ★ Player', '밝은색': 'Light', '어두운색': 'Dark', '사진 가져오기…': 'Import picture…',
+    '★ 주인공 — 트레이너 카드': '★ Player — Trainer Card', '★ 주인공 — 배틀 뒷모습': '★ Player — Battle back sprite',
+    '배틀할 때 화면 왼쪽 아래에 나오는 주인공 뒷모습이에요. 48×48 픽셀 (6×6 칸). 색은 트레이너 카드 그림과 같은 색을 같이 써요 (하나를 바꾸면 둘 다 바뀌어요).': "The player's back sprite shown at the bottom left in battle. 48×48 pixels (6×6 tiles). It shares its colors with the Trainer Card picture (changing one changes both).",
+    '메뉴에서 내 이름(트레이너 카드)을 열면 나오는 주인공 그림이에요. 40×56 픽셀 (5×7 칸). 색은 배틀 뒷모습과 같이 쓰고, 게임 시작 때 주인공 그림 색과는 따로예요.': 'The player picture shown on the Trainer Card (your name in the menu). 40×56 pixels (5×7 tiles). It shares colors with the battle back sprite, separate from the intro player picture.', ' ★ 주인공': ' ★ Player', '밝은색': 'Light', '어두운색': 'Dark', '사진 가져오기…': 'Import picture…',
     '사진의 색으로 트레이너 색도 바꾸기': "Also take the trainer's colors from the picture",
     '이 롬에서는 트레이너 그림을 바꿀 수 없어요 (지금은 금·은만 돼요).': "This ROM's trainer pictures can't be edited (Gold/Silver only for now).",
     '트레이너 그림을 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.': 'Trainer picture changed. Press [Save] to write it to the ROM file.',
@@ -1902,8 +1927,89 @@ const RomCry = (() => {
       const id = d[off + i * 3] & 7;
       channels.push({ id, notes: parseChannel(d, bank, W(d, off + i * 3 + 1), id) });
     }
-    return { channels };
+    return { channels, music: channels.some(c => c.notes.music || c.id < 4) };
   }
+
+  // ---------------------------------------------------------------- 효과음 (기술 소리 등): 울음소리 표 바로 뒤에 있는 같은 형식의 표
+  const SFX_NAMES = ('DEX_FANFARE_50_79,ITEM,CAUGHT_MON,POKEBALLS_PLACED_ON_TABLE,POTION,FULL_HEAL,MENU,READ_TEXT,READ_TEXT_2,DEX_FANFARE_20_49,DEX_FANFARE_80_109,POISON,GOT_SAFARI_BALLS,BOOT_PC,SHUT_DOWN_PC,CHOOSE_PC_OPTION,ESCAPE_ROPE,PUSH_BUTTON,SECOND_PART_OF_ITEMFINDER,WARP_TO,WARP_FROM,CHANGE_DEX_MODE,JUMP_OVER_LEDGE,GRASS_RUSTLE,FLY,WRONG,SQUEAK,STRENGTH,BOAT,WALL_OPEN,PLACE_PUZZLE_PIECE_DOWN,ENTER_DOOR,SWITCH_POKEMON,TALLY,TRANSACTION,EXIT_BUILDING,BUMP,SAVE,POKEFLUTE,ELEVATOR_END,THROW_BALL,BALL_POOF,FAINT,RUN,SLOT_MACHINE_START,FANFARE,PECK,KINESIS,LICK,POUND,MOVE_PUZZLE_PIECE,COMET_PUNCH,MEGA_PUNCH,SCRATCH,VICEGRIP,RAZOR_WIND,CUT,WING_ATTACK,WHIRLWIND,BIND,VINE_WHIP,DOUBLE_KICK,MEGA_KICK,HEADBUTT,HORN_ATTACK,TACKLE,POISON_STING,POWDER,DOUBLESLAP,BITE,JUMP_KICK,STOMP,TAIL_WHIP,KARATE_CHOP,SUBMISSION,WATER_GUN,SWORDS_DANCE,THUNDER,SUPERSONIC,LEER,EMBER,BUBBLEBEAM,HYDRO_PUMP,SURF,PSYBEAM,CHARGE,THUNDERSHOCK,PSYCHIC,SCREECH,BONE_CLUB,SHARPEN,EGG_BOMB,SING,HYPER_BEAM,SHINE,UNKNOWN_5F,UNKNOWN_60,UNKNOWN_61,SWITCH_POCKETS,UNKNOWN_63,BURN,TITLE_SCREEN_ENTRANCE,UNKNOWN_66,GET_COIN_FROM_SLOTS,PAY_DAY,METRONOME,CALL,HANG_UP,NO_SIGNAL,SANDSTORM,ELEVATOR,PROTECT,SKETCH,RAIN_DANCE,AEROBLAST,SPARK,CURSE,RAGE,THIEF,THIEF_2,SPIDER_WEB,MIND_READER,NIGHTMARE,SNORE,SWEET_KISS,SWEET_KISS_2,BELLY_DRUM,TOXIC,SLUDGE_BOMB,FORESIGHT,SPITE,OUTRAGE,PERISH_SONG,GIGA_DRAIN,ATTRACT,KINESIS_2,ZAP_CANNON,MEAN_LOOK,HEAL_BELL,RETURN,EXP_BAR,MILK_DRINK,PRESENT,MORNING_SUN,LEVEL_UP,KEY_ITEM,FANFARE_2,REGISTER_PHONE_NUMBER,3RD_PLACE,GET_EGG_UNUSED,GET_EGG,MOVE_DELETED,2ND_PLACE,1ST_PLACE,CHOOSE_A_CARD,GET_TM,GET_BADGE,QUIT_SLOTS,EGG_CRACK,DEX_FANFARE_LESS_THAN_20,DEX_FANFARE_140_169,DEX_FANFARE_170_199,DEX_FANFARE_200_229,DEX_FANFARE_230_PLUS,EVOLVED,MASTER_BALL,EGG_HATCH,GS_INTRO_CHARIZARD_FIREBALL,GS_INTRO_POKEMON_APPEARS,FLASH,GAME_FREAK_LOGO_GS,NOT_VERY_EFFECTIVE,DAMAGE,SUPER_EFFECTIVE,BALL_BOUNCE,MOONLIGHT,ENCORE,BEAT_UP,BATON_PASS,BALL_WOBBLE,SWEET_SCENT,SWEET_SCENT_2,HIT_END_OF_EXP_BAR,GIVE_TRADEMON,GET_TRADEMON,TRAIN_ARRIVED,STOP_SLOT,2_BOOPS').split(',');
+  // 배틀 애니메이션 명령 길이 (pokegold macros/scripts/battle_anims.asm)
+  const ANIM_LEN = { 0xD0: 5, 0xD1: 2, 0xD2: 3, 0xD3: 4, 0xD4: 5, 0xD5: 6, 0xD6: 2, 0xD7: 3, 0xD8: 2, 0xE0: 3, 0xE1: 2, 0xEE: 4, 0xEF: 3, 0xF0: 5, 0xF1: 2, 0xF2: 2, 0xF3: 2, 0xF8: 4, 0xF9: 2, 0xFB: 4, 0xFC: 3, 0xFD: 4, 0xFE: 3 };
+  const animLen = c => c <= 0xCF ? 1 : ANIM_LEN[c] || 1;
+  // 애니메이션 하나에서 anim_sound 들 → [{ sfx, at (효과음 번호가 있는 바이트 위치) }] (호출·점프도 따라감)
+  function animSounds(d, bank, addr) {
+    const out = [], seen = new Set(), todo = [addr];
+    while (todo.length) {
+      let p = Off(bank, todo.pop());
+      for (let k = 0; k < 300 && !seen.has(p); k++) {
+        seen.add(p);
+        const c = d[p];
+        if (c === 0xE0) out.push({ sfx: d[p + 2], at: p + 2 });
+        if (c === 0xFE) todo.push(W(d, p + 1));
+        if (c === 0xFC) { todo.push(W(d, p + 1)); break; }
+        if (c === 0xFD) todo.push(W(d, p + 2));
+        if (c === 0xFF) break;
+        p += animLen(c);
+      }
+    }
+    return out;
+  }
+  const sfxCache = new WeakMap();
+  function findSfx(d) {
+    if (sfxCache.has(d)) return sfxCache.get(d);
+    let r = null;
+    const t = find(d);
+    if (t) {
+      const tab = t.tab + t.count * 3, bank = Math.floor(tab / 0x4000), a = 0x4000 + tab % 0x4000;
+      if (findPat(d, [0x21, a & 0xFF, a >> 8, 0x19, 0x19, 0x19, 0x2A], 0) >= 0) {
+        let count = 0;
+        // 머리말 첫 바이트 = (채널 수 - 1) << 6 | 채널 번호(0~7) → 3~5번 비트는 0
+        while (count < SFX_NAMES.length) {
+          const e = tab + count * 3, b = d[e], p = W(d, e + 1);
+          if (b < 1 || b * 0x4000 >= d.length || p < 0x4000 || p >= 0x8000 || (d[Off(b, p)] & 0x38) !== 0) break;
+          count++;
+        }
+        r = { tab, bank, count, moves: findMoveSounds(d) };
+      }
+    }
+    sfxCache.set(d, r);
+    return r;
+  }
+  // 기술 애니메이션 표: 막치기·태권당수·연속뺨치기 애니메이션에 각자 이름의 효과음이 있는 자리
+  function findMoveSounds(d) {
+    const iP = SFX_NAMES.indexOf('POUND'), iK = SFX_NAMES.indexOf('KARATE_CHOP'), iS = SFX_NAMES.indexOf('DOUBLESLAP');
+    const ok = (bank, a, s) => a >= 0x4000 && a < 0x8000 && animSounds(d, bank, a).some(x => x.sfx === s);
+    for (let i = 0x4000; i < d.length - 8; i++) {
+      const bank = Math.floor(i / 0x4000);
+      if (!ok(bank, W(d, i + 2), iP) || !ok(bank, W(d, i + 4), iK) || !ok(bank, W(d, i + 6), iS)) continue;
+      const byMove = [];
+      for (let m = 1; m <= 251; m++) { const a = W(d, i + m * 2); byMove[m] = a >= 0x4000 && a < 0x8000 ? animSounds(d, bank, a) : []; }
+      return { tab: i, byMove };
+    }
+    return null;
+  }
+  // 기술 애니메이션 표만 따로 (기술 그림 편집용)
+  const animCache = new WeakMap();
+  function moveAnims(d) { if (!animCache.has(d)) { const s = findSfx(d); animCache.set(d, s && s.moves ? s.moves : findMoveSounds(d)); } return animCache.get(d); }
+  // 애니메이션에서 불러오는 그림 묶음 번호들 (anim_1gfx ~ anim_5gfx)
+  function animGfx(d, bank, addr) {
+    const out = new Set(), seen = new Set(), todo = [addr];
+    while (todo.length) {
+      let p = Off(bank, todo.pop());
+      for (let k = 0; k < 300 && !seen.has(p); k++) {
+        seen.add(p);
+        const c = d[p];
+        if (c >= 0xD1 && c <= 0xD5) for (let i = 1; i <= c - 0xD0; i++) out.add(d[p + i]);
+        if (c === 0xFE) todo.push(W(d, p + 1));
+        if (c === 0xFC) { todo.push(W(d, p + 1)); break; }
+        if (c === 0xFD) todo.push(W(d, p + 2));
+        if (c === 0xFF) break;
+        p += animLen(c);
+      }
+    }
+    return [...out];
+  }
+  const sfxOff = (d, s, id) => { const e = s.tab + id * 3; return Off(d[e], W(d, e + 1)); };
+  const sfxName = id => SFX_NAMES[id] || ('SFX_' + id);
   function parseChannel(d, bank, pc, id) {
     const notes = [], loops = new Map(), noise = (id & 3) === 3;
     let duty = 2, pattern = null, sweep = 0, ret = -1, guard = 0;
@@ -1932,6 +2038,7 @@ const RomCry = (() => {
           if (rem > 0) { loops.set(key, rem); pc = to; } else loops.delete(key);
           break;
         }
+        case 0xDF: notes.music = true; return notes;   // toggle_sfx: 여기서부터 음악 형식 (팡파르 등) → 이 편집기로는 못 다룸
         case 0xFE: ret = pc + 2; pc = W(d, Off(bank, pc)); break;
         case 0xFF: if (ret >= 0) { pc = ret; ret = -1; break; } return notes;
         default: break;   // 옥타브·인자 없는 명령
@@ -2078,7 +2185,733 @@ const RomCry = (() => {
   }
 
   const clone = cry => ({ channels: cry.channels.map(c => ({ id: c.id, notes: c.notes.map(n => Object.assign({}, n, { pattern: n.pattern && n.pattern.slice() })) })) });
-  return { find, header, setHeader, baseOff, decode, encode, render, convert, clone, s16 };
+  return { find, header, setHeader, baseOff, decode, encode, render, convert, clone, s16, findSfx, sfxOff, sfxName, animSounds, moveAnims, animGfx };
+})();
+
+// ===== 42-gbemu.js
+// ================================================================ 게임보이 컬러 에뮬레이터 (기술 애니메이션 미리보기용 · 롬의 진짜 코드를 실행)
+// CPU(LR35902) · MBC3 · CGB(VRAM/WRAM 뱅크, 팔레트, HDMA, 2배속) · 화면(줄 단위) · 인터럽트 · 타이머 · 소리 레지스터 기록
+const GBEmu = (() => {
+  const CLOCKS_PER_LINE = 456;
+  class Emu {
+    constructor(rom) {
+      this.rom = rom;
+      this.cgb = (rom[0x143] & 0x80) !== 0;
+      this.romBanks = Math.max(2, rom.length >> 14);
+      this.sram = new Uint8Array(0x8000);
+      this.vram = new Uint8Array(0x4000); this.wram = new Uint8Array(0x8000); this.oam = new Uint8Array(0xA0);
+      this.hram = new Uint8Array(0x80); this.io = new Uint8Array(0x80);
+      this.bgPal = new Uint8Array(64); this.obPal = new Uint8Array(64);
+      this.frame = new Uint32Array(160 * 144);
+      this.lineBg = new Uint8Array(160); this.lineBgPri = new Uint8Array(160);
+      this.reset();
+    }
+    reset() {
+      this.a = this.cgb ? 0x11 : 0x01; this.f = 0x80; this.b = 0; this.c = 0x13; this.d = 0; this.e = 0xD8; this.h = 0x01; this.l = 0x4D;
+      this.sp = 0xFFFE; this.pc = 0x100; this.ime = false; this.imeNext = false; this.halted = false;
+      this.romBank = 1; this.ramBank = 0; this.ramOn = false; this.vbank = 0; this.wbank = 1;
+      this.ie = 0; this.dot = 0; this.ly = 0; this.mode = 2; this.divC = 0; this.timC = 0; this.double = false;
+      this.hdmaActive = false; this.hdmaSrc = 0; this.hdmaDst = 0; this.hdmaLeft = 0;
+      this.io.fill(0); this.io[0x40] = 0x91; this.io[0x47] = 0xFC; this.io[0x48] = 0xFF; this.io[0x49] = 0xFF;
+      this.bgpi = 0; this.obpi = 0; this.frames = 0; this.soundLog = [];
+      this.statLine = false; this.winLine = 0; this.bad = 0;
+    }
+    // ---------------------------------------------------------------- 메모리
+    rd(a) {
+      a &= 0xFFFF;
+      if (a < 0x4000) return this.rom[a];
+      if (a < 0x8000) return this.rom[(this.romBank % this.romBanks) * 0x4000 + (a - 0x4000)];
+      if (a < 0xA000) return this.vram[this.vbank * 0x2000 + (a - 0x8000)];
+      if (a < 0xC000) { if (this.ramBank <= 3) return this.sram[this.ramBank * 0x2000 + (a - 0xA000)]; return 0; }
+      if (a < 0xD000) return this.wram[a - 0xC000];
+      if (a < 0xE000) return this.wram[this.wbank * 0x1000 + (a - 0xD000)];
+      if (a < 0xFE00) return this.rd(a - 0x2000);
+      if (a < 0xFEA0) return this.oam[a - 0xFE00];
+      if (a < 0xFF00) return 0xFF;
+      if (a < 0xFF80) return this.rdIO(a & 0x7F);
+      if (a < 0xFFFF) return this.hram[a - 0xFF80];
+      return this.ie;
+    }
+    wr(a, v) {
+      a &= 0xFFFF; v &= 0xFF;
+      if (a < 0x2000) { this.ramOn = (v & 0x0F) === 0x0A; return; }
+      if (a < 0x4000) { this.romBank = (v & 0x7F) || 1; return; }
+      if (a < 0x6000) { this.ramBank = v; return; }
+      if (a < 0x8000) return;   // RTC 래치
+      if (a < 0xA000) { this.vram[this.vbank * 0x2000 + (a - 0x8000)] = v; return; }
+      if (a < 0xC000) { if (this.ramBank <= 3) this.sram[this.ramBank * 0x2000 + (a - 0xA000)] = v; return; }
+      if (a < 0xD000) { this.wram[a - 0xC000] = v; return; }
+      if (a < 0xE000) { this.wram[this.wbank * 0x1000 + (a - 0xD000)] = v; return; }
+      if (a < 0xFE00) { this.wr(a - 0x2000, v); return; }
+      if (a < 0xFEA0) { this.oam[a - 0xFE00] = v; return; }
+      if (a < 0xFF00) return;
+      if (a < 0xFF80) { this.wrIO(a & 0x7F, v); return; }
+      if (a < 0xFFFF) { this.hram[a - 0xFF80] = v; return; }
+      this.ie = v;
+    }
+    rdIO(r) {
+      switch (r) {
+        case 0x00: { const sel = this.io[0]; return 0xC0 | (sel & 0x30) | 0x0F; }   // 버튼 안 누름
+        case 0x04: return (this.divC >> 8) & 0xFF;
+        case 0x0F: return this.io[0x0F] | 0xE0;
+        case 0x41: return 0x80 | (this.io[0x41] & 0x78) | (this.ly === this.io[0x45] ? 4 : 0) | (this.io[0x40] & 0x80 ? this.mode : 0);
+        case 0x44: return this.ly;
+        case 0x4D: return (this.double ? 0x80 : 0) | (this.io[0x4D] & 1) | 0x7E;
+        case 0x4F: return this.vbank | 0xFE;
+        case 0x55: return this.hdmaActive ? ((this.hdmaLeft - 1) & 0x7F) : 0xFF;
+        case 0x68: return this.bgpi; case 0x69: return this.bgPal[this.bgpi & 0x3F];
+        case 0x6A: return this.obpi; case 0x6B: return this.obPal[this.obpi & 0x3F];
+        case 0x70: return this.wbank | 0xF8;
+      }
+      return this.io[r];
+    }
+    wrIO(r, v) {
+      if (r >= 0x10 && r < 0x40) { this.io[r] = v; this.soundLog.push(this.frames, r, v); return; }
+      switch (r) {
+        case 0x04: this.divC = 0; return;
+        case 0x0F: this.io[0x0F] = v & 0x1F; return;
+        case 0x41: this.io[0x41] = v & 0x78; return;
+        case 0x44: return;
+        case 0x46: { const s = v << 8; for (let i = 0; i < 0xA0; i++) this.oam[i] = this.rd(s + i); this.io[0x46] = v; return; }
+        case 0x4D: this.io[0x4D] = v & 1; return;
+        case 0x4F: this.vbank = v & 1; return;
+        case 0x51: this.hdmaSrc = (this.hdmaSrc & 0xFF) | (v << 8); return;
+        case 0x52: this.hdmaSrc = (this.hdmaSrc & 0xFF00) | (v & 0xF0); return;
+        case 0x53: this.hdmaDst = (this.hdmaDst & 0xFF) | ((v & 0x1F) << 8); return;
+        case 0x54: this.hdmaDst = (this.hdmaDst & 0xFF00) | (v & 0xF0); return;
+        case 0x55:
+          if (this.hdmaActive && !(v & 0x80)) { this.hdmaActive = false; return; }
+          this.hdmaLeft = (v & 0x7F) + 1;
+          if (v & 0x80) this.hdmaActive = true;
+          else { while (this.hdmaLeft > 0) this.hdmaBlock(); }
+          return;
+        case 0x68: this.bgpi = v; return;
+        case 0x69: this.bgPal[this.bgpi & 0x3F] = v; if (this.bgpi & 0x80) this.bgpi = 0x80 | ((this.bgpi + 1) & 0x3F); return;
+        case 0x6A: this.obpi = v; return;
+        case 0x6B: this.obPal[this.obpi & 0x3F] = v; if (this.obpi & 0x80) this.obpi = 0x80 | ((this.obpi + 1) & 0x3F); return;
+        case 0x70: this.wbank = (v & 7) || 1; return;
+      }
+      this.io[r] = v;
+    }
+    hdmaBlock() {
+      for (let i = 0; i < 16; i++) this.vram[this.vbank * 0x2000 + ((this.hdmaDst + i) & 0x1FFF)] = this.rd(this.hdmaSrc + i);
+      this.hdmaSrc = (this.hdmaSrc + 16) & 0xFFFF; this.hdmaDst = (this.hdmaDst + 16) & 0x1FFF;
+      if (--this.hdmaLeft <= 0) this.hdmaActive = false;
+    }
+    // ---------------------------------------------------------------- 시간 (m-cycle 단위로 받음)
+    tick(m) {
+      const clocks = m * 4;
+      this.divC = (this.divC + clocks) & 0xFFFF;
+      const tac = this.io[0x07];
+      if (tac & 4) {
+        const per = [1024, 16, 64, 256][tac & 3];
+        this.timC += clocks;
+        while (this.timC >= per) { this.timC -= per; if (++this.io[0x05] > 0xFF) { this.io[0x05] = this.io[0x06]; this.io[0x0F] |= 4; } }
+      }
+      // 화면은 실제 시간 기준 (2배속이면 절반)
+      this.ppu(this.double ? clocks >> 1 : clocks);
+    }
+    setMode(md) {
+      this.mode = md;
+      if (md === 0 && this.hdmaActive && this.ly < 144) this.hdmaBlock();
+      this.updStat();
+    }
+    updStat() {
+      const s = this.io[0x41], lyc = this.ly === this.io[0x45];
+      const line = (lyc && (s & 0x40)) || (this.mode === 0 && (s & 0x08)) || (this.mode === 2 && (s & 0x20)) || (this.mode === 1 && (s & 0x10));
+      if (line && !this.statLine) this.io[0x0F] |= 2;
+      this.statLine = !!line;
+    }
+    ppu(c) {
+      if (!(this.io[0x40] & 0x80)) { this.dot += c; if (this.dot >= 70224) { this.dot -= 70224; this.frames++; this.frameDone = true; } return; }
+      this.dot += c;
+      while (true) {
+        if (this.ly < 144) {
+          if (this.mode === 2 && this.dot >= 80) { this.setMode(3); continue; }
+          if (this.mode === 3 && this.dot >= 252) { this.renderLine(); this.setMode(0); continue; }
+        }
+        if (this.dot >= CLOCKS_PER_LINE) {
+          this.dot -= CLOCKS_PER_LINE;
+          this.ly++;
+          if (this.ly === 144) { this.mode = 1; this.io[0x0F] |= 1; this.frames++; this.frameDone = true; this.updStat(); }
+          else if (this.ly > 153) { this.ly = 0; this.winLine = 0; this.setMode(2); }
+          else if (this.ly < 144) this.setMode(2);
+          else this.updStat();
+          continue;
+        }
+        break;
+      }
+    }
+    // ---------------------------------------------------------------- 한 줄 그리기 (CGB)
+    color(pal, bg, idx) {
+      const p = bg ? this.bgPal : this.obPal, o = pal * 8 + idx * 2, c = p[o] | (p[o + 1] << 8);
+      const r = (c & 31) << 3, g = ((c >> 5) & 31) << 3, b = ((c >> 10) & 31) << 3;
+      return 0xFF000000 | (b | b >> 5) << 16 | (g | g >> 5) << 8 | (r | r >> 5);
+    }
+    renderLine() {
+      const y = this.ly, lcdc = this.io[0x40], out = this.frame, base = y * 160, vr = this.vram;
+      const bgOn = true, scx = this.io[0x43], scy = this.io[0x42];
+      const tileAddr = (idx, bank) => (lcdc & 0x10 ? idx * 16 : 0x1000 + ((idx << 24) >> 24) * 16) + bank * 0x2000;
+      const winOn = (lcdc & 0x20) && this.io[0x4A] <= y && this.io[0x4B] <= 166;
+      const wx = this.io[0x4B] - 7;
+      for (let x = 0; x < 160; x++) {
+        let mx, my, map;
+        if (winOn && x >= wx) { mx = x - wx; my = this.winLine; map = lcdc & 0x40 ? 0x1C00 : 0x1800; }
+        else { mx = (x + scx) & 255; my = (y + scy) & 255; map = lcdc & 0x08 ? 0x1C00 : 0x1800; }
+        const mi = map + (my >> 3) * 32 + (mx >> 3), idx = vr[mi], attr = vr[0x2000 + mi];
+        let px = mx & 7, py = my & 7;
+        if (attr & 0x20) px = 7 - px;
+        if (attr & 0x40) py = 7 - py;
+        const ta = tileAddr(idx, (attr >> 3) & 1) + py * 2, lo = vr[ta], hi = vr[ta + 1];
+        const ci = ((lo >> (7 - px)) & 1) | (((hi >> (7 - px)) & 1) << 1);
+        this.lineBg[x] = ci; this.lineBgPri[x] = attr & 0x80;
+        out[base + x] = this.color(attr & 7, true, ci);
+      }
+      if (winOn && wx < 160) this.winLine++;
+      if (lcdc & 0x02) {
+        const tall = lcdc & 0x04 ? 16 : 8, list = [];
+        for (let i = 0; i < 40 && list.length < 10; i++) { const sy = this.oam[i * 4] - 16; if (y >= sy && y < sy + tall) list.push(i); }
+        for (let k = list.length - 1; k >= 0; k--) {
+          const i = list[k], sy = this.oam[i * 4] - 16, sx = this.oam[i * 4 + 1] - 8, attr = this.oam[i * 4 + 3];
+          let t = this.oam[i * 4 + 2]; if (tall === 16) t &= 0xFE;
+          let row = y - sy; if (attr & 0x40) row = tall - 1 - row;
+          const ta = ((attr >> 3) & 1) * 0x2000 + t * 16 + row * 2, lo = vr[ta], hi = vr[ta + 1];
+          for (let px = 0; px < 8; px++) {
+            const x = sx + px; if (x < 0 || x >= 160) continue;
+            const bit = attr & 0x20 ? px : 7 - px, ci = ((lo >> bit) & 1) | (((hi >> bit) & 1) << 1);
+            if (!ci) continue;
+            if ((lcdc & 1) && this.lineBg[x] && (this.lineBgPri[x] || (attr & 0x80))) continue;
+            out[base + x] = this.color(attr & 7, false, ci);
+          }
+        }
+      }
+    }
+    // ---------------------------------------------------------------- CPU
+    get af() { return (this.a << 8) | this.f; } set af(v) { this.a = (v >> 8) & 0xFF; this.f = v & 0xF0; }
+    get bc() { return (this.b << 8) | this.c; } set bc(v) { this.b = (v >> 8) & 0xFF; this.c = v & 0xFF; }
+    get de() { return (this.d << 8) | this.e; } set de(v) { this.d = (v >> 8) & 0xFF; this.e = v & 0xFF; }
+    get hl() { return (this.h << 8) | this.l; } set hl(v) { this.h = (v >> 8) & 0xFF; this.l = v & 0xFF; }
+    fetch() { const v = this.rd(this.pc); this.pc = (this.pc + 1) & 0xFFFF; return v; }
+    fetch16() { const lo = this.fetch(); return lo | (this.fetch() << 8); }
+    push(v) { this.sp = (this.sp - 1) & 0xFFFF; this.wr(this.sp, v >> 8); this.sp = (this.sp - 1) & 0xFFFF; this.wr(this.sp, v & 0xFF); }
+    pop() { const lo = this.rd(this.sp); this.sp = (this.sp + 1) & 0xFFFF; const hi = this.rd(this.sp); this.sp = (this.sp + 1) & 0xFFFF; return lo | (hi << 8); }
+    getR(i) { switch (i) { case 0: return this.b; case 1: return this.c; case 2: return this.d; case 3: return this.e; case 4: return this.h; case 5: return this.l; case 6: return this.rd(this.hl); default: return this.a; } }
+    setR(i, v) { v &= 0xFF; switch (i) { case 0: this.b = v; break; case 1: this.c = v; break; case 2: this.d = v; break; case 3: this.e = v; break; case 4: this.h = v; break; case 5: this.l = v; break; case 6: this.wr(this.hl, v); break; default: this.a = v; } }
+    alu(op, v) {
+      const a = this.a; let r;
+      switch (op) {
+        case 0: r = a + v; this.f = ((r & 0xFF) ? 0 : 0x80) | (((a & 15) + (v & 15)) > 15 ? 0x20 : 0) | (r > 255 ? 0x10 : 0); this.a = r & 0xFF; break;
+        case 1: { const cy = (this.f >> 4) & 1; r = a + v + cy; this.f = ((r & 0xFF) ? 0 : 0x80) | (((a & 15) + (v & 15) + cy) > 15 ? 0x20 : 0) | (r > 255 ? 0x10 : 0); this.a = r & 0xFF; break; }
+        case 2: r = a - v; this.f = 0x40 | ((r & 0xFF) ? 0 : 0x80) | ((a & 15) < (v & 15) ? 0x20 : 0) | (r < 0 ? 0x10 : 0); this.a = r & 0xFF; break;
+        case 3: { const cy = (this.f >> 4) & 1; r = a - v - cy; this.f = 0x40 | ((r & 0xFF) ? 0 : 0x80) | ((a & 15) - (v & 15) - cy < 0 ? 0x20 : 0) | (r < 0 ? 0x10 : 0); this.a = r & 0xFF; break; }
+        case 4: this.a = a & v; this.f = (this.a ? 0 : 0x80) | 0x20; break;
+        case 5: this.a = a ^ v; this.f = this.a ? 0 : 0x80; break;
+        case 6: this.a = a | v; this.f = this.a ? 0 : 0x80; break;
+        case 7: r = a - v; this.f = 0x40 | ((r & 0xFF) ? 0 : 0x80) | ((a & 15) < (v & 15) ? 0x20 : 0) | (r < 0 ? 0x10 : 0); break;
+      }
+    }
+    cond(i) { switch (i) { case 0: return !(this.f & 0x80); case 1: return !!(this.f & 0x80); case 2: return !(this.f & 0x10); default: return !!(this.f & 0x10); } }
+    addHL(v) { const r = this.hl + v; this.f = (this.f & 0x80) | (((this.hl & 0xFFF) + (v & 0xFFF)) > 0xFFF ? 0x20 : 0) | (r > 0xFFFF ? 0x10 : 0); this.hl = r & 0xFFFF; }
+    spOff() { const e = (this.fetch() << 24) >> 24, sp = this.sp; this.f = (((sp & 15) + (e & 15)) > 15 ? 0x20 : 0) | (((sp & 0xFF) + (e & 0xFF)) > 0xFF ? 0x10 : 0); return (sp + e) & 0xFFFF; }
+    interrupt() {
+      const pend = this.ie & this.io[0x0F] & 0x1F;
+      if (!pend) return 0;
+      this.halted = false;
+      if (!this.ime) return 0;
+      for (let i = 0; i < 5; i++) if (pend & (1 << i)) { this.ime = false; this.io[0x0F] &= ~(1 << i); this.push(this.pc); this.pc = 0x40 + i * 8; return 5; }
+      return 0;
+    }
+    step() {
+      let m = this.interrupt();
+      if (m) { this.tick(m); return m; }
+      if (this.halted) { this.tick(1); return 1; }
+      if (this.imeNext) { this.ime = true; this.imeNext = false; }
+      m = this.exec(this.fetch());
+      this.tick(m);
+      return m;
+    }
+    exec(op) {
+      switch (op) {
+        case 0x00: return 1;
+        case 0x10: this.fetch(); if (this.io[0x4D] & 1) { this.double = !this.double; this.io[0x4D] = 0; } return 1;
+        case 0x76: this.halted = true; return 1;
+        case 0xF3: this.ime = false; this.imeNext = false; return 1;
+        case 0xFB: this.imeNext = true; return 1;
+        case 0xCB: return this.execCB(this.fetch());
+        case 0x08: { const a = this.fetch16(); this.wr(a, this.sp & 0xFF); this.wr(a + 1, this.sp >> 8); return 5; }
+        case 0x18: { const e = (this.fetch() << 24) >> 24; this.pc = (this.pc + e) & 0xFFFF; return 3; }
+        case 0x20: case 0x28: case 0x30: case 0x38: { const e = (this.fetch() << 24) >> 24; if (this.cond((op >> 3) & 3)) { this.pc = (this.pc + e) & 0xFFFF; return 3; } return 2; }
+        case 0x01: this.bc = this.fetch16(); return 3; case 0x11: this.de = this.fetch16(); return 3; case 0x21: this.hl = this.fetch16(); return 3; case 0x31: this.sp = this.fetch16(); return 3;
+        case 0x02: this.wr(this.bc, this.a); return 2; case 0x12: this.wr(this.de, this.a); return 2;
+        case 0x22: this.wr(this.hl, this.a); this.hl = (this.hl + 1) & 0xFFFF; return 2; case 0x32: this.wr(this.hl, this.a); this.hl = (this.hl - 1) & 0xFFFF; return 2;
+        case 0x0A: this.a = this.rd(this.bc); return 2; case 0x1A: this.a = this.rd(this.de); return 2;
+        case 0x2A: this.a = this.rd(this.hl); this.hl = (this.hl + 1) & 0xFFFF; return 2; case 0x3A: this.a = this.rd(this.hl); this.hl = (this.hl - 1) & 0xFFFF; return 2;
+        case 0x03: this.bc = (this.bc + 1) & 0xFFFF; return 2; case 0x13: this.de = (this.de + 1) & 0xFFFF; return 2; case 0x23: this.hl = (this.hl + 1) & 0xFFFF; return 2; case 0x33: this.sp = (this.sp + 1) & 0xFFFF; return 2;
+        case 0x0B: this.bc = (this.bc - 1) & 0xFFFF; return 2; case 0x1B: this.de = (this.de - 1) & 0xFFFF; return 2; case 0x2B: this.hl = (this.hl - 1) & 0xFFFF; return 2; case 0x3B: this.sp = (this.sp - 1) & 0xFFFF; return 2;
+        case 0x09: this.addHL(this.bc); return 2; case 0x19: this.addHL(this.de); return 2; case 0x29: this.addHL(this.hl); return 2; case 0x39: this.addHL(this.sp); return 2;
+        case 0x07: { const c = this.a >> 7; this.a = ((this.a << 1) | c) & 0xFF; this.f = c << 4; return 1; }
+        case 0x0F: { const c = this.a & 1; this.a = (this.a >> 1) | (c << 7); this.f = c << 4; return 1; }
+        case 0x17: { const c = this.a >> 7; this.a = ((this.a << 1) | ((this.f >> 4) & 1)) & 0xFF; this.f = c << 4; return 1; }
+        case 0x1F: { const c = this.a & 1; this.a = (this.a >> 1) | (((this.f >> 4) & 1) << 7); this.f = c << 4; return 1; }
+        case 0x27: {
+          let a = this.a, adj = 0, cy = 0;
+          if (this.f & 0x40) { if (this.f & 0x20) adj |= 6; if (this.f & 0x10) { adj |= 0x60; cy = 1; } a = (a - adj) & 0xFF; }
+          else { if ((this.f & 0x20) || (a & 15) > 9) adj |= 6; if ((this.f & 0x10) || a > 0x99) { adj |= 0x60; cy = 1; } a = (a + adj) & 0xFF; }
+          this.a = a; this.f = (this.f & 0x40) | (a ? 0 : 0x80) | (cy << 4); return 1;
+        }
+        case 0x2F: this.a ^= 0xFF; this.f |= 0x60; return 1;
+        case 0x37: this.f = (this.f & 0x80) | 0x10; return 1;
+        case 0x3F: this.f = (this.f & 0x80) | ((this.f & 0x10) ^ 0x10); return 1;
+        case 0xC3: this.pc = this.fetch16(); return 4;
+        case 0xC2: case 0xCA: case 0xD2: case 0xDA: { const a = this.fetch16(); if (this.cond((op >> 3) & 3)) { this.pc = a; return 4; } return 3; }
+        case 0xCD: { const a = this.fetch16(); this.push(this.pc); this.pc = a; return 6; }
+        case 0xC4: case 0xCC: case 0xD4: case 0xDC: { const a = this.fetch16(); if (this.cond((op >> 3) & 3)) { this.push(this.pc); this.pc = a; return 6; } return 3; }
+        case 0xC9: this.pc = this.pop(); return 4;
+        case 0xD9: this.pc = this.pop(); this.ime = true; return 4;
+        case 0xC0: case 0xC8: case 0xD0: case 0xD8: if (this.cond((op >> 3) & 3)) { this.pc = this.pop(); return 5; } return 2;
+        case 0xE9: this.pc = this.hl; return 1;
+        case 0xC1: this.bc = this.pop(); return 3; case 0xD1: this.de = this.pop(); return 3; case 0xE1: this.hl = this.pop(); return 3; case 0xF1: this.af = this.pop(); return 3;
+        case 0xC5: this.push(this.bc); return 4; case 0xD5: this.push(this.de); return 4; case 0xE5: this.push(this.hl); return 4; case 0xF5: this.push(this.af); return 4;
+        case 0xE0: this.wr(0xFF00 + this.fetch(), this.a); return 3; case 0xF0: this.a = this.rd(0xFF00 + this.fetch()); return 3;
+        case 0xE2: this.wr(0xFF00 + this.c, this.a); return 2; case 0xF2: this.a = this.rd(0xFF00 + this.c); return 2;
+        case 0xEA: this.wr(this.fetch16(), this.a); return 4; case 0xFA: this.a = this.rd(this.fetch16()); return 4;
+        case 0xE8: this.sp = this.spOff(); return 4; case 0xF8: this.hl = this.spOff(); return 3; case 0xF9: this.sp = this.hl; return 2;
+        case 0xC6: case 0xCE: case 0xD6: case 0xDE: case 0xE6: case 0xEE: case 0xF6: case 0xFE: this.alu((op >> 3) & 7, this.fetch()); return 2;
+        case 0xC7: case 0xCF: case 0xD7: case 0xDF: case 0xE7: case 0xEF: case 0xF7: case 0xFF: this.push(this.pc); this.pc = op & 0x38; return 4;
+      }
+      if (op >= 0x40 && op < 0x80) { this.setR((op >> 3) & 7, this.getR(op & 7)); return ((op & 7) === 6 || ((op >> 3) & 7) === 6) ? 2 : 1; }
+      if (op >= 0x80 && op < 0xC0) { this.alu((op >> 3) & 7, this.getR(op & 7)); return (op & 7) === 6 ? 2 : 1; }
+      if ((op & 0xC7) === 0x04) { const i = (op >> 3) & 7, v = (this.getR(i) + 1) & 0xFF; this.setR(i, v); this.f = (this.f & 0x10) | (v ? 0 : 0x80) | ((v & 15) === 0 ? 0x20 : 0); return i === 6 ? 3 : 1; }
+      if ((op & 0xC7) === 0x05) { const i = (op >> 3) & 7, v = (this.getR(i) - 1) & 0xFF; this.setR(i, v); this.f = (this.f & 0x10) | 0x40 | (v ? 0 : 0x80) | ((v & 15) === 15 ? 0x20 : 0); return i === 6 ? 3 : 1; }
+      if ((op & 0xC7) === 0x06) { const i = (op >> 3) & 7; this.setR(i, this.fetch()); return i === 6 ? 3 : 2; }
+      // 정의 안 된 명령: 멈춤
+      this.halted = true; this.ime = false; this.bad = op;
+      return 1;
+    }
+    execCB(op) {
+      const i = op & 7, x = op >> 6, y = (op >> 3) & 7;
+      let v = this.getR(i);
+      if (x === 1) { this.f = (this.f & 0x10) | 0x20 | ((v >> y) & 1 ? 0 : 0x80); return i === 6 ? 3 : 2; }
+      if (x === 2) { this.setR(i, v & ~(1 << y)); return i === 6 ? 4 : 2; }
+      if (x === 3) { this.setR(i, v | (1 << y)); return i === 6 ? 4 : 2; }
+      let c;
+      switch (y) {
+        case 0: c = v >> 7; v = ((v << 1) | c) & 0xFF; break;
+        case 1: c = v & 1; v = (v >> 1) | (c << 7); break;
+        case 2: c = v >> 7; v = ((v << 1) | ((this.f >> 4) & 1)) & 0xFF; break;
+        case 3: c = v & 1; v = (v >> 1) | (((this.f >> 4) & 1) << 7); break;
+        case 4: c = v >> 7; v = (v << 1) & 0xFF; break;
+        case 5: c = v & 1; v = (v >> 1) | (v & 0x80); break;
+        case 6: c = 0; v = ((v & 15) << 4) | (v >> 4); break;
+        default: c = v & 1; v >>= 1; break;
+      }
+      this.setR(i, v); this.f = (v ? 0 : 0x80) | (c << 4);
+      return i === 6 ? 4 : 2;
+    }
+    // ---------------------------------------------------------------- 상태 저장·불러오기 (롬은 그대로 두고 메모리·레지스터만)
+    snapshot() {
+      const s = {};
+      for (const k of Object.keys(this)) {
+        const v = this[k];
+        if (k === 'rom' || k === 'frame' || k === 'soundLog') continue;
+        s[k] = v instanceof Uint8Array ? v.slice() : v;
+      }
+      return s;
+    }
+    restore(s) {
+      for (const k of Object.keys(s)) { const v = s[k]; this[k] = v instanceof Uint8Array ? v.slice() : v; }
+      this.soundLog = []; this.frame = new Uint32Array(160 * 144);
+    }
+    // ---------------------------------------------------------------- 실행
+    runFrame(maxSteps) {
+      this.frameDone = false;
+      let n = 0, lim = maxSteps || 400000;
+      while (!this.frameDone && n < lim && !this.bad) { this.step(); n++; }
+      return this.frame;
+    }
+    // pc 가 stop 에 닿거나 frames 만큼 지나면 멈춤. onFrame(emu) 은 화면이 한 장 끝날 때마다
+    runUntil(stopPc, maxFrames, onFrame) {
+      const start = this.frames;
+      while (this.frames - start < maxFrames && !this.bad) {
+        this.frameDone = false;
+        let n = 0;
+        while (!this.frameDone && n < 600000) { if (this.pc === stopPc) return true; this.step(); n++; if (this.bad) break; }
+        if (onFrame) onFrame(this);
+      }
+      return false;
+    }
+  }
+  return { Emu };
+})();
+
+// ===== 43-animrunner.js
+// ================================================================ 기술 애니메이션을 롬의 진짜 코드로 재생 (에뮬레이터 안에서 배틀 화면을 꾸미고 PlayBattleAnim 호출)
+// 주소는 롬마다 코드 모양으로 찾음 (한글판·북미판·개조롬 공통). 못 찾으면 null
+const AnimRunner = (() => {
+  const SENTINEL = 0xFFF0;   // 여기로 돌아오면 함수 끝 (HRAM 끝자락, 실제로 실행되지 않음)
+  const find = (d, pat, s, e) => {
+    outer: for (let i = s || 0; i + pat.length <= (e || d.length); i++) {
+      for (let k = 0; k < pat.length; k++) if (pat[k] >= 0 && d[i + k] !== pat[k]) continue outer;
+      return i;
+    }
+    return -1;
+  };
+  const W = (d, o) => d[o] | (d[o + 1] << 8);
+  const Off = (bank, a) => bank * 0x4000 + (a & 0x3FFF);
+  const cache = new WeakMap();
+
+  // 필요한 주소 찾기
+  function locate(d, animTab) {
+    if (cache.has(d)) return cache.get(d);
+    let r = null;
+    try {
+      const A = {};
+      // rst $10 Bankswitch: ldh [hROMBank], a / ld [MBC3RomBank], a / ret
+      if (d[0x10] !== 0xE0 || d[0x12] !== 0xEA) throw 0;
+      A.hROMBank = 0xFF00 + d[0x11];
+      const lo = 0x4000 + animTab % 0x4000;
+      // ClearBattleAnims: ld hl, wFXAnimID / ld e, [hl] / inc hl / ld d, [hl] / ld hl, BattleAnimations / add hl, de ×2
+      // (크리스탈식: ld a, [wFXAnimID] / ld e, a / ld a, [wFXAnimID+1] / ld d, a / ld hl, BattleAnimations)
+      let c = find(d, [0x21, -1, -1, 0x5E, 0x23, 0x56, 0x21, lo & 0xFF, lo >> 8, 0x19, 0x19]);
+      if (c >= 0) A.wFXAnimID = W(d, c + 1);
+      else { c = find(d, [0xFA, -1, -1, 0x5F, 0xFA, -1, -1, 0x57, 0x21, lo & 0xFF, lo >> 8]); if (c < 0) throw 1; A.wFXAnimID = W(d, c + 1); }
+      const ab = Math.floor(c / 0x4000);   // 애니메이션 엔진 뱅크
+      // PlayBattleAnim: ld c, 6 / .wait: call BattleAnimDelayFrame / dec c / jr nz, .wait
+      const p = find(d, [0x0E, 0x06, 0xCD, -1, -1, 0x0D, 0x20, 0xFA], ab * 0x4000, ab * 0x4000 + 0x4000);
+      if (p < 0) throw 2;
+      A.play = { bank: ab, addr: 0x4000 + p % 0x4000 };
+      // PlayBattleAnim 안: ldh a, [hVBlank] / push af / ld a, VBLANK_CUTSCENE / ldh [hVBlank], a
+      const hv = find(d, [0xF0, -1, 0xF5, 0x3E, -1, 0xE0], p, p + 0x30);
+      A.hVBlank = hv >= 0 && d[hv + 6] === d[hv + 1] ? 0xFF00 + d[hv + 1] : -1;
+      // BattleAnimRunScript: wFXAnimID+1 확인 뒤 wOptions 의 BATTLE_SCENE 비트 (ld a, [wOptions] / bit n, a  또는  ld hl, wOptions / bit n, [hl])
+      A.wOptions = -1; A.optionBit = 7;
+      const hi1 = A.wFXAnimID + 1;
+      for (let q = ab * 0x4000; q < ab * 0x4000 + 0x3FF0 && A.wOptions < 0; q++) {
+        if (!(d[q] === 0xFA && W(d, q + 1) === hi1 && d[q + 3] === 0xA7)) continue;
+        for (let k = q + 4; k < q + 16; k++) {
+          if (d[k] === 0xFA && d[k + 3] === 0xCB && (d[k + 4] & 0xC7) === 0x47) { A.wOptions = W(d, k + 1); A.optionBit = (d[k + 4] >> 3) & 7; break; }
+          if (d[k] === 0x21 && d[k + 3] === 0xCB && (d[k + 4] & 0xC7) === 0x46) { A.wOptions = W(d, k + 1); A.optionBit = (d[k + 4] >> 3) & 7; break; }
+        }
+      }
+      // ClearActorHud: ldh a, [hBattleTurn] / and a / jr z / … hlcoord 9, 7 / lb bc, 5, 11 (wTilemap = 그 주소 - 149)
+      let h = -1, t = -1;
+      for (let q = ab * 0x4000; q < ab * 0x4000 + 0x4000 && t < 0; q++) {
+        q = find(d, [0x21, -1, -1, 0x01, 0x0B, 0x05], q, ab * 0x4000 + 0x4000);
+        if (q < 0) break;
+        for (let k = q - 16; k < q; k++) if (d[k] === 0xF0 && d[k + 2] === 0xA7 && (d[k + 3] === 0x28 || d[k + 3] === 0x20)) { t = k; h = q; }
+      }
+      if (t < 0) throw 4;
+      A.wTilemap = W(d, h + 1) - (7 * 20 + 9);
+      A.hBattleTurn = 0xFF00 + d[t + 1];
+      // LoadSGBLayoutCGB: ld a, b / cp SCGB_DEFAULT / jr nz, +3 / ld a, [wDefaultSGBLayout]
+      // (SGB 용과 CGB 용이 같은 모양이라 점프표 안에 _CGB_BattleColors 가 있는 쪽을 고름)
+      A.battleColors = -1;
+      for (let g = 0; A.battleColors < 0; g++) {
+        g = find(d, [0x78, 0xFE, -1, 0x20, 0x03, 0xFA, -1, -1], g);
+        if (g < 0) throw 5;
+        // 점프표: ld de, CGBLayoutJumptable / add hl, de / ld a, [hli] / ld h, [hl] / ld l, a
+        const jt = find(d, [0x11, -1, -1, 0x19, 0x2A, 0x66, 0x6F], g, g + 0x40);
+        if (jt < 0) continue;
+        const bank = Math.floor(g / 0x4000), jtab = Off(bank, W(d, jt + 1));
+        // _CGB_BattleColors: ld de, wBGPals1 / call GetBattlemonBackpicPalettePointer / push hl
+        for (let k = 0; k < 16; k++) {
+          const f = Off(bank, W(d, jtab + k * 2));
+          if (d[f] === 0x11 && d[f + 3] === 0xCD && d[f + 6] === 0xE5) { A.battleColors = k; A.colorsFn = f; A.layout = { bank, addr: 0x4000 + g % 0x4000 }; break; }
+        }
+      }
+      // 그 안에서 부르는 두 함수가 읽는 종 번호 변수 (ld a, [wTempBattleMonSpecies] / call … / pop de / ret)
+      const speciesIn = fnAddr => { const f = Off(A.layout.bank, fnAddr); for (let q = f; q < f + 24; q++) if (d[q] === 0xFA && d[q + 3] === 0xCD && d[q + 6] === 0xD1 && d[q + 7] === 0xC9) return W(d, q + 1); return -1; };
+      A.wTempBattleMonSpecies = speciesIn(W(d, A.colorsFn + 4));
+      let e2 = -1;
+      for (let q = A.colorsFn + 7; q < A.colorsFn + 20; q++) if (d[q] === 0xCD && d[q + 3] === 0xE5) { e2 = q; break; }
+      A.wTempEnemyMonSpecies = e2 >= 0 ? speciesIn(W(d, e2 + 1)) : -1;
+      // GetBattleAnimByte: ld hl, wBattleAnimAddress / ld e, [hl] / inc hl / ld d, [hl] / ld a, BANK(BattleAnimations) / call GetFarByte
+      // (금·은: 갈림 명령이 주소를 건너뛸 때 ld hl, wBattleAnimAddress / ld e, [hl] / inc hl / ld d, [hl] / inc de / inc de / ld [hl], d / dec hl / ld [hl], e / ret)
+      let ga = find(d, [0x21, -1, -1, 0x5E, 0x23, 0x56, 0x13, 0x13, 0x72, 0x2B, 0x73, 0xC9], ab * 0x4000, ab * 0x4000 + 0x4000);
+      if (ga < 0) ga = find(d, [0x21, -1, -1, 0x5E, 0x23, 0x56, 0x3E, Math.floor(animTab / 0x4000), 0xCD], ab * 0x4000, ab * 0x4000 + 0x4000);
+      A.wBattleAnimAddress = ga >= 0 ? W(d, ga + 1) : -1;
+      r = A;
+    } catch (e) { r = null; locate.err = e; }
+    cache.set(d, r);
+    return r;
+  }
+
+  // 롬을 켜서 초기화가 끝날 때까지 돌린 상태 (한 번만 돌리고 저장해 둠). d = 지금 롬, base = 켜는 데 쓸 롬
+  const boots = new WeakMap();
+  function boot(d, base) {
+    const key = base || d;
+    let snap = boots.get(key);
+    if (!snap) {
+      const e0 = new GBEmu.Emu(key);
+      for (let f = 0; f < 140; f++) e0.runFrame();
+      snap = e0.snapshot();
+      boots.set(key, snap);
+    }
+    const emu = new GBEmu.Emu(d);
+    emu.restore(snap);
+    return emu;
+  }
+  // 에뮬레이터 안의 함수 부르기 (돌아올 때까지 또는 프레임 한도까지)
+  function call(emu, bank, addr, regs, maxFrames, onFrame) {
+    if (bank) { emu.romBank = bank; }
+    if (regs) Object.assign(emu, regs);
+    emu.push(SENTINEL);
+    emu.pc = addr;
+    emu.halted = false;
+    return emu.runUntil(SENTINEL, maxFrames, onFrame);
+  }
+  const putTilemap = (emu, A, x, y, tile) => { emu.wr(A.wTilemap + y * 20 + x, tile); };
+
+  // 배틀 화면 꾸미기: 상대 앞모습 (12,0) 7×7 · 내 뒷모습 (2,6) 6×6 · 나머지 빈칸. 타일 번호는 게임과 같게
+  function setupScene(emu, A, rom, playerMon, enemyMon) {
+    const vr = emu.vram;
+    // 빈칸 타일 $7F (흰색)
+    vr.fill(0, 0x1000 + 0x7F * 16, 0x1000 + 0x80 * 16);
+    // 앞모습: 7×7 칸에 아래·가운데 맞춤 (게임의 PadFrontpic 과 같은 자리), 세로줄 순서 타일 0~48
+    const fr = rom.readPic(enemyMon, false), fpic = newPic(56, 56), n = fr.tiles * 8;
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) fpic.px[(56 - n + y) * 56 + (Math.floor((56 - n) / 2) + x)] = fr.img[y * n + x];
+    vr.set(picToTiles(fpic, true), 0x1000);
+    const bk = rom.readPic(playerMon, true), bpic = { w: 48, h: 48, px: bk.img };
+    vr.set(picToTiles(bpic, true), 0x1000 + 0x31 * 16);
+    for (let y = 0; y < 18; y++) for (let x = 0; x < 20; x++) putTilemap(emu, A, x, y, 0x7F);
+    for (let cx = 0; cx < 7; cx++) for (let cy = 0; cy < 7; cy++) putTilemap(emu, A, 12 + cx, cy, cx * 7 + cy);
+    for (let cx = 0; cx < 6; cx++) for (let cy = 0; cy < 6; cy++) putTilemap(emu, A, 2 + cx, 6 + cy, 0x31 + cx * 6 + cy);
+    // 화면에도 바로 (BG 지도 $9800)
+    for (let y = 0; y < 18; y++) for (let x = 0; x < 20; x++) { vr[0x1800 + y * 32 + x] = emu.rd(A.wTilemap + y * 20 + x); }
+    emu.io[0x42] = 0; emu.io[0x43] = 0; emu.io[0x4A] = 0x90; emu.io[0x4B] = 7;
+  }
+
+  // 기술 애니메이션 재생 → { frames: [Uint32Array 160×144 …], sounds: [frame, reg, val …], trace: [프레임마다 스크립트 위치] }
+  // opts.data: 고친 롬 데이터 (없으면 rom.data) · opts.bootData: 켤 때 쓸 롬 (보통 rom.data)
+  function run(rom, move, opts) {
+    const o = Object.assign({ player: 155, enemy: 152, maxFrames: 900, turn: 0 }, opts || {});
+    const d = o.data || rom.data, mv = RomCry.moveAnims(rom.data);
+    if (!mv) return null;
+    const A = locate(rom.data, mv.tab);
+    if (!A) return null;
+    const emu = boot(d, o.bootData || rom.data);
+    // 색: 게임의 배틀 색 만들기 함수 그대로 (종 번호만 넣어 줌)
+    if (A.wTempBattleMonSpecies > 0) emu.wr(A.wTempBattleMonSpecies, o.player);
+    if (A.wTempEnemyMonSpecies > 0) emu.wr(A.wTempEnemyMonSpecies, o.enemy);
+    setupScene(emu, A, rom, o.player, o.enemy);
+    emu.wr(A.hROMBank, A.layout.bank);
+    call(emu, A.layout.bank, A.layout.addr, { b: A.battleColors }, 60);
+    // 애니메이션 번호 · 누구 차례 · 배틀 장면 켜기
+    emu.wr(A.wFXAnimID, move & 0xFF); emu.wr(A.wFXAnimID + 1, move >> 8);
+    emu.wr(A.hBattleTurn, o.turn);
+    if (A.wOptions > 0) emu.wr(A.wOptions, emu.rd(A.wOptions) & ~(1 << A.optionBit));
+    emu.wr(A.hROMBank, A.play.bank);
+    // 화면 갱신 방식은 보통 모드로 (인트로의 방식이 남아 있으면 애니메이션 뒤 기다리기가 안 끝남)
+    if (A.hVBlank > 0) emu.wr(A.hVBlank, 0);
+    emu.soundLog = [];
+    const frames = [], trace = [], f0 = emu.frames;
+    let started = false, endedAt = -1, stopped = false;
+    let done = call(emu, A.play.bank, A.play.addr, null, o.maxFrames, e => {
+      frames.push(e.frame.slice());
+      const t = A.wBattleAnimAddress > 0 ? e.rd(A.wBattleAnimAddress) | (e.rd(A.wBattleAnimAddress + 1) << 8) : 0;
+      trace.push(t);
+      // 스크립트가 끝나고 40프레임 지나면 그만 (그 뒤는 배틀 화면 정리)
+      if (t) { started = true; endedAt = -1; } else if (started && endedAt < 0) endedAt = frames.length;
+      if (endedAt > 0 && frames.length - endedAt > 40) { stopped = true; e.pc = SENTINEL; }
+    });
+    if (stopped) done = true;
+    // 끝에 계속 같은 그림이면 잘라냄
+    const same = (a, b) => { for (let i = 0; i < a.length; i += 7) if (a[i] !== b[i]) return false; return true; };
+    let end = frames.length;
+    while (end > 2 && same(frames[end - 1], frames[end - 2])) end--;
+    frames.length = Math.min(frames.length, end + 10); trace.length = frames.length;
+    // 앞쪽 준비 프레임(화면 정리·색 넣기)은 빼고 스크립트가 시작하기 바로 전부터
+    let cut = trace.findIndex(t => t !== 0);
+    cut = cut < 0 ? 0 : Math.max(0, cut - 2);
+    return { frames: frames.slice(cut), sounds: emu.soundLog, startFrame: f0 + cut, addr: A, trace: trace.slice(cut), finished: done, crashed: !!emu.bad, emu };
+  }
+  return { locate, run, boot };
+})();
+
+// ===== 44-animscript.js
+// ================================================================ 기술 애니메이션 스크립트 읽기·쓰기 (pokegold macros/scripts/battle_anims.asm 명령 그대로)
+// 한 기술의 스크립트 = 명령 목록. 갈림(점프·반복·조건)은 목록 안 번호로 바꿔서 들고 있다가 쓸 때 주소를 다시 계산
+const AnimScript = (() => {
+  const W = (d, o) => d[o] | (d[o + 1] << 8);
+  const Off = (bank, a) => bank * 0x4000 + (a & 0x3FFF);
+  // 명령: 이름 · 인자 수 · 갈림 인자 위치(인자 몇 번째부터 2바이트 주소인지) · 종류
+  const CMD = {
+    0xD0: { n: 'obj', a: 4, k: 'obj' }, 0xD1: { n: 'gfx', a: 1, k: 'gfx' }, 0xD2: { n: 'gfx', a: 2, k: 'gfx' }, 0xD3: { n: 'gfx', a: 3, k: 'gfx' }, 0xD4: { n: 'gfx', a: 4, k: 'gfx' }, 0xD5: { n: 'gfx', a: 5, k: 'gfx' },
+    0xD6: { n: 'incobj', a: 1, k: 'adv' }, 0xD7: { n: 'setobj', a: 2, k: 'adv' }, 0xD8: { n: 'incbgeffect', a: 1, k: 'adv' },
+    0xD9: { n: 'battlergfx_2row', a: 0, k: 'adv' }, 0xDA: { n: 'battlergfx_1row', a: 0, k: 'adv' }, 0xDB: { n: 'checkpokeball', a: 0, k: 'adv' }, 0xDC: { n: 'transform', a: 0, k: 'adv' },
+    0xDD: { n: 'raisesub', a: 0, k: 'adv' }, 0xDE: { n: 'dropsub', a: 0, k: 'adv' }, 0xDF: { n: 'resetobp0', a: 0, k: 'adv' },
+    0xE0: { n: 'sound', a: 2, k: 'sound' }, 0xE1: { n: 'cry', a: 1, k: 'sound' }, 0xE2: { n: 'minimizeopp', a: 0, k: 'adv' }, 0xE3: { n: 'oamon', a: 0, k: 'adv' }, 0xE4: { n: 'oamoff', a: 0, k: 'adv' },
+    0xE5: { n: 'clearobjs', a: 0, k: 'adv' }, 0xE6: { n: 'beatup', a: 0, k: 'adv' }, 0xE7: { n: '0xe7', a: 0, k: 'adv' }, 0xE8: { n: 'updateactorpic', a: 0, k: 'adv' }, 0xE9: { n: 'minimize', a: 0, k: 'adv' },
+    0xEA: { n: '0xea', a: 0, k: 'adv' }, 0xEB: { n: '0xeb', a: 0, k: 'adv' }, 0xEC: { n: '0xec', a: 0, k: 'adv' }, 0xED: { n: '0xed', a: 0, k: 'adv' },
+    0xEE: { n: 'if_param_and', a: 3, br: 1, k: 'flow' }, 0xEF: { n: 'jumpuntil', a: 2, br: 0, k: 'flow' },
+    0xF0: { n: 'bgeffect', a: 4, k: 'bg' }, 0xF1: { n: 'bgp', a: 1, k: 'pal' }, 0xF2: { n: 'obp0', a: 1, k: 'pal' }, 0xF3: { n: 'obp1', a: 1, k: 'pal' },
+    0xF4: { n: 'keepsprites', a: 0, k: 'adv' }, 0xF5: { n: '0xf5', a: 0, k: 'adv' }, 0xF6: { n: '0xf6', a: 0, k: 'adv' }, 0xF7: { n: '0xf7', a: 0, k: 'adv' },
+    0xF8: { n: 'if_param_equal', a: 3, br: 1, k: 'flow' }, 0xF9: { n: 'setvar', a: 1, k: 'flow' }, 0xFA: { n: 'incvar', a: 0, k: 'flow' }, 0xFB: { n: 'if_var_equal', a: 3, br: 1, k: 'flow' },
+    0xFC: { n: 'jump', a: 2, br: 0, k: 'flow' }, 0xFD: { n: 'loop', a: 3, br: 1, k: 'flow' }, 0xFE: { n: 'call', a: 2, br: 0, k: 'call' }, 0xFF: { n: 'ret', a: 0, k: 'end' }
+  };
+  const lenOf = op => op <= 0xCF ? 1 : 1 + CMD[op].a;
+  const ends = op => op === 0xFF || op === 0xFC;   // 다음 명령으로 안 넘어감
+
+  // 한 기술의 스크립트에서 닿는 명령 주소들 (부르기(call)는 따라가지 않음)
+  function reach(d, bank, entry) {
+    const seen = new Map(), todo = [entry];
+    while (todo.length) {
+      let a = todo.pop();
+      for (let k = 0; k < 1000 && !seen.has(a) && a >= 0x4000 && a < 0x8000; k++) {
+        const op = d[Off(bank, a)], c = CMD[op];
+        seen.set(a, op);
+        if (c && c.br != null && op !== 0xFE) todo.push(W(d, Off(bank, a) + 1 + c.br));
+        if (ends(op)) break;
+        a += lenOf(op);
+      }
+    }
+    return seen;
+  }
+  // 모든 기술(과 기술 뒤 특수 애니메이션)이 어느 주소를 같이 쓰는지 → Map(주소 → 쓰는 애니메이션 수)
+  function sharing(d, tab, count) {
+    const bank = Math.floor(tab / 0x4000), use = new Map(), calls = new Map();
+    for (let m = 0; m < count; m++) {
+      const e = W(d, tab + m * 2);
+      if (e < 0x4000 || e >= 0x8000) continue;
+      for (const [a, op] of reach(d, bank, e)) {
+        use.set(a, (use.get(a) || 0) + 1);
+        if (op === 0xFE) { const t = W(d, Off(bank, a) + 1); calls.set(t, (calls.get(t) || new Set()).add(m)); }
+      }
+    }
+    return { use, calls };
+  }
+  // 읽기 → { bank, entry, cmds: [{ op, args, target (목록 번호) 또는 ext (밖 주소), addr }], size }
+  function parse(d, bank, entry) {
+    const seen = reach(d, bank, entry), addrs = [...seen.keys()].sort((x, y) => x - y), idx = new Map();
+    addrs.forEach((a, i) => idx.set(a, i));
+    const cmds = addrs.map(a => {
+      const o = Off(bank, a), op = d[o], c = CMD[op], cmd = { op, args: [], addr: a };
+      if (op <= 0xCF) return cmd;
+      for (let i = 0; i < c.a; i++) cmd.args.push(d[o + 1 + i]);
+      if (c.br != null) {
+        const t = W(d, o + 1 + c.br);
+        if (op !== 0xFE && idx.has(t)) cmd.target = idx.get(t); else cmd.ext = t;
+        cmd.args.length = c.br;   // 주소 바이트는 빼고 들고 있음
+      }
+      return cmd;
+    });
+    // 갈림이 없는데 다음 명령이 바로 붙어 있지 않은 곳 (원래 따로 떨어진 덩어리) 표시
+    let size = 0;
+    for (const a of addrs) size += lenOf(seen.get(a));
+    return { bank, entry, cmds, size, addrs };
+  }
+  // 바이트로 (base = 롬 안 주소 $4000~). 시작 명령이 목록 0번
+  function encode(model, base) {
+    const pos = [];
+    let p = base;
+    for (const c of model.cmds) { pos.push(p); p += lenOf(c.op); }
+    const out = [];
+    model.cmds.forEach((c, i) => {
+      out.push(c.op);
+      if (c.op <= 0xCF) return;
+      const k = CMD[c.op];
+      if (k.br != null) {
+        for (let j = 0; j < k.br; j++) out.push(c.args[j] & 0xFF);
+        const t = c.target != null ? pos[c.target] : c.ext;
+        out.push(t & 0xFF, t >> 8);
+      } else for (let j = 0; j < k.a; j++) out.push((c.args[j] || 0) & 0xFF);
+    });
+    return { bytes: out, pos };
+  }
+  const size = model => model.cmds.reduce((a, c) => a + lenOf(c.op), 0);
+  // 끝이 ret 로 닫혀 있는지 · 갈림 대상이 목록 안에 있는지
+  function check(model) {
+    const errs = [];
+    if (!model.cmds.length) errs.push('명령이 하나도 없어요');
+    model.cmds.forEach((c, i) => { if (c.target != null && (c.target < 0 || c.target >= model.cmds.length)) errs.push((i + 1) + '번째 명령의 이동 대상이 없어요'); });
+    const last = model.cmds[model.cmds.length - 1];
+    if (last && !ends(last.op)) errs.push('마지막 명령이 "끝"이 아니에요');
+    return errs;
+  }
+  // 목록에서 i 번째를 지우거나 넣을 때 갈림 번호 고치기
+  function fixTargets(model, at, delta) {
+    for (const c of model.cmds) if (c.target != null && c.target >= at) c.target += delta;
+  }
+  return { CMD, lenOf, ends, reach, sharing, parse, encode, size, check, fixTargets };
+})();
+
+// ===== 45-apu.js
+// ================================================================ 게임보이 소리칩 (에뮬레이터가 기록한 소리 레지스터 쓰기 → 소리). 1프레임 = 1/59.73초
+const GBApu = (() => {
+  const SR = 22050, FR = 4194304 / 70224, DUTY = [[0, 0, 0, 0, 0, 0, 0, 1], [1, 0, 0, 0, 0, 0, 0, 1], [1, 0, 0, 0, 0, 1, 1, 1], [0, 1, 1, 1, 1, 1, 1, 0]];
+  // log: [frame, reg(0x10~0x3F), value, …] · frames: 전체 길이(프레임) · from: 시작 프레임
+  function render(log, frames, from) {
+    from = from || 0;
+    const total = Math.ceil(frames * SR / FR), out = new Float32Array(total), spf = SR / FR;
+    const R = new Uint8Array(0x40), wave = new Uint8Array(32);
+    const ch = [0, 1, 2, 3].map(() => ({ on: false, vol: 0, envDir: 0, envPer: 0, envT: 0, len: 0, lenOn: false, freq: 0, phase: 0, duty: 0, swPer: 0, swDir: 0, swSh: 0, swT: 0, lfsr: 0x7FFF, nclk: 0, short: false, divT: 0 }));
+    const trigger = i => {
+      const c = ch[i];
+      c.on = true;
+      if (i === 2) { c.on = (R[0x1A] & 0x80) !== 0; c.vol = [0, 4, 2, 1][(R[0x1C] >> 5) & 3]; if (!c.len) c.len = 256; }
+      else { const env = R[[0x12, 0x17, 0, 0x21][i]]; c.vol = env >> 4; c.envDir = env & 8 ? 1 : -1; c.envPer = env & 7; c.envT = 0; if (!c.len) c.len = 64; if ((env & 0xF8) === 0) c.on = false; }
+      if (i === 0) { const s = R[0x10]; c.swPer = (s >> 4) & 7; c.swDir = s & 8 ? -1 : 1; c.swSh = s & 7; c.swT = 0; }
+      if (i === 3) { c.lfsr = 0x7FFF; }
+    };
+    const apply = (r, v) => {
+      if (r >= 0x30) { wave[(r - 0x30) * 2] = v >> 4; wave[(r - 0x30) * 2 + 1] = v & 15; R[r] = v; return; }
+      R[r] = v;
+      switch (r) {
+        case 0x11: ch[0].duty = v >> 6; ch[0].len = 64 - (v & 63); break;
+        case 0x16: ch[1].duty = v >> 6; ch[1].len = 64 - (v & 63); break;
+        case 0x1B: ch[2].len = 256 - v; break;
+        case 0x20: ch[3].len = 64 - (v & 63); break;
+        case 0x13: ch[0].freq = (ch[0].freq & 0x700) | v; break;
+        case 0x18: ch[1].freq = (ch[1].freq & 0x700) | v; break;
+        case 0x1D: ch[2].freq = (ch[2].freq & 0x700) | v; break;
+        case 0x14: case 0x19: case 0x1E: case 0x23: {
+          const i = { 0x14: 0, 0x19: 1, 0x1E: 2, 0x23: 3 }[r];
+          if (i < 3) ch[i].freq = (ch[i].freq & 0xFF) | ((v & 7) << 8);
+          ch[i].lenOn = (v & 0x40) !== 0;
+          if (v & 0x80) trigger(i);
+          break;
+        }
+        case 0x1A: if (!(v & 0x80)) ch[2].on = false; break;
+        case 0x1C: ch[2].vol = [0, 4, 2, 1][(v >> 5) & 3]; break;
+        case 0x26: if (!(v & 0x80)) for (const c of ch) c.on = false; break;
+      }
+    };
+    let li = 0;
+    const seq = 512 / SR;   // 프레임 시퀀서 512Hz
+    let seqAcc = 0, step = 0, hp = 0, hpIn = 0;
+    for (let s = 0; s < total; s++) {
+      const f = from + s / spf;
+      while (li < log.length && log[li] <= f) { apply(log[li + 1], log[li + 2]); li += 3; }
+      seqAcc += seq;
+      while (seqAcc >= 1) {
+        seqAcc -= 1; step = (step + 1) & 7;
+        if (!(step & 1)) for (let i = 0; i < 4; i++) { const c = ch[i]; if (c.lenOn && c.len > 0 && --c.len === 0) c.on = false; }
+        if (step === 2 || step === 6) { const c = ch[0]; if (c.swPer && c.swSh) { if (++c.swT >= c.swPer) { c.swT = 0; const nf = c.freq + c.swDir * (c.freq >> c.swSh); if (nf > 2047) c.on = false; else if (nf >= 0) c.freq = nf; } } }
+        if (step === 7) for (const i of [0, 1, 3]) { const c = ch[i]; if (c.envPer && ++c.envT >= c.envPer) { c.envT = 0; c.vol = Math.max(0, Math.min(15, c.vol + c.envDir)); } }
+      }
+      const nr50 = R[0x24], nr51 = R[0x25], mv = (((nr50 >> 4) & 7) + (nr50 & 7) + 2) / 16;
+      let mix = 0;
+      for (let i = 0; i < 4; i++) {
+        const c = ch[i];
+        if (!c.on || !((nr51 >> i) & 0x11)) continue;
+        let v = 0;
+        if (i < 2) { const hz = 131072 / (2048 - c.freq); c.phase = (c.phase + hz / SR) % 1; v = DUTY[c.duty][Math.floor(c.phase * 8)] ? c.vol : 0; }
+        else if (i === 2) { const hz = 65536 / (2048 - c.freq); c.phase = (c.phase + hz / SR) % 1; v = c.vol ? (wave[Math.floor(c.phase * 32)] * c.vol / 4) : 0; }
+        else {
+          const nr = R[0x22], r = nr & 7, sh = nr >> 4, hz = 524288 / (r ? r : 0.5) / Math.pow(2, sh + 1);
+          c.nclk += hz / SR;
+          while (c.nclk >= 1) { c.nclk -= 1; const x = (c.lfsr ^ (c.lfsr >> 1)) & 1; c.lfsr = (c.lfsr >> 1) | (x << 14); if (nr & 8) c.lfsr = (c.lfsr & ~0x40) | (x << 6); }
+          v = c.lfsr & 1 ? 0 : c.vol;
+        }
+        mix += v / 15 - 0.5 * (v ? 0 : 0);
+      }
+      const x = mix * mv * 0.18;
+      hp = x - hpIn + 0.995 * hp; hpIn = x;
+      out[s] = hp;
+    }
+    return out;
+  }
+  return { render, SR, FR };
 })();
 
 // ===== 50-data.js
@@ -4110,6 +4943,7 @@ mixin(Rom.prototype, {
   // 그림을 압축해서 빈 공간에 쓰고 주소를 바꿈. 실패하면 이유
   // 압축한 그림을 넣을 빈 자리 (없으면 -1)
   allocPic(len) {
+    this.loadSprites();   // picBankFix · picBanks
     for (const r of this.free) {
       const bank = Math.floor(r[0] / 0x4000);
       if (this.picBankFix.has(bank) || r[1] - r[0] < len) continue;   // FixPicBank 이 바꾸는 뱅크에는 안 씀
@@ -5222,6 +6056,8 @@ class App {
       B('포켓몬 그림', '', () => this.spriteDialog()),
       B('트레이너 그림', '', () => this.trainerPicDialog()),
       B('울음소리 에디터', '', () => this.cryEditor()),
+      B('기술 사운드 에디터', '', () => this.sfxEditor()),
+      B('🎬 기술 애니메이션', '', () => this.battleAnimEditor()),
       B('캐릭터 그림', '', () => this.owDialog()),
       B('타이틀 화면', '', () => this.titleDialog()),
       B('기술 편집', '', () => this.dialog('기술 편집', () => this.tab_moves())),
@@ -5648,7 +6484,10 @@ function listPanel(items, onPick, placeholder, current) {
   q.addEventListener('input', fill);
   fill();
   setTimeout(() => { if (on) on.scrollIntoView({ block: 'nearest' }); }, 0);
-  return el('div', { class: 'box' }, q, list);
+  const box = el('div', { class: 'box' }, q, list);
+  // 밖에서 고른 칸 바꾸기 (onPick 은 부르지 않음)
+  box.select = v => { current = v; fill(); if (on) on.scrollIntoView({ block: 'nearest' }); };
+  return box;
 }
 
 Object.assign(App.prototype, {
@@ -5854,7 +6693,8 @@ Object.assign(App.prototype, {
         el('tr', null, el('th', { text: '명중률' }), el('td', null, acc, ' %')),
         el('tr', null, el('th', { text: 'PP' }), el('td', null, pp)),
         el('tr', null, el('th', { text: '추가 효과 확률' }), el('td', null, chance, ' %'))),
-        el('div', { class: 'bar', style: 'margin-top:8px' }, apply, msg));
+        el('div', { class: 'bar', style: 'margin-top:8px' }, apply, msg),
+        this.moveGfxSection(mv));
     };
     show(1);
     return el('div', { class: 'side' }, listPanel(items, show, '기술 찾기', 1), right);
@@ -6967,6 +7807,694 @@ Object.assign(App.prototype, {
   }
 });
 
+// ===== 99-battleanim.js
+// ================================================================ 기술 애니메이션 편집기
+// 롬의 진짜 애니메이션 스크립트를 읽어 고치고, 롬의 진짜 배틀 애니메이션 코드(에뮬레이터)로 미리보기
+const ANIM_OBJ_NAMES = ('HIT_BIG_YFIX,HIT_YFIX,HIT_SMALL_YFIX,HIT_BIG,HIT,HIT_SMALL,PUNCH,KICK,PALM,FANG,PUNCH_SHAKE,EMBER,DRAGON_RAGE,FLAMETHROWER,FIRE_SPIN,FIRE_BLAST,BURNED,BLIZZARD,ICE,ICE_BEAM,RAZOR_LEAF,' +
+  'POKE_BALL,POKE_BALL_BLOCKED,EXPLOSION1,EXPLOSION2,ACID,SLUDGE,BETA_BALL_POOF,BALL_POOF,BIG_ROCK,SMALL_ROCK,STRENGTH,SEISMIC_TOSS,BUBBLE,SURF,SING,WATER_GUN,HYDRO_PUMP,POWDER,BEAM,BEAM_TIP,' +
+  'ICE_BUILDUP,FROZEN,MASTER_BALL_SPARKLE,RECOVER,THUNDER_CENTER,THUNDER_LEFT,THUNDER_RIGHT,THUNDER_WAVE,SPARKS_CIRCLE_BIG,THUNDERBOLT_BALL,SPARKS_CIRCLE,THUNDERSHOCK_BALL,CLAMP,BITE,CUT_DOWN_LEFT,' +
+  'CUT_DOWN_RIGHT,CUT_UP_RIGHT,CUT_LONG_DOWN_LEFT,CUT_LONG_DOWN_RIGHT,SOLAR_BEAM_CHARGE,ABSORB_CENTER,GUST,VINE_WHIP1,VINE_WHIP2,RAZOR_WIND1,RAZOR_WIND2,SONICBOOM_JP,WARP,ABSORB,EGG,FOCUS,BIND1,BIND2,' +
+  'LEECH_SEED,SOUND,WAVE,CONFUSE_RAY,LEER,LEER_TIP,SCREEN,HARDEN,CHICK,AMNESIA,ASLEEP,SKULL,DIG_SAND,DIG_PILE,SAND,PARALYZED,STRING_SHOT,HAZE,MIST,SMOG,POISON_GAS,HORN,NEEDLE,PETAL_DANCE,SLUDGE_BOMB,' +
+  'PAY_DAY,SONICBOOM_JP_UNUSED,MIMIC,ATTRACT,BONEMERANG,BONE_CLUB,BONE_RUSH,SWIFT,KINESIS,FLASH,SHINY,SKY_ATTACK,LICK,WITHDRAW,DRAIN,GROWTH,CONVERSION2,SMOKE,SMOKESCREEN,SWORDS_DANCE,SPEED_LINE,' +
+  'SHARPEN,DEFENSE_CURL,METRONOME_HAND,METRONOME_SPARKLE,DISABLE,AGILITY,HEART,FLAME_WHEEL,SACRED_FIRE,COTTON_SPORE,MILK_DRINK,ANGER,HEAL_BELL,HEAL_BELL_NOTE,BATON_PASS,LOCK_ON,MIND_READER,SAFEGUARD,' +
+  'PROTECT,THIEF,OCTAZOOKA,PRESENT,SPIKES,POWDER_SNOW,DRAGONBREATH,CONVERSION,SPIDER_WEB,CAKE_UNUSED,NIGHTMARE,IN_NIGHTMARE,LOVELY_KISS,SWEET_KISS,SKETCH,ENCORE_HAND,ENCORE_STAR,DESTINY_BOND,' +
+  'MORNING_SUN,GLIMMER,MOONLIGHT,HIDDEN_POWER,CROSS_CHOP1,CROSS_CHOP2,SANDSTORM,ZAP_CANNON,SPITE,CURSE,PERISH_SONG,FORESIGHT,RAPID_SPIN,SWAGGER,BELLY_DRUM_HAND,BELLY_DRUM_NOTE,MEAN_LOOK,BETA_PURSUIT,' +
+  'SHOOTING_SPARKLE,RAIN,B0,PSYCH_UP,ANCIENTPOWER,AEROBLAST,SHADOW_BALL,ROCK_SMASH,FLOWER,COTTON,ENEMYFEET_1ROW,PLAYERHEAD_1ROW,ENEMYFEET_2ROW,PLAYERHEAD_2ROW').split(',');
+const ANIM_BG_NAMES = ['끝', '번쩍 (색 반전)', '번쩍 (흰색)', '밝아지기', '어두워지기', '밝기 번갈아', '물체 색 회색↔노랑', '물체 가운데 색 회색↔노랑', '배경 색 반전 반복', '포켓몬 숨기기', '포켓몬 보이기',
+  '포켓몬 들어오기', '포켓몬 돌아가기', '파도타기 물결', '회오리', '순간이동', '나이트헤드', '포켓몬을 물체로 (1줄)', '포켓몬을 물체로 (2줄)', '그림자분신', '녹기', '빠른 번쩍임', '포켓몬 밝아지기',
+  '포켓몬 어두워지기', '포켓몬 밝아지기 반복', '포켓몬 어두워지기 반복', '포켓몬 밝게·어둡게 반복', '포켓몬 번쩍 반복', '두 포켓몬 어두워지기 반복', '포켓몬 하얗게 됐다 돌아오기', '포켓몬 하얀색에서 돌아오기',
+  '화면 좌우 흔들기', '화면 위아래 흔들기', '껍질에 숨기', '아래로 튀기', '구멍파기', '몸통박치기 (돌진)', '포켓몬 흔들흔들', '포켓몬 지우기', '포켓몬 물결 일그러짐', '사이코키네시스 일렁임',
+  '(미완성) 내보내기 1', '(미완성) 내보내기 2', '바둥바둥', '(미완성) 따라가때리기', '구르기', '받아던지기', '물 시작', '물', '물 끝', '포켓몬 떨림', '내 포켓몬 흔들흔들', '화면 흔들흔들'];
+const ANIM_BG_EN = ['End', 'Flash (inverted)', 'Flash (white)', 'White hues', 'Black hues', 'Alternate hues', 'Obj colors gray↔yellow', 'Obj mid color gray↔yellow', 'BG colors inverted cycle', 'Hide mon', 'Show mon',
+  'Enter mon', 'Return mon', 'Surf', 'Whirlpool', 'Teleport', 'Night Shade', 'Battler → object (1 row)', 'Battler → object (2 rows)', 'Double Team', 'Acid Armor', 'Rapid flash', 'Fade mon to light',
+  'Fade mon to black', 'Fade mon to light (repeat)', 'Fade mon to black (repeat)', 'Mon light/dark cycle', 'Flash mon (repeat)', 'Fade both mons to black (repeat)', 'Mon to white and back', 'Mon from white',
+  'Shake screen X', 'Shake screen Y', 'Withdraw', 'Bounce down', 'Dig', 'Tackle', 'Wobble mon', 'Remove mon', 'Wave deform mon', 'Psychic', '(beta) Send out 1', '(beta) Send out 2', 'Flail', '(beta) Pursuit',
+  'Rollout', 'Vital Throw', 'Start water', 'Water', 'End water', 'Vibrate mon', 'Wobble player', 'Wobble screen'];
+const ANIM_WORD_KO = { HIT: '타격', BIG: '큰', SMALL: '작은', YFIX: '(높이 보정)', PUNCH: '펀치', KICK: '킥', PALM: '손바닥', FANG: '이빨', SHAKE: '흔들림', EMBER: '불꽃세례', DRAGON: '드래곤', RAGE: '분노', FLAMETHROWER: '화염방사',
+  FIRE: '불꽃', SPIN: '소용돌이', BLAST: '폭발', BURNED: '화상', BLIZZARD: '눈보라', ICE: '얼음', BEAM: '빔', RAZOR: '칼날', LEAF: '잎', POKE: '몬스터', BALL: '볼', BLOCKED: '막힘', EXPLOSION1: '폭발1', EXPLOSION2: '폭발2',
+  ACID: '산', SLUDGE: '오물', BETA: '(미완성)', POOF: '펑', ROCK: '바위', STRENGTH: '괴력', SEISMIC: '지구', TOSS: '던지기', BUBBLE: '거품', SURF: '파도', SING: '노래', WATER: '물', GUN: '대포', HYDRO: '하이드로', PUMP: '펌프',
+  POWDER: '가루', TIP: '끝', BUILDUP: '쌓임', FROZEN: '얼음', MASTER: '마스터', SPARKLE: '반짝임', RECOVER: '회복', THUNDER: '번개', CENTER: '가운데', LEFT: '왼쪽', RIGHT: '오른쪽', WAVE: '파동', SPARKS: '불꽃튐', CIRCLE: '원',
+  THUNDERBOLT: '10만볼트', THUNDERSHOCK: '전기쇼크', CLAMP: '껍질끼우기', BITE: '물기', CUT: '베기', DOWN: '아래', UP: '위', LONG: '긴', SOLAR: '솔라', CHARGE: '모으기', ABSORB: '흡수', GUST: '바람', VINE: '덩굴',
+  WHIP1: '채찍1', WHIP2: '채찍2', WIND1: '바람1', WIND2: '바람2', SONICBOOM: '소닉붐', JP: '(일본판)', WARP: '순간이동', EGG: '알', FOCUS: '기 모으기', BIND1: '조이기1', BIND2: '조이기2', LEECH: '씨뿌리기', SEED: '',
+  SOUND: '소리', CONFUSE: '이상한', RAY: '빛', LEER: '째려보기', SCREEN: '장막', HARDEN: '단단해지기', CHICK: '병아리', AMNESIA: '망각술', ASLEEP: '잠', SKULL: '해골', DIG: '구멍파기', SAND: '모래', PILE: '더미',
+  PARALYZED: '마비', STRING: '실', SHOT: '뿜기', HAZE: '흑안개', MIST: '흰안개', SMOG: '스모그', POISON: '독', GAS: '가스', HORN: '뿔', NEEDLE: '바늘', PETAL: '꽃잎', DANCE: '댄스', BOMB: '폭탄', PAY: '고양이', DAY: '돈받기',
+  UNUSED: '(안 씀)', MIMIC: '흉내내기', ATTRACT: '헤롱헤롱', BONEMERANG: '뼈다귀부메랑', BONE: '뼈', CLUB: '몽둥이', RUSH: '러시', SWIFT: '스피드스타', KINESIS: '숟가락휘기', FLASH: '플래시', SHINY: '반짝', SKY: '불새',
+  ATTACK: '', LICK: '핥기', WITHDRAW: '껍질에숨기', DRAIN: '흡수', GROWTH: '성장', CONVERSION2: '텍스처2', SMOKE: '연기', SMOKESCREEN: '연막', SWORDS: '칼춤', SPEED: '빠르기', LINE: '선', SHARPEN: '각지기',
+  DEFENSE: '웅크리기', CURL: '', METRONOME: '손가락흔들기', HAND: '손', DISABLE: '사슬묶기', AGILITY: '고속이동', HEART: '하트', FLAME: '불꽃', WHEEL: '바퀴', SACRED: '성스러운', COTTON: '솜', SPORE: '포자',
+  MILK: '우유', DRINK: '마시기', ANGER: '화남', HEAL: '치료', BELL: '방울', NOTE: '음표', BATON: '바톤', PASS: '터치', LOCK: '록온', ON: '', MIND: '마음', READER: '읽기', SAFEGUARD: '신비의부적', PROTECT: '방어',
+  THIEF: '도둑', OCTAZOOKA: '대포무노포', PRESENT: '프레젠트', SPIKES: '압정', SNOW: '눈', DRAGONBREATH: '용의숨결', CONVERSION: '텍스처', SPIDER: '거미', WEB: '줄', CAKE: '케이크', NIGHTMARE: '악몽', IN: '속',
+  LOVELY: '악마의', KISS: '키스', SWEET: '천사의', SKETCH: '스케치', ENCORE: '앙코르', STAR: '별', DESTINY: '길동무', BOND: '', MORNING: '아침', SUN: '햇살', GLIMMER: '반짝', MOONLIGHT: '달의불빛', HIDDEN: '잠재',
+  POWER: '파워', CROSS: '크로스', CHOP1: '촙1', CHOP2: '촙2', SANDSTORM: '모래바람', ZAP: '전자포', CANNON: '', SPITE: '원한', CURSE: '저주', PERISH: '멸망의', SONG: '노래', FORESIGHT: '꿰뚫어보기', RAPID: '고속',
+  SWAGGER: '뽐내기', BELLY: '배북', DRUM: '북', MEAN: '검은', LOOK: '눈빛', PURSUIT: '따라가때리기', SHOOTING: '흐르는', RAIN: '비', B0: 'B0', PSYCH: '자기암시', ANCIENTPOWER: '원시의힘', AEROBLAST: '에어로블라스트',
+  SHADOW: '섀도', SMASH: '깨기', FLOWER: '꽃', ENEMYFEET: '상대 발', PLAYERHEAD: '내 머리', '1ROW': '1줄', '2ROW': '2줄' };
+const ANIM_FPS = 4194304 / 70224;
+
+Object.assign(App.prototype, {
+  _gb: GBEmu, _animRunner: AnimRunner, _animScript: AnimScript, _apu: GBApu,   // 자동 테스트용
+
+  battleAnimEditor(startMove) {
+    const rom = this.rom, mv = RomCry.moveAnims(rom.data), AG = rom.loadAnimGfx();
+    if (!mv || !AG || !AG.asm) { alert('이 롬에서 기술 애니메이션 데이터를 찾지 못했어요. (금·은 구조와 다른 롬일 수 있어요)'); return; }
+    const bank = Math.floor(mv.tab / 0x4000), A = AnimRunner.locate(rom.data, mv.tab);
+    const ko = rom.cs.kind === 'ko' || rom.cs.kind === 'koen';
+    const W = (o) => rom.data[o] | (rom.data[o + 1] << 8);
+    // 표에 있는 애니메이션 수 (기술 251개 + 특수)
+    let animCount = 252;
+    while (animCount < 320) { const a = W(mv.tab + animCount * 2); if (a < 0x4000 || a >= 0x8000) break; animCount++; }
+    const share = AnimScript.sharing(rom.data, mv.tab, animCount);
+    // 색만 다르게 복사해 둔 물체면 원래 물체 번호 (아니면 -1)
+    const PAL_TAG = ko ? { 0: '상대 색', 1: '내 색', 2: '회색', 3: '노랑', 4: '빨강', 5: '초록', 6: '파랑', 7: '갈색' } : { 0: 'enemy', 1: 'player', 2: 'gray', 3: 'yellow', 4: 'red', 5: 'green', 6: 'blue', 7: 'brown' };
+    const cloneOf = id => {
+      const t = AG.asm.objTab, d = rom.data, objs = AG.asm.objs;
+      if (!objs[id]) return -1;
+      for (let j = 0; j < objs.length; j++) {
+        if (j === id || /BETA|UNUSED|^B0$|JP/.test(ANIM_OBJ_NAMES[j] || '')) continue;
+        let same = true;
+        for (let k = 0; k < 6; k++) if (k !== 4 && d[t + j * 6 + k] !== d[t + id * 6 + k]) { same = false; break; }
+        if (same && d[t + j * 6 + 4] !== d[t + id * 6 + 4]) return j;
+      }
+      return -1;
+    };
+    // 원래 롬에서 애니메이션이 쓰던 물체들 (그 밖의 칸에 있는 물체는 색만 바꿔 복사한 것)
+    let origUsed = null;
+    const objName = id => {
+      if (!origUsed) { origUsed = new Set(); for (const s of allScripts()) for (const c of s) if (c.op === 0xD0) origUsed.add(c.args[0]); }
+      const base = origUsed.has(id) && !/BETA|UNUSED|^B0$/.test(ANIM_OBJ_NAMES[id] || '') ? -1 : cloneOf(id);
+      if (base >= 0) return objName0(base) + ' (' + PAL_TAG[objInfo(id).pal] + ')';
+      return objName0(id);
+    };
+    const objName0 = id => {
+      const n = ANIM_OBJ_NAMES[id];
+      if (!n) return (ko ? '물체 ' : 'Object ') + id;
+      if (!ko) return n.toLowerCase().split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+      return n.split('_').map(w => ANIM_WORD_KO[w] != null ? ANIM_WORD_KO[w] : w).filter(Boolean).join(' ');
+    };
+    const bgName = id => (ko ? ANIM_BG_NAMES : ANIM_BG_EN)[id] || ('효과 ' + id);
+    const gfxName = g => (ko ? ANIM_GFX_KO : ANIM_GFX_NAMES)[g] || ('그림 ' + g);
+    const sfxName = id => {
+      const n = RomCry.sfxName(id), two = n.match(/^(.*)_2$/);
+      if (SFX_MOVE[n]) return rom.moveName(SFX_MOVE[n]);
+      if (two && SFX_MOVE[two[1]]) return rom.moveName(SFX_MOVE[two[1]]) + ' 2';
+      return ko && SFX_KO[n] ? SFX_KO[n] : sfxTitle(n);
+    };
+    const objInfo = id => AG.asm.objs[id] || null;   // { fs, gfx, pal }
+    // 모든 애니메이션(+ 그 안에서 부르는 공용 동작)의 명령 목록 — 지금 고치는 기술은 고친 내용으로
+    const allScripts = () => {
+      const out = [], seenCall = new Set();
+      const addCalls = cmds => { for (const c of cmds) if (c.op === 0xFE && !seenCall.has(c.ext)) { seenCall.add(c.ext); const s = AnimScript.parse(rom.data, bank, c.ext).cmds; out.push(s); addCalls(s); } };
+      for (let m = 0; m < animCount; m++) {
+        const cmds = m === st.move && st.model ? st.model.cmds : AnimScript.parse(rom.data, bank, W(mv.tab + m * 2)).cmds;
+        out.push(cmds); addCalls(cmds);
+      }
+      return out;
+    };
+    const S = RomCry.findSfx(rom.data);
+
+    const st = { move: 0, model: null, base: null, undo: [], redo: [], sel: 0, res: null, frame: 0, playing: false, player: 155, enemy: 152, turn: 0, speed: 1, loop: true, sound: true, cmdFrame: [], busy: false, dirtyRun: false };
+
+    // ---------------------------------------------------------------- 무대 (게임 화면 ×3) + 물체 위치 표시
+    const Z = 3, stage = el('canvas', { width: 160 * Z, height: 144 * Z, style: 'display:block;image-rendering:pixelated;background:#fff;border:2px solid #333;border-radius:4px;cursor:default' });
+    const sg = stage.getContext('2d'); sg.imageSmoothingEnabled = false;
+    const frameCanvas = el('canvas', { width: 160, height: 144 }), fg = frameCanvas.getContext('2d'), fimg = fg.createImageData(160, 144);
+    const drawFrame = () => {
+      const fr = st.res && st.res.frames[st.frame];
+      if (fr) { new Uint32Array(fimg.data.buffer).set(fr); fg.putImageData(fimg, 0, 0); sg.drawImage(frameCanvas, 0, 0, 160 * Z, 144 * Z); }
+      else { sg.fillStyle = '#fff'; sg.fillRect(0, 0, stage.width, stage.height); }
+      // 물체 등장 위치 (내가 쓸 때만 화면 좌표가 맞음): 지금까지 나온 물체 + 고른 명령
+      if (st.model && st.turn === 0 && showMarks.checked) st.model.cmds.forEach((c, i) => {
+        if (c.op !== 0xD0) return;
+        const f = st.cmdFrame[i];
+        if (i !== st.sel && (f == null || f > st.frame || st.frame - f > 90)) return;
+        const x = (c.args[1] - 8) * Z, y = (c.args[2] - 16) * Z, on = i === st.sel;
+        sg.strokeStyle = on ? '#e8590c' : 'rgba(47,111,236,.8)'; sg.lineWidth = on ? 3 : 2;
+        sg.beginPath(); sg.arc(x, y, on ? 10 : 7, 0, Math.PI * 2); sg.stroke();
+        sg.beginPath(); sg.moveTo(x - 14, y); sg.lineTo(x + 14, y); sg.moveTo(x, y - 14); sg.lineTo(x, y + 14); sg.stroke();
+        sg.fillStyle = on ? '#e8590c' : '#2f6fec'; sg.font = 'bold 12px Arial'; sg.fillText(String(i + 1), x + 9, y - 9);
+      });
+      frameInfo.textContent = st.res ? (st.frame + 1) + ' / ' + st.res.frames.length + ' 프레임 · ' + (st.frame / ANIM_FPS).toFixed(2) + '초' : '';
+      scrub.max = st.res ? st.res.frames.length - 1 : 0; scrub.value = st.frame;
+      drawTimeline();
+    };
+    // 무대에서 물체 위치 끌기
+    let drag = null;
+    stage.addEventListener('mousedown', e => {
+      if (!st.model || st.turn !== 0) return;
+      const r = stage.getBoundingClientRect(), mx = (e.clientX - r.left) * stage.width / r.width, my = (e.clientY - r.top) * stage.height / r.height;
+      let best = -1, bd = 22;
+      st.model.cmds.forEach((c, i) => { if (c.op !== 0xD0) return; const dd = Math.hypot((c.args[1] - 8) * Z - mx, (c.args[2] - 16) * Z - my); if (dd < bd && (i === st.sel || (st.cmdFrame[i] != null && st.cmdFrame[i] <= st.frame && st.frame - st.cmdFrame[i] <= 90))) { bd = dd; best = i; } });
+      if (best < 0) return;
+      pause(); selectCmd(best);
+      snapshot();
+      drag = { i: best, x0: e.clientX, y0: e.clientY, ax: st.model.cmds[best].args[1], ay: st.model.cmds[best].args[2], k: stage.width / r.width / Z };
+      const mm = ev => {
+        const c = st.model.cmds[drag.i];
+        c.args[1] = Math.max(0, Math.min(255, Math.round(drag.ax + (ev.clientX - drag.x0) * drag.k)));
+        c.args[2] = Math.max(0, Math.min(255, Math.round(drag.ay + (ev.clientY - drag.y0) * drag.k)));
+        drawFrame(); showInspector();
+      };
+      const up = () => { document.removeEventListener('mousemove', mm); document.removeEventListener('mouseup', up); drag = null; changed(true); };
+      document.addEventListener('mousemove', mm); document.addEventListener('mouseup', up);
+    });
+    stage.addEventListener('mousemove', e => {
+      if (drag || !st.model) return;
+      const r = stage.getBoundingClientRect(), mx = (e.clientX - r.left) * stage.width / r.width, my = (e.clientY - r.top) * stage.height / r.height;
+      const near = st.turn === 0 && st.model.cmds.some((c, i) => c.op === 0xD0 && Math.hypot((c.args[1] - 8) * Z - mx, (c.args[2] - 16) * Z - my) < 22 && (i === st.sel || (st.cmdFrame[i] != null && st.cmdFrame[i] <= st.frame)));
+      stage.style.cursor = near ? 'move' : 'default';
+    });
+
+    // ---------------------------------------------------------------- 재생
+    const playBtn = el('button', { text: '▶ 재생', style: 'font-weight:bold;background:#dcf5dc;min-width:84px', onclick: () => st.playing ? pause() : play() });
+    const scrub = el('input', { type: 'range', min: 0, max: 0, value: 0, style: 'flex:1;min-width:200px' });
+    scrub.addEventListener('input', () => { pause(); st.frame = +scrub.value; drawFrame(); });
+    const frameInfo = el('span', { class: 'hint', style: 'min-width:150px' });
+    const speedSel = sel([[1, '보통 속도'], [0.5, '느리게 (½)'], [0.25, '아주 느리게 (¼)']], 1, v => { st.speed = v; if (st.playing) { pause(); play(); } });
+    const [loopC, loopL] = check('반복', true); loopC.addEventListener('change', () => st.loop = loopC.checked);
+    const [sndC, sndL] = check('소리', true); sndC.addEventListener('change', () => { st.sound = sndC.checked; if (!st.sound) Player.stop(); });
+    const [showMarks, marksL] = check('물체 위치 표시', true); showMarks.addEventListener('change', drawFrame);
+    let raf = 0, t0 = 0, f0 = 0, audio = null;
+    const play = () => {
+      if (!st.res || !st.res.frames.length) return;
+      if (st.frame >= st.res.frames.length - 1) st.frame = 0;
+      st.playing = true; playBtn.textContent = '⏸ 멈춤';
+      t0 = performance.now(); f0 = st.frame;
+      if (st.sound && st.speed === 1) {
+        if (!audio) audio = GBApu.render(st.res.sounds, st.res.frames.length + 30, st.res.startFrame);
+        Player.playOnce(audio, st.frame / ANIM_FPS);
+      }
+      cancelAnimationFrame(raf);
+      const step = () => {
+        if (!st.playing) return;
+        let f = f0 + Math.floor((performance.now() - t0) / 1000 * ANIM_FPS * st.speed);
+        if (f >= st.res.frames.length) {
+          if (!st.loop) { st.frame = st.res.frames.length - 1; pause(); drawFrame(); return; }
+          f0 = 0; t0 = performance.now(); f = 0;
+          if (st.sound && st.speed === 1 && audio) Player.playOnce(audio, 0);
+        }
+        if (f !== st.frame) { st.frame = f; drawFrame(); }
+        raf = requestAnimationFrame(step);
+      };
+      raf = requestAnimationFrame(step);
+    };
+    const pause = () => { st.playing = false; playBtn.textContent = '▶ 재생'; cancelAnimationFrame(raf); Player.stop(); };
+    const toStart = () => { pause(); st.frame = 0; drawFrame(); };
+
+    // ---------------------------------------------------------------- 미리보기 만들기 (고친 스크립트를 롬 복사본에 넣고 진짜 코드로 실행)
+    const runStatus = el('span', { class: 'hint' });
+    const placeFor = model => {
+      // 원래 자리에 들어가면 그 자리, 아니면 같은 뱅크의 빈 곳
+      const size = AnimScript.size(model), b = st.base;
+      if (b.contiguous && b.exclusive && size <= b.size) return { addr: b.entry, inPlace: true };
+      for (const r of rom.free) if (Math.floor(r[0] / 0x4000) === bank && Math.floor((r[0] + size - 1) / 0x4000) === bank && r[1] - r[0] >= size) return { addr: 0x4000 + r[0] % 0x4000, off: r[0], inPlace: false };
+      return null;
+    };
+    const buildData = () => {
+      const d = rom.data.slice();
+      if (!st.model) return d;
+      const pl = placeFor(st.model);
+      if (!pl) return null;
+      const enc = AnimScript.encode(st.model, pl.addr);
+      d.set(enc.bytes, bank * 0x4000 + (pl.addr & 0x3FFF));
+      d[mv.tab + st.move * 2] = pl.addr & 0xFF; d[mv.tab + st.move * 2 + 1] = pl.addr >> 8;
+      st.pos = enc.pos;
+      return d;
+    };
+    let runTimer = 0;
+    const rerun = (keepFrame) => {
+      clearTimeout(runTimer);
+      runTimer = setTimeout(() => {
+        if (!A) { runStatus.textContent = '이 롬은 미리보기용 코드를 찾지 못해서 화면 재생은 안 돼요 (편집·저장은 돼요)'; return; }
+        const d = buildData();
+        if (!d) { runStatus.textContent = '⚠ 데이터가 너무 커서 넣을 자리가 없어요 — 명령을 줄여 주세요'; return; }
+        const wasPlaying = st.playing; pause();
+        runStatus.textContent = '미리보기 만드는 중…';
+        setTimeout(() => {
+          const t = performance.now();
+          const res = AnimRunner.run(rom, st.move, { data: d, player: st.player, enemy: st.enemy, turn: st.turn, maxFrames: 1200 });
+          st.res = res; audio = null;
+          // 명령마다 처음 실행된 프레임
+          st.cmdFrame = [];
+          if (res && st.pos) st.model.cmds.forEach((c, i) => {
+            const p = st.pos[i];
+            for (let f = 0; f < res.trace.length; f++) { const prev = f ? res.trace[f - 1] : 0; if (res.trace[f] > p && (prev <= p || prev > res.trace[f])) { st.cmdFrame[i] = f; break; } }
+          });
+          const edited = JSON.stringify(st.model.cmds) !== st.baseJson;
+          runStatus.textContent = !res ? '미리보기를 만들지 못했어요'
+            : res.crashed ? (edited ? '⚠ 미리보기 중 게임 코드가 멈췄어요 — 고친 내용 때문일 수 있어요. [원래대로]와 비교해 보세요'
+              : '⚠ 미리보기 환경에서 게임 코드가 멈췄어요. 이 롬의 추가 코드가 배틀 정보를 필요로 하는 것 같아요 (실제 게임에서는 괜찮을 수 있어요)')
+            : !res.finished ? '⚠ 애니메이션이 끝나지 않아요 (20초 넘게 계속돼요)' : '✅ 실제 게임 엔진으로 재생 (' + Math.round(performance.now() - t) + 'ms)';
+          if (!keepFrame) st.frame = 0;
+          st.frame = Math.min(st.frame, res ? res.frames.length - 1 : 0);
+          drawFrame(); showList();
+          if (wasPlaying) play();
+        }, 10);
+      }, 150);
+    };
+
+    // ---------------------------------------------------------------- 시간표 (가로 = 프레임)
+    const tl = el('canvas', { height: 132, style: 'display:block;cursor:pointer' });
+    const tlWrap = el('div', { style: 'overflow-x:auto;border:1px solid var(--line);background:#fff;margin-top:6px' }, tl);
+    const ROWS = [['obj', '물체', '#2f6fec'], ['sound', '효과음', '#1e874b'], ['bg', '화면 효과', '#a0522d'], ['gfx', '그림·색', '#7b4fd0'], ['other', '기타', '#888']];
+    const rowOf = c => { const k = c.op <= 0xCF ? 'wait' : AnimScript.CMD[c.op].k; return k === 'obj' ? 0 : k === 'sound' ? 1 : k === 'bg' ? 2 : (k === 'gfx' || k === 'pal') ? 3 : k === 'wait' ? -1 : 4; };
+    let tlHits = [];
+    const drawTimeline = () => {
+      const n = st.res ? st.res.frames.length : 60, PX = Math.max(3, Math.min(8, Math.floor((tlWrap.clientWidth - 70) / Math.max(1, n))));
+      tl.width = Math.max(tlWrap.clientWidth - 2 || 600, 70 + n * PX + 10);
+      const g = tl.getContext('2d'), H = 22;
+      g.fillStyle = '#fff'; g.fillRect(0, 0, tl.width, tl.height);
+      ROWS.forEach(([, name, col], r) => { g.fillStyle = r % 2 ? '#f7f8fa' : '#fff'; g.fillRect(0, 4 + r * H, tl.width, H); g.fillStyle = col; g.font = 'bold 11px sans-serif'; g.fillText(name, 4, 4 + r * H + 15); });
+      g.fillStyle = '#ddd'; for (let f = 0; f <= n; f += 10) g.fillRect(70 + f * PX, 0, 1, 4 + ROWS.length * H);
+      g.fillStyle = '#999'; g.font = '9px Arial'; for (let f = 0; f <= n; f += 30) g.fillText((f / ANIM_FPS).toFixed(1) + 's', 70 + f * PX + 2, tl.height - 4);
+      tlHits = [];
+      if (st.model) st.model.cmds.forEach((c, i) => {
+        const f = st.cmdFrame[i], r = rowOf(c);
+        if (f == null || r < 0) return;
+        const x = 70 + f * PX, y = 4 + r * H + 3, on = i === st.sel;
+        g.fillStyle = on ? '#e8590c' : ROWS[r][2];
+        const w = c.op === 0xD0 ? 10 : 8;
+        g.fillRect(x - 1, y, w, H - 6);
+        g.fillStyle = '#fff'; g.font = 'bold 9px Arial'; g.fillText(String(i + 1), x, y + 11);
+        tlHits.push({ x: x - 1, y, w, h: H - 6, i });
+      });
+      // 재생 줄
+      g.fillStyle = '#e8590c'; g.fillRect(70 + st.frame * PX, 0, 2, 4 + ROWS.length * H);
+      tl._px = PX;
+      if (st.playing) { const x = 70 + st.frame * PX; if (x > tlWrap.scrollLeft + tlWrap.clientWidth - 40) tlWrap.scrollLeft = x - 80; }
+    };
+    tl.addEventListener('mousedown', e => {
+      const r = tl.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+      const h = tlHits.find(t => x >= t.x - 2 && x <= t.x + t.w + 2 && y >= t.y && y <= t.y + t.h);
+      if (h) { selectCmd(h.i); st.frame = st.cmdFrame[h.i]; pause(); drawFrame(); return; }
+      if (x > 70 && st.res) { pause(); st.frame = Math.max(0, Math.min(st.res.frames.length - 1, Math.floor((x - 70) / tl._px))); drawFrame(); }
+    });
+
+    // ---------------------------------------------------------------- 명령 목록 (쉬운 말로)
+    const listBox = el('div', { style: 'max-height:300px;overflow:auto;border:1px solid var(--line);background:#fff' });
+    const describe = (c, i) => {
+      if (c.op <= 0xCF) return ['⏳', c.op + '프레임 기다리기 (' + (c.op / ANIM_FPS).toFixed(2) + '초)'];
+      const k = AnimScript.CMD[c.op];
+      switch (c.op) {
+        case 0xD0: { const o = objInfo(c.args[0]); return ['✨', objName(c.args[0]) + ' 나타내기 · 위치 ' + c.args[1] + ', ' + c.args[2] + (o ? ' · 그림 ' + gfxName(o.gfx) : '')]; }
+        case 0xD1: case 0xD2: case 0xD3: case 0xD4: case 0xD5: return ['🖼', '그림 불러오기: ' + c.args.map(gfxName).join(', ')];
+        case 0xE0: return ['🔊', '효과음: ' + sfxName(c.args[1])];
+        case 0xE1: return ['🐾', '울음소리 (음높이 ' + c.args[0] + ')'];
+        case 0xF0: return ['🌈', '화면 효과: ' + bgName(c.args[0]) + ' (' + (c.args[2] ? '쓰는 쪽' : '맞는 쪽') + ')'];
+        case 0xF1: case 0xF2: case 0xF3: return ['🎨', (c.op === 0xF1 ? '배경' : '물체') + ' 색 바꾸기 (' + c.args[0].toString(2).padStart(8, '0') + ')'];
+        case 0xD6: return ['➡', (c.args[0]) + '번째 물체에 신호 보내기 (다음 동작으로)'];
+        case 0xD7: return ['➡', (c.args[0]) + '번째 물체 상태를 ' + c.args[1] + '(으)로'];
+        case 0xD8: return ['➡', (c.args[0]) + '번째 화면 효과에 신호 보내기'];
+        case 0xE5: return ['🧹', '물체 모두 지우기'];
+        case 0xFE: { const n = (share.calls.get(c.ext) || new Set()).size; return ['📦', '공용 동작 실행 (' + n + '개 애니메이션이 같이 씀)']; }
+        case 0xFC: return ['↪', (c.target != null ? (c.target + 1) + '번 명령으로 이동' : '다른 곳으로 이동')];
+        case 0xFD: return ['🔁', (c.target != null ? (c.target + 1) + '번부터' : '') + ' 다시 반복 (' + c.args[0] + '번)'];
+        case 0xF8: return ['❓', '설정 값이 ' + c.args[0] + '이면 ' + (c.target != null ? (c.target + 1) + '번으로' : '이동')];
+        case 0xFB: return ['❓', '변수가 ' + c.args[0] + '이면 ' + (c.target != null ? (c.target + 1) + '번으로' : '이동')];
+        case 0xEE: return ['❓', '설정 값 & ' + c.args[0] + '이면 ' + (c.target != null ? (c.target + 1) + '번으로' : '이동')];
+        case 0xEF: return ['🔁', '조건이 될 때까지 ' + (c.target != null ? (c.target + 1) + '번으로' : '') + ' 되돌기'];
+        case 0xF9: return ['🔢', '변수를 ' + c.args[0] + '(으)로'];
+        case 0xFA: return ['🔢', '변수 1 늘리기'];
+        case 0xFF: return ['⏹', '끝'];
+        default: return ['⚙', '고급 명령: ' + k.n + (c.args.length ? ' (' + c.args.join(', ') + ')' : '')];
+      }
+    };
+    const showList = () => {
+      listBox.replaceChildren();
+      if (!st.model) return;
+      st.model.cmds.forEach((c, i) => {
+        const [ic, t] = describe(c, i), f = st.cmdFrame[i];
+        const row = el('div', { style: 'display:flex;gap:6px;align-items:center;padding:3px 6px;border-bottom:1px solid #eef;cursor:pointer;' + (i === st.sel ? 'background:#ffe8d6;font-weight:bold' : '') },
+          el('span', { text: String(i + 1), style: 'color:#999;min-width:22px;text-align:right' }), el('span', { text: ic }), el('span', { text: t, style: 'flex:1' }),
+          el('span', { class: 'hint', text: f != null ? (f / ANIM_FPS).toFixed(2) + 's' : '' }));
+        row.addEventListener('click', () => { selectCmd(i); if (st.cmdFrame[i] != null) { pause(); st.frame = st.cmdFrame[i]; drawFrame(); } });
+        listBox.append(row);
+      });
+      const r = listBox.children[st.sel]; if (r) r.scrollIntoView({ block: 'nearest' });
+    };
+    const selectCmd = i => { st.sel = Math.max(0, Math.min(st.model.cmds.length - 1, i)); showList(); showInspector(); drawFrame(); };
+
+    // ---------------------------------------------------------------- 고치기 · 되돌리기
+    const snapshot = () => { st.undo.push(JSON.stringify(st.model.cmds)); if (st.undo.length > 200) st.undo.shift(); st.redo = []; updUndo(); };
+    const changed = (run) => { updSize(); showList(); showInspector(); markDirty(); if (run !== false) rerun(true); };
+    const undoBtn = el('button', { text: '↶ 되돌리기', title: 'Ctrl+Z', onclick: () => undo() }), redoBtn = el('button', { text: '↷ 다시하기', title: 'Ctrl+Y', onclick: () => redo() });
+    const updUndo = () => { undoBtn.disabled = !st.undo.length; redoBtn.disabled = !st.redo.length; };
+    const undo = () => { if (!st.undo.length) return; st.redo.push(JSON.stringify(st.model.cmds)); st.model.cmds = JSON.parse(st.undo.pop()); st.sel = Math.min(st.sel, st.model.cmds.length - 1); updUndo(); changed(); };
+    const redo = () => { if (!st.redo.length) return; st.undo.push(JSON.stringify(st.model.cmds)); st.model.cmds = JSON.parse(st.redo.pop()); updUndo(); changed(); };
+    const dirtyNote = el('b', { style: 'color:#e8590c' });
+    const markDirty = () => { dirtyNote.textContent = JSON.stringify(st.model.cmds) !== st.baseJson ? '● 고친 내용 있음 (아직 롬에 안 씀)' : ''; };
+    const sizeInfo = el('span', { class: 'hint' });
+    const freeInBank = () => rom.free.filter(r => Math.floor(r[0] / 0x4000) === bank).reduce((a, r) => a + r[1] - r[0], 0);
+    const updSize = () => {
+      const n = AnimScript.size(st.model), pl = placeFor(st.model);
+      sizeInfo.textContent = '데이터 ' + n + '바이트 (원래 ' + st.base.size + ') · 뱅크 빈 공간 ' + freeInBank() + '바이트' + (pl ? '' : ' · ⚠ 넣을 자리 없음');
+      sizeInfo.style.color = pl ? '' : 'var(--warn)';
+    };
+    // 명령 넣기·지우기·옮기기
+    const insertAt = (i, cmd) => { snapshot(); AnimScript.fixTargets(st.model, i, 1); st.model.cmds.splice(i, 0, cmd); st.sel = i; changed(); };
+    const removeAt = i => {
+      const c = st.model.cmds[i];
+      if (c.op === 0xFF && st.model.cmds.filter(x => x.op === 0xFF).length <= 1) { alert('마지막 "끝" 명령은 지울 수 없어요.'); return; }
+      snapshot();
+      // 지운 명령을 가리키던 갈림은 그 다음 명령(지운 뒤 같은 번호)을 가리킴
+      st.model.cmds.splice(i, 1); AnimScript.fixTargets(st.model, i + 1, -1);
+      st.sel = Math.min(i, st.model.cmds.length - 1); changed();
+    };
+    const moveCmd = (i, dir) => {
+      const j = i + dir, cs = st.model.cmds;
+      if (j < 0 || j >= cs.length || cs[i].op === 0xFF || cs[j].op === 0xFF) return;
+      snapshot();
+      [cs[i], cs[j]] = [cs[j], cs[i]];
+      for (const x of cs) { if (x.target === i) x.target = j; else if (x.target === j) x.target = i; }
+      st.sel = j; changed();
+    };
+    const lastLoaded = () => { const s = new Set(); for (const c of st.model.cmds) if (c.op >= 0xD1 && c.op <= 0xD5) c.args.forEach(g => s.add(g)); return s; };
+    // 물체 그림이 안 불러와져 있으면 그림 불러오기 명령에 더함 (최대 5개)
+    const ensureGfx = g => {
+      if (!g || lastLoaded().has(g)) return true;
+      const i = st.model.cmds.findIndex(c => c.op >= 0xD1 && c.op <= 0xD4);
+      if (i >= 0) { st.model.cmds[i].op++; st.model.cmds[i].args.push(g); return true; }
+      if (st.model.cmds.some(c => c.op === 0xD5)) return false;
+      AnimScript.fixTargets(st.model, 0, 1); st.model.cmds.unshift({ op: 0xD1, args: [g] }); st.sel++;
+      return true;
+    };
+    const addMenu = sel([[0, '＋ 명령 넣기 ▼'], [1, '✨ 물체 나타내기'], [2, '🔊 효과음'], [3, '🌈 화면 효과'], [4, '⏳ 기다리기'], [5, '🧹 물체 모두 지우기'], [6, '🐾 울음소리']], 0, v => {
+      addMenu.value = 0;
+      if (!st.model) return;
+      const at = Math.min(st.sel + 1, st.model.cmds.length - 1);   // 고른 명령 뒤 ("끝" 앞)
+      const ref = st.model.cmds.slice(0, at + 1).reverse().find(c => c.op === 0xD0);
+      if (v === 1) { const id = ref ? ref.args[0] : 4; snapshot(); AnimScript.fixTargets(st.model, at, 1); st.model.cmds.splice(at, 0, { op: 0xD0, args: [id, ref ? ref.args[1] : 136, ref ? ref.args[2] : 56, 0] }); st.sel = at; ensureGfx((objInfo(id) || {}).gfx); changed(); }
+      if (v === 2) insertAt(at, { op: 0xE0, args: [0, RomCry.sfxName(49) === 'POUND' ? 49 : 0] });
+      if (v === 3) insertAt(at, { op: 0xF0, args: [0x1F, 0, 0, 0x40] });
+      if (v === 4) insertAt(at, { op: 8, args: [] });
+      if (v === 5) insertAt(at, { op: 0xE5, args: [] });
+      if (v === 6) insertAt(at, { op: 0xE1, args: [0] });
+    });
+
+    // ---------------------------------------------------------------- 고른 명령 고치기 (쉬운 칸)
+    const insp = el('div', { style: 'border:1px solid var(--line);border-radius:6px;padding:8px;background:#fafbfd;min-height:120px' });
+    const field = (label, ...kids) => el('div', { class: 'bar', style: 'margin:3px 0' }, el('span', { text: label, style: 'min-width:86px;color:var(--sub)' }), ...kids);
+    const setArg = (k, v, run) => { const c = st.model.cmds[st.sel]; if (c.args[k] === v) return; snapshot(); c.args[k] = v; changed(run); };
+    const numIn = (v, min, max, f) => { const n = num(v, min, max, f); n.style.width = '70px'; return n; };
+    const objThumb = id => {
+      const o = objInfo(id); if (!o) return null;
+      try {
+        const { pic, n } = rom.readAnimGfx(o.gfx), sh = rom.animShapes(o.gfx);
+        const s = sh.find(x => x.pal === o.pal) || sh[0]; if (!s) return null;
+        const c = rom.animShapeCanvas(pic, n, s, rom.animPal(o.pal), 2);
+        if (c) c.style.cssText = 'background:repeating-conic-gradient(#e1e1e1 0% 25%, #bebebe 0% 50%) 0 0/8px 8px;border:1px solid #ccc;max-width:none';
+        return c;
+      } catch (e) { return null; }
+    };
+    const showInspector = () => {
+      insp.replaceChildren();
+      const c = st.model && st.model.cmds[st.sel];
+      if (!c) return;
+      const [ic, t] = describe(c, st.sel);
+      insp.append(el('div', { style: 'font-weight:bold;margin-bottom:6px' }, ic + ' ' + (st.sel + 1) + '번: ' + t));
+      if (c.op <= 0xCF) {
+        insp.append(field('기다리는 시간', numIn(c.op, 0, 0xCF, v => { snapshot(); c.op = v; changed(); }), el('span', { class: 'hint', text: '프레임 (60프레임 = 1초)' })));
+        insp.append(el('div', { class: 'bar' }, ...[2, 4, 8, 16, 32].map(v => el('button', { text: v + 'F', onclick: () => { snapshot(); c.op = v; changed(); } })),
+          el('button', { text: '× 2배 길게', onclick: () => { snapshot(); c.op = Math.min(0xCF, c.op * 2); changed(); } }), el('button', { text: '÷ 절반', onclick: () => { snapshot(); c.op = Math.max(0, c.op >> 1); changed(); } })));
+      } else if (c.op === 0xD0) {
+        const objOpts = ANIM_OBJ_NAMES.map((_, i) => [i, '#' + String(i).padStart(3, '0') + ' ' + objName(i) + (objInfo(i) ? ' · ' + gfxName(objInfo(i).gfx) : '') + (/BETA|UNUSED|JP/.test(ANIM_OBJ_NAMES[i]) ? ' ⚠ 게임에서 안 쓰던 물체' : '')]);
+        const thumb = el('div');
+        const refreshThumb = () => { thumb.replaceChildren(); const tc = objThumb(c.args[0]); if (tc) thumb.append(tc); };
+        const s = sel(objOpts, c.args[0], v => { snapshot(); c.args[0] = v; const ok = ensureGfx((objInfo(v) || {}).gfx); if (!ok) alert('그림 불러오기 칸이 꽉 차서 이 물체 그림을 더할 수 없어요 (최대 5개).'); changed(); refreshThumb(); });
+        s.style.maxWidth = '320px';
+        refreshThumb();
+        insp.append(field('물체', s), el('div', { style: 'margin:4px 0 4px 92px' }, thumb));
+        insp.append(field('위치 X', numIn(c.args[1], 0, 255, v => setArg(1, v)), el('span', { text: 'Y' }), numIn(c.args[2], 0, 255, v => setArg(2, v)), el('span', { class: 'hint', text: '화면 위 동그라미를 끌어도 돼요' })));
+        insp.append(el('div', { class: 'bar', style: 'margin-left:92px' },
+          el('button', { text: '내 포켓몬 쪽', onclick: () => { snapshot(); c.args[1] = 48; c.args[2] = 88; changed(); } }),
+          el('button', { text: '상대 포켓몬 쪽', onclick: () => { snapshot(); c.args[1] = 136; c.args[2] = 48; changed(); } }),
+          el('button', { text: '화면 가운데', onclick: () => { snapshot(); c.args[1] = 88; c.args[2] = 72; changed(); } })));
+        insp.append(field('세부 값', numIn(c.args[3], 0, 255, v => setArg(3, v)), el('span', { class: 'hint', text: '물체마다 뜻이 달라요 (방향·속도·모양 등). 바꿔 보면서 확인하세요' })));
+        const o = objInfo(c.args[0]);
+        if (o) {
+          // 색 묶음: 이 기술의 이 물체만 다른 색 묶음으로 (같은 물체를 안 쓰는 물체 칸에 복사해서 색만 다르게)
+          const PALN = ko ? { 0: '상대 포켓몬 색', 1: '내 포켓몬 색', 2: '회색', 3: '노랑', 4: '빨강', 5: '초록', 6: '파랑', 7: '갈색' } : { 0: 'Enemy mon', 1: 'Player mon', 2: 'Gray', 3: 'Yellow', 4: 'Red', 5: 'Green', 6: 'Blue', 7: 'Brown' };
+          const sw = p => { const pl = rom.animPal(p); return el('span', { style: 'display:inline-flex;gap:1px;vertical-align:middle' }, ...pl.slice(1).map(cc => el('span', { style: 'width:12px;height:12px;border:1px solid #888;background:' + rgbCss(cc) }))); };
+          const palBox = el('span', { class: 'bar', style: 'gap:4px' });
+          for (const p of [2, 3, 4, 5, 6, 7]) {
+            palBox.append(el('button', { title: PALN[p], style: 'padding:2px 5px;' + (o.pal === p ? 'outline:3px solid #e8590c' : ''), onclick: () => {
+              if (o.pal === p) return;
+              const scripts = allScripts();
+              const nid = rom.animObjWithPal(c.args[0], p, scripts);
+              if (nid < 0) { alert('색을 따로 쓸 빈 물체 칸이 없어요. (게임에서 안 쓰는 물체 칸을 빌려서 만드는데, 다 썼어요)'); return; }
+              snapshot(); c.args[0] = nid; changed();
+            } }, sw(p), ' ' + PALN[p]));
+          }
+          insp.append(field('색 묶음', palBox));
+          const usedNow = new Set(); for (const s of allScripts()) for (const x of s) if (x.op === 0xD0) usedNow.add(x.args[0]);
+          const freeSlots = AG.asm.objs.filter((_, i) => !usedNow.has(i) && !/FEET|HEAD/.test(ANIM_OBJ_NAMES[i] || '')).length;
+          insp.append(el('div', { class: 'hint', style: 'margin-left:92px', text: '이 기술의 이 물체만 다른 색 묶음으로 바꿔요 (다른 기술은 그대로). 게임보이 엔진은 기술 그림 색 칸이 6개뿐이라, 6개 중에서 골라요. 색 묶음 자체의 색을 바꾸면 그 묶음을 쓰는 모든 기술이 같이 바뀌어요. (색을 따로 만들 수 있는 남은 칸: ' + freeSlots + '개, 같은 물체+같은 색은 칸을 같이 써요)' }));
+          const users = new Set(); AG.byGfx[o.gfx].forEach(m => users.add(m));
+          insp.append(el('div', { class: 'hint', style: 'margin-top:6px', text: '그림 "' + gfxName(o.gfx) + '"은(는) 기술 ' + users.size + '개가 같이 써요. 그림이나 색을 고치면 그 기술들도 같이 바뀌어요.' }),
+            el('div', { class: 'bar' }, el('button', { text: '🖌 이 기술 그림·색 고치기…', onclick: () => { pause(); this.dialog('기술 그림 · ' + rom.moveName(st.move), () => this.moveGfxSection(st.move), () => rerun(true), false, true); } })));
+          if (!lastLoaded().has(o.gfx)) insp.append(el('div', { style: 'color:var(--warn)', text: '⚠ 이 물체의 그림(' + gfxName(o.gfx) + ')을 불러오는 명령이 없어요. 물체를 고르면 자동으로 더해요.' }));
+        }
+      } else if (c.op >= 0xD1 && c.op <= 0xD5) {
+        const gopts = ANIM_GFX_NAMES.map((_, g) => [g, '#' + String(g).padStart(2, '0') + ' ' + gfxName(g)]).slice(1);
+        c.args.forEach((g, k) => insp.append(field((k + 1) + '번 그림', sel(gopts, g, v => setArg(k, v)),
+          c.args.length > 1 ? el('button', { text: '빼기', onclick: () => { snapshot(); c.args.splice(k, 1); c.op--; changed(); } }) : null)));
+        if (c.op < 0xD5) insp.append(el('button', { text: '＋ 그림 더 불러오기', onclick: () => { snapshot(); c.args.push(1); c.op++; changed(); } }));
+        insp.append(el('div', { class: 'hint', text: '물체가 쓰는 그림 묶음을 미리 불러와요. 최대 5개, 불러온 순서대로 화면 그림 칸에 들어가요.' }));
+      } else if (c.op === 0xE0) {
+        const sopts = Array.from({ length: S ? S.count : 0 }, (_, i) => [i, '#' + String(i).padStart(3, '0') + ' ' + sfxName(i)]);
+        const s = sel(sopts, c.args[1], v => setArg(1, v));
+        s.style.maxWidth = '300px';
+        insp.append(field('효과음', s, el('button', { text: '▶', title: '이 소리만 듣기', onclick: () => { const cry = RomCry.decode(rom.data, RomCry.sfxOff(rom.data, S, c.args[1])); if (!cry.music) Player.playOnce(RomCry.render(cry, 0, 0x100)); } })));
+        insp.append(field('나오는 쪽', sel([[0, '가운데'], [1, '왼쪽'], [2, '오른쪽'], [3, '가운데 (2)']], c.args[0] & 3, v => setArg(0, (c.args[0] & ~3) | v))));
+        insp.append(el('div', { class: 'hint', text: '효과음 자체를 고치려면 [기술 사운드 에디터]에서 고쳐요.' }));
+      } else if (c.op === 0xE1) {
+        insp.append(field('음높이', numIn(c.args[0], 0, 255, v => setArg(0, v)), el('span', { class: 'hint', text: '쓰는 포켓몬의 울음소리를 이 높이로' })));
+      } else if (c.op === 0xF0) {
+        const s = sel(ANIM_BG_NAMES.map((_, i) => [i, '#' + String(i).padStart(2, '0') + ' ' + bgName(i) + (/미완성/.test(ANIM_BG_NAMES[i]) ? ' ⚠' : '')]), c.args[0], v => setArg(0, v));
+        s.style.maxWidth = '300px';
+        insp.append(field('화면 효과', s), field('대상', sel([[0, '맞는 쪽 (상대)'], [1, '쓰는 쪽 (나)']], c.args[2] ? 1 : 0, v => setArg(2, v))),
+          field('세부 값', numIn(c.args[3], 0, 255, v => setArg(3, v)), el('span', { class: 'hint', text: '효과마다 뜻이 달라요 (세기·길이 등)' })),
+          field('기타 값', numIn(c.args[1], 0, 255, v => setArg(1, v))));
+      } else if (c.op === 0xFE) {
+        const n = (share.calls.get(c.ext) || new Set()).size;
+        insp.append(el('div', { class: 'hint', text: '여러 애니메이션이 같이 쓰는 동작 묶음이에요 (' + n + '개가 씀). 그대로 두면 같이 쓰고, 이 기술에서만 고치려면 아래 버튼으로 풀어서 넣으세요.' }),
+          el('button', { text: '📦 이 기술 전용으로 풀어 넣기', onclick: () => inlineCall(st.sel) }));
+      } else if (c.op === 0xFD) {
+        insp.append(field('반복 횟수', numIn(c.args[0], 1, 255, v => setArg(0, v))), el('div', { class: 'hint', text: (c.target != null ? (c.target + 1) + '번 명령부터 여기까지를' : '') + ' 반복해요.' }));
+      } else if (c.op === 0xFF) {
+        insp.append(el('div', { class: 'hint', text: '애니메이션 끝이에요. 이 뒤에 명령을 넣으려면 바로 앞 명령을 고르고 [＋ 명령 넣기]를 쓰세요.' }));
+      } else {
+        const k = AnimScript.CMD[c.op];
+        insp.append(el('div', { class: 'hint', text: '게임 엔진의 고급 명령이에요 (' + k.n + '). 잘 모르면 그대로 두는 게 안전해요.' }));
+        c.args.forEach((v, j) => insp.append(field('값 ' + (j + 1), numIn(v, 0, 255, x => setArg(j, x)))));
+      }
+      // 공통 단추
+      insp.append(el('div', { class: 'bar', style: 'margin-top:8px;border-top:1px solid var(--line);padding-top:6px' },
+        el('button', { text: '▲', title: '위로', onclick: () => moveCmd(st.sel, -1) }), el('button', { text: '▼', title: '아래로', onclick: () => moveCmd(st.sel, 1) }),
+        el('button', { text: '⧉ 복제', onclick: () => { if (c.op === 0xFF) return; insertAt(st.sel + 1, JSON.parse(JSON.stringify(Object.assign({}, c, { target: c.target })))); } }),
+        el('button', { text: '🗑 지우기', onclick: () => removeAt(st.sel) })));
+    };
+    // 공용 동작 묶음을 이 기술 안으로 복사해 넣기 (ret 는 빼고, 그 안의 갈림은 다시 연결)
+    const inlineCall = i => {
+      const c = st.model.cmds[i], sub = AnimScript.parse(rom.data, bank, c.ext);
+      if (sub.cmds.some(x => x.op === 0xFE)) { if (!confirm('이 묶음 안에 또 다른 공용 동작이 있어요. 그 부분은 공용으로 남겨요. 계속할까요?')) return; }
+      snapshot();
+      const body = sub.cmds.map(x => JSON.parse(JSON.stringify(x)));
+      const n = body.length;
+      // 묶음의 끝(ret)은 "다음 명령으로 이동"으로 바꿔서 원래 흐름으로 돌아가게
+      body.forEach(x => { if (x.target != null) x.target += i; if (x.op === 0xFF) { x.op = 0xFC; x.args = []; x.target = i + n; } });
+      st.model.cmds.splice(i, 1, ...body);
+      for (const x of st.model.cmds.slice(0, i).concat(st.model.cmds.slice(i + n))) if (x.target != null && x.target > i) x.target += n - 1;
+      // 마지막 이동이 바로 다음이면 지움 (불필요)
+      if (st.model.cmds[i + n - 1] && st.model.cmds[i + n - 1].op === 0xFC && st.model.cmds[i + n - 1].target === i + n) { st.model.cmds.splice(i + n - 1, 1); AnimScript.fixTargets(st.model, i + n, -1); }
+      changed();
+    };
+
+    // ---------------------------------------------------------------- 다른 기술에서 효과 가져오기
+    const importFrom = () => {
+      const items = this.moveOptions().slice(1).map(([v, t]) => [v, t]);
+      const pick = sel(items, st.move === 1 ? 2 : 1, v => showSrc(v));
+      pick.style.maxWidth = '260px';
+      const box = el('div', { style: 'max-height:320px;overflow:auto;border:1px solid var(--line);background:#fff;padding:4px' });
+      let src = null, checks = [];
+      const showSrc = m => {
+        const e = W(mv.tab + m * 2); src = AnimScript.parse(rom.data, bank, e);
+        box.replaceChildren(); checks = [];
+        src.cmds.forEach((c, i) => {
+          const [ic, t] = describe(c, i), [cb, lb] = check(ic + ' ' + t, c.op === 0xD0 || c.op === 0xE0 || c.op <= 0xCF || c.op === 0xF0);
+          if (c.op === 0xFF || c.target != null) { cb.checked = false; cb.disabled = true; }
+          checks.push(cb); box.append(el('div', null, lb));
+        });
+      };
+      showSrc(+pick.value);
+      let close;
+      close = this.dialog('다른 기술에서 효과 가져오기', () => el('div', null,
+        el('div', { class: 'bar' }, el('span', { text: '가져올 기술:' }), pick),
+        el('div', { class: 'hint', text: '가져올 명령을 체크하세요. 지금 고른 명령 뒤에 그대로 들어가고, 필요한 그림 불러오기는 자동으로 더해요. (이동·반복 같은 흐름 명령은 빼요)' }), box,
+        el('div', { class: 'bar', style: 'justify-content:flex-end;margin-top:8px' }, el('button', { text: '취소', onclick: () => close() }),
+          el('button', { class: 'apply', text: '✅ 넣기', onclick: () => {
+            const add = src.cmds.filter((c, i) => checks[i].checked).map(c => { const x = JSON.parse(JSON.stringify(c)); delete x.addr; return x; });
+            if (!add.length) { close(); return; }
+            snapshot();
+            const at = Math.min(st.sel + 1, st.model.cmds.length - 1);
+            AnimScript.fixTargets(st.model, at, add.length);
+            st.model.cmds.splice(at, 0, ...add);
+            let full = false;
+            const n0 = st.model.cmds.length;
+            for (const c of add) if (c.op === 0xD0 && !ensureGfx((objInfo(c.args[0]) || {}).gfx)) full = true;
+            st.sel = at + (st.model.cmds.length - n0); close(); changed();
+            if (full) alert('그림 불러오기 칸이 꽉 차서 일부 물체 그림을 더하지 못했어요 (최대 5개). 미리보기에서 확인하세요.');
+          } }))), null, true);
+    };
+
+    // ---------------------------------------------------------------- 명령 여러 개 지우기 (체크해서 한꺼번에 · 모두 지우기)
+    const bulkDelete = () => {
+      if (!st.model) return;
+      pause();
+      const box = el('div', { style: 'max-height:380px;overflow:auto;border:1px solid var(--line);background:#fff;padding:4px' });
+      const checks = [];
+      const KIND = c => c.op <= 0xCF ? 'wait' : AnimScript.CMD[c.op].k;
+      st.model.cmds.forEach((c, i) => {
+        const [ic, t] = describe(c, i), [cb, lb] = check((i + 1) + '. ' + ic + ' ' + t, false);
+        const isEnd = c.op === 0xFF && i === st.model.cmds.length - 1;
+        if (isEnd) { cb.disabled = true; lb.title = '마지막 "끝"은 남겨야 해요'; }
+        checks.push(cb);
+        box.append(el('div', { style: isEnd ? 'color:var(--sub)' : '' }, lb));
+      });
+      const count = el('b');
+      const upd = () => { count.textContent = checks.filter(c => c.checked).length + '개 고름'; };
+      checks.forEach(c => c.addEventListener('change', upd)); upd();
+      const pickKind = k => { st.model.cmds.forEach((c, i) => { if (!checks[i].disabled && KIND(c) === k) checks[i].checked = true; }); upd(); };
+      const setAll = v => { checks.forEach(c => { if (!c.disabled) c.checked = v; }); upd(); };
+      const doDelete = () => {
+        const del = new Set(checks.map((c, i) => c.checked ? i : -1).filter(i => i >= 0));
+        if (!del.size) { close(); return; }
+        snapshot();
+        // 남는 명령의 새 번호 · 지운 명령을 가리키던 갈림은 그 뒤에 남는 첫 명령으로
+        const keep = st.model.cmds.map((_, i) => i).filter(i => !del.has(i)), newIdx = new Map(keep.map((i, k) => [i, k]));
+        const after = i => { for (let j = i; j < st.model.cmds.length; j++) if (newIdx.has(j)) return newIdx.get(j); return keep.length - 1; };
+        st.model.cmds = keep.map(i => { const c = st.model.cmds[i]; if (c.target != null) c.target = after(c.target); return c; });
+        if (!st.model.cmds.length || !AnimScript.ends(st.model.cmds[st.model.cmds.length - 1].op)) st.model.cmds.push({ op: 0xFF, args: [] });
+        st.sel = Math.min(st.sel, st.model.cmds.length - 1);
+        close(); changed();
+        this.say(del.size + '개 명령을 지웠어요. [되돌리기]로 되살릴 수 있어요.');
+      };
+      let close;
+      close = this.dialog('명령 여러 개 지우기 · ' + rom.moveName(st.move), () => el('div', null,
+        el('div', { class: 'hint', text: '지울 명령을 체크하세요. 마지막 "끝"은 남아요. 지운 뒤에도 [↶ 되돌리기]로 되살릴 수 있어요.' }),
+        el('div', { class: 'bar', style: 'margin:6px 0' },
+          el('button', { text: '모두 체크', onclick: () => setAll(true) }), el('button', { text: '모두 해제', onclick: () => setAll(false) }),
+          el('span', { class: 'hint', text: '종류별로 체크:' }),
+          el('button', { text: '✨ 물체', onclick: () => pickKind('obj') }), el('button', { text: '🔊 효과음', onclick: () => pickKind('sound') }),
+          el('button', { text: '🌈 화면 효과', onclick: () => pickKind('bg') }), el('button', { text: '⏳ 기다리기', onclick: () => pickKind('wait') }), count),
+        box,
+        el('div', { class: 'bar', style: 'justify-content:space-between;margin-top:8px' },
+          el('button', { text: '🧹 모두 지우기 (끝만 남기기)', style: 'color:var(--warn)', onclick: () => { setAll(true); doDelete(); } }),
+          el('span', { class: 'bar' }, el('button', { text: '취소', onclick: () => close() }), el('button', { class: 'apply', text: '🗑 체크한 명령 지우기', onclick: doDelete })))), null, true);
+    };
+
+    // ---------------------------------------------------------------- 기술 고르기 · 불러오기 · 저장
+    const load = m => {
+      pause();
+      objName(0);   // 원래 쓰던 물체 목록을 고치기 전에 기억
+      st.move = m;
+      const e = W(mv.tab + m * 2);
+      st.model = AnimScript.parse(rom.data, bank, e);
+      const exclusive = st.model.addrs.every(a => (share.use.get(a) || 0) <= 1);
+      const contiguous = st.model.cmds.every((c, i) => i === 0 || c.addr === st.model.cmds[i - 1].addr + AnimScript.lenOf(st.model.cmds[i - 1].op));
+      st.base = { entry: e, size: AnimScript.size(st.model), exclusive, contiguous, addrs: st.model.addrs.slice() };
+      st.model.cmds.forEach(c => delete c.addr);
+      st.baseJson = JSON.stringify(st.model.cmds);
+      st.undo = []; st.redo = []; updUndo();
+      st.sel = 0; st.frame = 0; st.res = null;
+      title.textContent = pad3(m) + ' ' + rom.moveName(m);
+      shareNote.textContent = exclusive ? '' : 'ℹ 이 기술 애니메이션의 일부를 다른 애니메이션도 같이 써요. 저장하면 이 기술만 새 자리에 따로 저장돼서 다른 기술은 그대로예요.';
+      updSize(); markDirty(); showList(); showInspector(); drawFrame();
+      rerun();
+    };
+    const save = () => {
+      const errs = AnimScript.check(st.model);
+      if (errs.length) { alert('저장할 수 없어요:\n' + errs.join('\n')); return false; }
+      const pl = placeFor(st.model);
+      if (!pl) { alert('이 기술 데이터가 너무 커서 넣을 자리가 없어요.\n명령을 줄이거나 기다리기를 합쳐 주세요. (뱅크 빈 공간 ' + freeInBank() + '바이트)'); return false; }
+      const enc = AnimScript.encode(st.model, pl.addr), off = bank * 0x4000 + (pl.addr & 0x3FFF);
+      if (!pl.inPlace) {
+        // 빈 곳에서 떼어 쓰고, 원래 자리가 이 기술 혼자 쓰던 곳이면 빈 곳으로 돌려줌
+        for (const r of rom.free) if (r[0] === pl.off) { r[0] += enc.bytes.length; break; }
+        if (st.base.exclusive && st.base.contiguous) rom.free.push([bank * 0x4000 + (st.base.entry & 0x3FFF), bank * 0x4000 + (st.base.entry & 0x3FFF) + st.base.size]);
+      } else if (enc.bytes.length < st.base.size) {
+        rom.free.push([off + enc.bytes.length, off + st.base.size]);
+      }
+      rom.data.set(enc.bytes, off);
+      rom.data[mv.tab + st.move * 2] = pl.addr & 0xFF; rom.data[mv.tab + st.move * 2 + 1] = pl.addr >> 8;
+      rom.dirty = true;
+      this.say(rom.moveName(st.move) + ' 기술 애니메이션을 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.');
+      const keep = st.move;
+      Object.assign(share, AnimScript.sharing(rom.data, mv.tab, animCount));
+      load(keep);
+      okNote.textContent = '✅ 롬에 넣었어요 (' + enc.bytes.length + '바이트' + (pl.inPlace ? ', 원래 자리' : ', 새 자리') + ')';
+      setTimeout(() => okNote.textContent = '', 4000);
+      return true;
+    };
+    const revert = () => { if (JSON.stringify(st.model.cmds) === st.baseJson) return; snapshot(); st.model.cmds = JSON.parse(st.baseJson); changed(); };
+
+    // ---------------------------------------------------------------- 화면 짜기
+    const title = el('b', { style: 'font-size:16px' }), shareNote = el('div', { class: 'hint' }), okNote = el('b', { style: 'color:var(--ok)' });
+    const monOpts = this.monOptions(false).filter(o => o[0] > 0);
+    const pSel = sel(monOpts, st.player, v => { st.player = v; rerun(true); }), eSel = sel(monOpts, st.enemy, v => { st.enemy = v; rerun(true); });
+    pSel.style.maxWidth = eSel.style.maxWidth = '150px';
+    const turnSel = sel([[0, '내가 쓰기 (나 → 상대)'], [1, '상대가 쓰기 (상대 → 나)']], 0, v => { st.turn = v; rerun(true); });
+    const items = this.moveOptions().slice(1).map(([v, t]) => ({ value: v, label: t }));
+    // 고친 내용이 있으면 툴 안에서 물어봄 (브라우저 확인창은 막히거나 놓치기 쉬워서)
+    const askSwitch = (m) => {
+      let close;
+      close = this.dialog('적용하지 않은 변경이 있어요', () => el('div', null,
+        el('div', { text: '"' + rom.moveName(st.move) + '" 애니메이션을 고친 내용이 아직 롬에 안 들어갔어요. 어떻게 할까요?' }),
+        el('div', { class: 'bar', style: 'justify-content:flex-end;margin-top:12px' },
+          el('button', { text: '취소 (계속 고치기)', onclick: () => { close(); list.select(st.move); } }),
+          el('button', { text: '버리고 이동', onclick: () => { load(m); close(); } }),
+          el('button', { class: 'apply', text: '💾 적용하고 이동', onclick: () => { if (save()) load(m); close(); } }))), () => list.select(st.move), true);
+    };
+    const list = listPanel(items, m => {
+      if (m === st.move) return;
+      if (st.model && JSON.stringify(st.model.cmds) !== st.baseJson) { askSwitch(m); return; }
+      load(m);
+    }, '기술 찾기', startMove || 1);
+    const onKey = e => {
+      if (!stage.isConnected) { document.removeEventListener('keydown', onKey, true); return; }
+      if (/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
+      if (e.key === ' ') { e.preventDefault(); e.stopPropagation(); st.playing ? pause() : play(); }
+      else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); }
+      else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); }
+      else if (e.key === 'Delete') { e.preventDefault(); removeAt(st.sel); }
+      else if (e.key === 'ArrowRight' && st.res) { e.preventDefault(); pause(); st.frame = Math.min(st.res.frames.length - 1, st.frame + 1); drawFrame(); }
+      else if (e.key === 'ArrowLeft' && st.res) { e.preventDefault(); pause(); st.frame = Math.max(0, st.frame - 1); drawFrame(); }
+      else if (e.key === 'Home') { e.preventDefault(); toStart(); }
+    };
+    document.addEventListener('keydown', onKey, true);
+    const center = el('div', { style: 'display:flex;flex-direction:column;gap:6px;min-width:0' },
+      el('div', { class: 'bar' }, title, dirtyNote, okNote),
+      shareNote,
+      el('div', { style: 'display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap' },
+        el('div', null, stage,
+          el('div', { class: 'bar', style: 'margin-top:6px' }, el('button', { text: '⏮', title: '처음으로 (Home)', onclick: toStart }), playBtn, scrub),
+          el('div', { class: 'bar' }, frameInfo, speedSel, loopL, sndL, marksL),
+          el('div', { class: 'bar' }, el('span', { text: '내 포켓몬' }), pSel, el('span', { text: '상대' }), eSel),
+          el('div', { class: 'bar' }, turnSel, runStatus)),
+        el('div', { style: 'flex:1;min-width:300px;display:flex;flex-direction:column;gap:6px' },
+          el('div', { class: 'bar' }, addMenu, el('button', { text: '📥 다른 기술에서 가져오기…', onclick: importFrom }), el('button', { text: '🗑 여러 개 지우기…', onclick: bulkDelete }), undoBtn, redoBtn),
+          listBox, insp)),
+      el('div', { class: 'hint', text: '🎞 시간표 — 아래 칸을 누르면 그 시간으로 가요 · 색 블록 = 그 시간에 실행되는 명령 (누르면 골라져요) · 스페이스바 = 재생/멈춤 · ←→ = 한 프레임씩 · Ctrl+Z / Ctrl+Y = 되돌리기 / 다시하기' }),
+      tlWrap,
+      el('div', { class: 'bar', style: 'margin-top:6px' }, el('button', { class: 'apply', text: '💾 적용 (롬에 넣기)', style: 'font-weight:bold', onclick: save }),
+        el('button', { text: '↩ 원래대로', onclick: revert }), sizeInfo),
+      el('div', { class: 'hint', text: '미리보기는 롬 안의 진짜 배틀 애니메이션 코드를 그대로 실행해서 보여줘요. 적용한 뒤 메인 화면에서 [저장하기]를 눌러야 롬 파일에 기록돼요. 금·은 엔진에 있는 명령만 쓸 수 있어서, 넣은 것은 실제 게임에서도 똑같이 돌아가요.' }));
+    this.dialog('기술 애니메이션 편집기', () => el('div', { class: 'side', style: 'grid-template-columns:200px minmax(0,1fr)' }, list, center), () => { pause(); document.removeEventListener('keydown', onKey, true); }, false, true);
+    // 처음부터 넓게
+    const dlgs = this.host.querySelectorAll('.dlg'), dlg = dlgs[dlgs.length - 1];
+    const wb = [...dlg.querySelectorAll('.dlg-head button')].find(b => b.textContent.includes('넓게'));
+    if (wb) wb.click();
+    load(startMove || 1);
+  }
+});
+
 // ===== 99-bgm.js
 // ================================================================ BGM 에디터 (BgmForm.cs) · 음악 파일 변환 창 (AudioImportForm.cs) · 게임에 넣기 창 (SongAssignForm.cs)
 const PITCH_NAMES = ['쉼표', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
@@ -7689,12 +9217,56 @@ Object.assign(App.prototype, {
 // ================================================================ 울음소리 에디터 · 소리 파일 → 울음소리 변환 창
 const CRY_CH_NAMES = { 4: '🔊 CH1 사각파', 5: '🎵 CH2 사각파', 6: '🎸 CH3 웨이브', 7: '🥁 CH4 노이즈' };
 const CRY_DUTY = ['12.5%', '25%', '50%', '75%'];
+// 기술 이름이 붙은 효과음 → 기술 번호 (이름은 롬에 들어 있는 기술 이름을 그대로 씀)
+const SFX_MOVE = { POUND: 1, KARATE_CHOP: 2, DOUBLESLAP: 3, COMET_PUNCH: 4, MEGA_PUNCH: 5, PAY_DAY: 6, SCRATCH: 10, VICEGRIP: 11, RAZOR_WIND: 13, SWORDS_DANCE: 14, CUT: 15, WING_ATTACK: 17,
+  WHIRLWIND: 18, FLY: 19, BIND: 20, VINE_WHIP: 22, STOMP: 23, DOUBLE_KICK: 24, MEGA_KICK: 25, JUMP_KICK: 26, HEADBUTT: 29, HORN_ATTACK: 30, TACKLE: 33, TAIL_WHIP: 39, POISON_STING: 40,
+  LEER: 43, BITE: 44, SING: 47, SUPERSONIC: 48, EMBER: 52, WATER_GUN: 55, HYDRO_PUMP: 56, SURF: 57, PSYBEAM: 60, BUBBLEBEAM: 61, HYPER_BEAM: 63, PECK: 64, SUBMISSION: 66, STRENGTH: 70,
+  THUNDERSHOCK: 84, THUNDER: 87, TOXIC: 92, PSYCHIC: 94, RAGE: 99, SCREECH: 103, METRONOME: 118, EGG_BOMB: 121, LICK: 122, BONE_CLUB: 125, KINESIS: 134, FLASH: 148, SHARPEN: 159,
+  SKETCH: 166, THIEF: 168, SPIDER_WEB: 169, MIND_READER: 170, NIGHTMARE: 171, SNORE: 173, CURSE: 174, AEROBLAST: 177, SPITE: 180, PROTECT: 182, SWEET_KISS: 186, BELLY_DRUM: 187,
+  SLUDGE_BOMB: 188, ZAP_CANNON: 192, FORESIGHT: 193, PERISH_SONG: 195, OUTRAGE: 200, SANDSTORM: 201, GIGA_DRAIN: 202, MILK_DRINK: 208, SPARK: 209, MEAN_LOOK: 212, ATTRACT: 213,
+  HEAL_BELL: 215, RETURN: 216, PRESENT: 217, BATON_PASS: 226, ENCORE: 227, SWEET_SCENT: 230, MORNING_SUN: 234, MOONLIGHT: 236, RAIN_DANCE: 240, BEAT_UP: 251 };
+// 그 밖의 효과음 한국어 이름 (한글판 롬일 때)
+const SFX_KO = { DEX_FANFARE_50_79: '도감 팡파르 (50~79마리)', ITEM: '아이템 받음', CAUGHT_MON: '포켓몬을 잡았다', POKEBALLS_PLACED_ON_TABLE: '몬스터볼 탁자에 놓기', POTION: '상처약',
+  FULL_HEAL: '회복', MENU: '메뉴', READ_TEXT: '글 넘김', READ_TEXT_2: '글 넘김 2', DEX_FANFARE_20_49: '도감 팡파르 (20~49마리)', DEX_FANFARE_80_109: '도감 팡파르 (80~109마리)', POISON: '독',
+  GOT_SAFARI_BALLS: '사파리볼 받음', BOOT_PC: '컴퓨터 켜기', SHUT_DOWN_PC: '컴퓨터 끄기', CHOOSE_PC_OPTION: '컴퓨터 메뉴 고르기', ESCAPE_ROPE: '동굴탈출로프', PUSH_BUTTON: '버튼 누르기',
+  SECOND_PART_OF_ITEMFINDER: '다우징머신 (뒷부분)', WARP_TO: '순간이동 (사라짐)', WARP_FROM: '순간이동 (나타남)', CHANGE_DEX_MODE: '도감 보기 바꾸기', JUMP_OVER_LEDGE: '턱 뛰어넘기',
+  GRASS_RUSTLE: '풀숲 바스락', WRONG: '틀림', SQUEAK: '찍찍', BOAT: '배', WALL_OPEN: '벽 열림', PLACE_PUZZLE_PIECE_DOWN: '퍼즐 조각 놓기', ENTER_DOOR: '문 들어가기', SWITCH_POKEMON: '포켓몬 교체',
+  TALLY: '계산', TRANSACTION: '사고팔기', EXIT_BUILDING: '건물 나가기', BUMP: '부딪힘', SAVE: '저장', POKEFLUTE: '포켓몬 피리', ELEVATOR_END: '엘리베이터 도착', THROW_BALL: '볼 던지기',
+  BALL_POOF: '볼에서 나옴', FAINT: '기절', RUN: '도망', SLOT_MACHINE_START: '슬롯머신 시작', FANFARE: '팡파르', MOVE_PUZZLE_PIECE: '퍼즐 조각 옮기기', POWDER: '가루', CHARGE: '충전',
+  SHINE: '반짝임', UNKNOWN_5F: '알 수 없음 5F', UNKNOWN_60: '알 수 없음 60', UNKNOWN_61: '알 수 없음 61', SWITCH_POCKETS: '가방 주머니 바꾸기', UNKNOWN_63: '알 수 없음 63', BURN: '화상',
+  TITLE_SCREEN_ENTRANCE: '타이틀 화면 등장', UNKNOWN_66: '알 수 없음 66', GET_COIN_FROM_SLOTS: '슬롯 코인 받음', CALL: '전화 걸기', HANG_UP: '전화 끊기', NO_SIGNAL: '신호 없음',
+  ELEVATOR: '엘리베이터', EXP_BAR: '경험치 막대', LEVEL_UP: '레벨 업', KEY_ITEM: '중요한 물건 받음', FANFARE_2: '팡파르 2', REGISTER_PHONE_NUMBER: '전화번호 등록', '3RD_PLACE': '3등',
+  GET_EGG_UNUSED: '알 받음 (안 씀)', GET_EGG: '알 받음', MOVE_DELETED: '기술 잊음', '2ND_PLACE': '2등', '1ST_PLACE': '1등', CHOOSE_A_CARD: '카드 고르기', GET_TM: '기술머신 받음',
+  GET_BADGE: '배지 받음', QUIT_SLOTS: '슬롯 그만두기', EGG_CRACK: '알 금 감', DEX_FANFARE_LESS_THAN_20: '도감 팡파르 (20마리 미만)', DEX_FANFARE_140_169: '도감 팡파르 (140~169마리)',
+  DEX_FANFARE_170_199: '도감 팡파르 (170~199마리)', DEX_FANFARE_200_229: '도감 팡파르 (200~229마리)', DEX_FANFARE_230_PLUS: '도감 팡파르 (230마리 이상)', EVOLVED: '진화했다',
+  MASTER_BALL: '마스터볼', EGG_HATCH: '알 부화', GS_INTRO_CHARIZARD_FIREBALL: '오프닝 리자몽 불꽃', GS_INTRO_POKEMON_APPEARS: '오프닝 포켓몬 등장', GAME_FREAK_LOGO_GS: '게임프리크 로고',
+  NOT_VERY_EFFECTIVE: '효과가 별로인 공격', DAMAGE: '보통 공격', SUPER_EFFECTIVE: '효과가 굉장한 공격', BALL_BOUNCE: '볼 튀기', BALL_WOBBLE: '볼 흔들림', HIT_END_OF_EXP_BAR: '경험치 가득',
+  GIVE_TRADEMON: '교환 보내기', GET_TRADEMON: '교환 받기', TRAIN_ARRIVED: '기차 도착', STOP_SLOT: '슬롯 멈춤', '2_BOOPS': '삐삐' };
+const sfxTitle = n => n.toLowerCase().split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
 Object.assign(App.prototype, {
   _cry: RomCry,   // 자동 테스트용
-  cryEditor() {
-    const rom = this.rom, d = rom.data, t = RomCry.find(d);
+  // 기술 사운드 에디터 = 같은 화면에 효과음 표를 연결
+  sfxEditor() { this.cryEditor(true); },
+  cryEditor(sfxMode) {
+    const rom = this.rom, d = rom.data, t = RomCry.find(d), S = sfxMode ? RomCry.findSfx(d) : null;
     if (!t) { alert('이 롬에서 울음소리 데이터를 찾지 못했어요.'); return; }
+    if (sfxMode && !S) { alert('이 롬에서 효과음 데이터를 찾지 못했어요.'); return; }
+    // 효과음 → 그 소리를 쓰는 기술들 [{ m, at }]
+    const sfxUses = () => { const u = Array.from({ length: 256 }, () => []); if (S && S.moves) for (let m = 1; m <= 251; m++) for (const x of S.moves.byMove[m] || []) u[x.sfx].push({ m, at: x.at }); return u; };
+    let SU = sfxUses();
+    // 효과음 이름: 롬 언어대로 (기술 소리는 롬의 기술 이름, 그 밖은 한글판이면 한국어 · 아니면 영어)
+    const koRom = rom.cs.kind === 'ko' || rom.cs.kind === 'koen';
+    const sfxDisp = id => {
+      const n = RomCry.sfxName(id), two = n.match(/^(.*)_2$/);
+      if (SFX_MOVE[n]) return rom.moveName(SFX_MOVE[n]);
+      if (two && SFX_MOVE[two[1]]) return rom.moveName(SFX_MOVE[two[1]]) + ' 2';
+      return koRom && SFX_KO[n] ? SFX_KO[n] : sfxTitle(n);
+    };
+    const sfxLabel = id => '#' + String(id).padStart(3, '0') + ' ' + sfxDisp(id);
+    // 이 소리를 쓰는 기술 이름 (소리 이름과 같은 건 빼고)
+    const usedBy = (id, max) => { const own = sfxDisp(id).replace(/ 2$/, ''), l = [...new Set(SU[id].map(x => rom.moveName(x.m)))].filter(nm => nm !== own); return l.length ? ' — ' + (max && l.length > max ? l.slice(0, max).join(', ') + ' …' : l.join(', ')) : ''; };
+    const sfxOpts = () => Array.from({ length: S ? S.count : 0 }, (_, i) => [i, sfxLabel(i) + usedBy(i, 2)]);
     const users = () => { const u = Array.from({ length: t.count }, () => []); for (let m = 1; m <= 251; m++) { const b = RomCry.header(d, t, m).base; if (b < t.count) u[b].push(m); } return u; };
     let U = users();
     const st = { mon: 0, h: null, cry: null, edited: false, ch: 0, sel: 0 };
@@ -7720,11 +9292,17 @@ Object.assign(App.prototype, {
     };
     const pitchIn = pair(-512, 512, 'pitch'), lenIn = pair(32, 768, 'length');
     const markHeader = () => { status.textContent = '(아직 적용 안 함)'; drawRoll(); };
-    const copySel = sel([[0, '(다른 포켓몬 울음소리 그대로 쓰기 ▼)']].concat(this.monOptions(false).filter(o => o[0] > 0)), 0, m => {
-      if (!m) return;
-      st.h = RomCry.header(d, t, m); st.cry = RomCry.decode(d, RomCry.baseOff(d, t, st.h.base)); st.edited = false;
-      copySel.value = 0; markHeader(); refresh(); play(st.cry, st.h);
-    });
+    const copySel = sfxMode
+      ? sel([[-1, '(다른 효과음 그대로 가져오기 ▼)']].concat(sfxOpts()), -1, id => {
+        if (id < 0) return;
+        st.cry = RomCry.decode(d, RomCry.sfxOff(d, S, id)); st.edited = true;
+        copySel.value = -1; markHeader(); refresh(); play(st.cry, st.h);
+      })
+      : sel([[0, '(다른 포켓몬 울음소리 그대로 쓰기 ▼)']].concat(this.monOptions(false).filter(o => o[0] > 0)), 0, m => {
+        if (!m) return;
+        st.h = RomCry.header(d, t, m); st.cry = RomCry.decode(d, RomCry.baseOff(d, t, st.h.base)); st.edited = false;
+        copySel.value = 0; markHeader(); refresh(); play(st.cry, st.h);
+      });
     copySel.style.maxWidth = '260px';
     // 음표 표
     const chBar = el('div', { class: 'bar', style: 'background:#e4e8f0;padding:4px;border-radius:4px' });
@@ -7732,8 +9310,8 @@ Object.assign(App.prototype, {
     const grid = el('div', { style: 'max-height:34vh;overflow:auto;border:1px solid var(--line);background:#fff' },
       el('table', { class: 'grid', style: 'width:100%' }, el('thead', null, el('tr', null, ...['#', '길이 (프레임)', '볼륨 (0~15)', '볼륨 변화 (−7~7)', '소리 높이', '음색', ''].map(s => el('th', { text: s, style: 'position:sticky;top:0;background:#f4f4f4' })))), tbody));
     const edit = () => {
-      if (!st.edited) { st.edited = true; slotSel.value = pickSlot(); }
-      markHeader(); slotRow.style.display = ''; updateSlot(); drawRoll();
+      if (!st.edited) { st.edited = true; if (!sfxMode) slotSel.value = pickSlot(); }
+      markHeader(); if (!sfxMode) { slotRow.style.display = ''; updateSlot(); } drawRoll();
     };
     const fade = n => (n.env & 7) * ((n.env & 8) ? 1 : -1);
     const cur = () => st.cry.channels[st.ch];
@@ -8033,16 +9611,60 @@ Object.assign(App.prototype, {
       baseSel.value = st.h.base; pitchIn.set(st.h.pitch); lenIn.set(st.h.length);
       st.ch = Math.min(st.ch, st.cry.channels.length - 1);
       chTabs(); rows(); drawRoll();
-      slotRow.style.display = st.edited ? '' : 'none';
-      if (st.edited) { slotSel.value = pickSlot(); updateSlot(); }
+      slotRow.style.display = st.edited && !sfxMode ? '' : 'none';
+      if (st.edited && !sfxMode) { slotSel.value = pickSlot(); updateSlot(); }
+      musicNote.style.display = st.cry.music ? '' : 'none';
+    };
+    const musicNote = el('div', { style: 'display:none;color:#c0392b;font-weight:bold', text: '⚠ 이 효과음은 음악 형식(팡파르·멜로디)이라 여기서는 미리듣기·편집이 안 돼요. 다른 효과음을 가져오거나 소리 파일로 새로 만들면 바꿀 수 있어요.' });
+    // 효과음 모드: 이 소리를 쓰는 기술 목록 + 기술마다 다른 효과음으로 바꾸기
+    const movesBox = el('div');
+    const showMoves = () => {
+      if (!sfxMode) return;
+      movesBox.replaceChildren();
+      const l = SU[st.mon];
+      if (!S.moves) { movesBox.append(el('div', { class: 'hint', text: '기술 애니메이션 표를 찾지 못했어요' })); return; }
+      if (!l.length) { movesBox.append(el('div', { class: 'hint', text: '이 소리를 쓰는 기술이 없어요 (메뉴·필드 등에서 나는 효과음이에요)' })); return; }
+      const seen = new Set();
+      for (const x of l) {
+        if (seen.has(x.m)) continue;
+        seen.add(x.m);
+        const s = sel(sfxOpts(), st.mon, v => {
+          for (const y of SU[st.mon].filter(y => y.m === x.m)) d[y.at] = v;
+          rom.dirty = true;
+          S.moves.byMove[x.m] = S.moves.byMove[x.m].map(y => y.sfx === st.mon ? Object.assign({}, y, { sfx: v }) : y);
+          SU = sfxUses(); showMoves();
+          this.say(rom.moveName(x.m) + ' 기술 소리를 ' + sfxDisp(v) + '(으)로 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.');
+        });
+        s.style.maxWidth = '320px';
+        movesBox.append(el('div', { class: 'bar' }, el('b', { text: pad3(x.m) + ' ' + rom.moveName(x.m), style: 'min-width:150px' }), el('span', { text: '→ 소리:' }), s,
+          el('button', { text: '▶', title: '이 기술의 첫 소리 듣기', onclick: () => { const ids = (S.moves.byMove[x.m] || []).map(y => y.sfx); const c = RomCry.decode(d, RomCry.sfxOff(d, S, ids[0] != null ? ids[0] : st.mon)); play(c, { pitch: 0, length: 0x100 }); } })));
+      }
     };
     const load = m => {
-      cursorF = 0; st.mon = m; st.h = RomCry.header(d, t, m); st.cry = RomCry.decode(d, RomCry.baseOff(d, t, st.h.base)); st.edited = false; st.ch = 0; st.sel = 0;
-      title.textContent = monLabel(m); status.textContent = ''; err.textContent = '';
-      refresh();
+      cursorF = 0; st.mon = m; st.edited = false; st.ch = 0; st.sel = 0;
+      if (sfxMode) { st.h = { base: m, pitch: 0, length: 0x100 }; st.cry = RomCry.decode(d, RomCry.sfxOff(d, S, m)); title.textContent = sfxLabel(m); }
+      else { st.h = RomCry.header(d, t, m); st.cry = RomCry.decode(d, RomCry.baseOff(d, t, st.h.base)); title.textContent = monLabel(m); }
+      status.textContent = ''; err.textContent = '';
+      refresh(); showMoves();
     };
     const apply = () => {
       try {
+        if (sfxMode) {
+          if (!st.edited) { this.okMsg(err, '바꾼 게 없어요'); return; }
+          if (st.cry.music) { this.okMsg(err, '음악 형식 효과음은 여기서 고칠 수 없어요', true); return; }
+          const len = RomCry.encode(st.cry, 0x4000).length;
+          let p = -1;
+          for (const r of rom.free) if (r[1] - r[0] >= len && Math.floor(r[0] / 0x4000) === Math.floor((r[0] + len - 1) / 0x4000)) { p = r[0]; r[0] += len; break; }
+          if (p < 0) { this.okMsg(err, '롬에 소리를 넣을 빈 공간이 부족해요', true); return; }
+          const addr = 0x4000 + p % 0x4000, e = S.tab + st.mon * 3;
+          d.set(RomCry.encode(st.cry, addr), p);
+          d[e] = Math.floor(p / 0x4000); d[e + 1] = addr & 0xFF; d[e + 2] = addr >> 8;
+          rom.dirty = true;
+          load(st.mon);
+          this.okMsg(err, '적용했어요');
+          this.say(sfxDisp(st.mon) + ' 효과음을 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.');
+          return;
+        }
         const h = Object.assign({}, st.h);
         if (st.edited) {
           const slot = +slotSel.value, len = RomCry.encode(st.cry, 0x4000).length;
@@ -8067,26 +9689,38 @@ Object.assign(App.prototype, {
       st.cry = cry; st.h.pitch = 0; st.h.length = 0x100; st.edited = true; st.ch = 0; st.sel = 0; markHeader();
       refresh(); play(st.cry, st.h);
     });
-    const list = listPanel(this.monOptions(false).filter(o => o[0] > 0).map(([v, s]) => ({ value: v, label: s })), m => {
+    const firstSfx = sfxMode ? Math.max(0, SU.findIndex(u => u.length)) : 25;
+    const items = sfxMode
+      ? Array.from({ length: S.count }, (_, i) => ({ value: i, label: sfxLabel(i) + usedBy(i), group: SU[i].length ? '⚔ 기술 소리' : '🔔 그 밖의 효과음' }))
+        .sort((a, b) => (a.group[0] === '⚔' ? 0 : 1) - (b.group[0] === '⚔' ? 0 : 1) || a.value - b.value)
+      : this.monOptions(false).filter(o => o[0] > 0).map(([v, s]) => ({ value: v, label: s }));
+    const list = listPanel(items, m => {
       if (m === st.mon) return;
       if (status.textContent && !confirm('적용하지 않은 변경이 있어요. 버릴까요?')) return;
       load(m); play(st.cry, st.h);
-    }, '포켓몬 찾기', 25);
+    }, sfxMode ? '기술·소리 찾기' : '포켓몬 찾기', firstSfx);
     const body = el('div', null,
       el('div', { class: 'bar' }, title,
         el('button', { text: '▶ 들어보기', style: 'font-weight:bold;background:#dcf5dc', onclick: () => play(st.cry, st.h, true) }),
         el('button', { text: '■ 정지', style: 'font-weight:bold;background:#ffdcdc', onclick: () => pause() }),
         el('button', { text: '⏮ 처음으로', title: '재생 줄을 맨 앞으로 (Home 키)', onclick: () => seekF(0) }),
-        el('button', { text: '▶ 원래 소리', onclick: () => { const h = RomCry.header(d, t, st.mon); play(RomCry.decode(d, RomCry.baseOff(d, t, h.base)), h); } }),
+        el('button', { text: '▶ 원래 소리', onclick: () => {
+          if (sfxMode) { play(RomCry.decode(d, RomCry.sfxOff(d, S, st.mon)), st.h); return; }
+          const h = RomCry.header(d, t, st.mon); play(RomCry.decode(d, RomCry.baseOff(d, t, h.base)), h);
+        } }),
         el('button', { text: '↩ 되돌리기', onclick: () => load(st.mon) }), status),
       el('div', { class: 'bar' },
-        el('button', { text: '🎧 소리 파일로 울음소리 만들기 🌟', style: 'font-weight:bold;background:#dcf0ff', onclick: importAudio }), copySel),
-      el('fieldset', null, el('legend', { text: '이 포켓몬의 울음소리' }),
-        el('div', { class: 'bar' }, el('span', { text: '기본 울음소리:' }), baseSel),
-        el('div', { class: 'bar' }, el('span', { text: '음높이:' }), pitchIn.n, pitchIn.r, el('span', { class: 'hint', text: '0 = 그대로, 클수록 높은 소리' })),
-        el('div', { class: 'bar' }, el('span', { text: '길이:' }), lenIn.n, lenIn.r, el('span', { class: 'hint', text: '256 = 보통, 클수록 느리고 길게' })),
-        el('div', { class: 'hint', text: '2세대 포켓몬 울음소리는 기본 울음소리 68개 중 하나에 음높이·길이만 바꿔서 만들어요. 위 세 가지만 바꾸면 다른 포켓몬에는 영향이 없어요.' })),
-      el('fieldset', null, el('legend', { text: '기본 울음소리 음표 (고치면 새 소리로 넣어요)' }),
+        el('button', { text: sfxMode ? '🎧 소리 파일로 효과음 만들기 🌟' : '🎧 소리 파일로 울음소리 만들기 🌟', style: 'font-weight:bold;background:#dcf0ff', onclick: importAudio }), copySel),
+      musicNote,
+      sfxMode
+        ? el('fieldset', null, el('legend', { text: '이 소리를 쓰는 기술' }), movesBox,
+          el('div', { class: 'hint', text: '여러 기술이 같은 효과음을 같이 쓸 수 있어요. 이 소리를 고치면 위 기술들 소리가 모두 바뀌어요. 기술 하나만 다른 소리로 바꾸려면 [→ 소리]에서 다른 효과음을 고르세요.' }))
+        : el('fieldset', null, el('legend', { text: '이 포켓몬의 울음소리' }),
+          el('div', { class: 'bar' }, el('span', { text: '기본 울음소리:' }), baseSel),
+          el('div', { class: 'bar' }, el('span', { text: '음높이:' }), pitchIn.n, pitchIn.r, el('span', { class: 'hint', text: '0 = 그대로, 클수록 높은 소리' })),
+          el('div', { class: 'bar' }, el('span', { text: '길이:' }), lenIn.n, lenIn.r, el('span', { class: 'hint', text: '256 = 보통, 클수록 느리고 길게' })),
+          el('div', { class: 'hint', text: '2세대 포켓몬 울음소리는 기본 울음소리 68개 중 하나에 음높이·길이만 바꿔서 만들어요. 위 세 가지만 바꾸면 다른 포켓몬에는 영향이 없어요.' })),
+      el('fieldset', null, el('legend', { text: sfxMode ? '효과음 음표 (고치면 새 소리로 넣어요)' : '기본 울음소리 음표 (고치면 새 소리로 넣어요)' }),
         el('div', { class: 'hint', text: '🎼 피아노 롤 — 막대를 위아래로 끌면 음 높이 (Shift = 더 잘게) · 오른쪽 끝을 끌면 길이 · 마우스 휠 = 볼륨 · 빈 곳을 두 번 누르면 음 넣기 · 파랑·초록 = 사각파, 빨강 = 노이즈 · 빈 곳 클릭 = 재생 줄 옮기기 · 스페이스바 = 재생/멈춤 · Home = 처음으로' }), rollBox, rollInfo,
         chBar, grid, tools,
         el('div', { class: 'bar', style: 'margin-top:4px' }, el('b', { style: 'color:navy', text: '🎹 건반을 누르면:' }), modeSel,
@@ -8095,8 +9729,8 @@ Object.assign(App.prototype, {
         el('div', { class: 'hint', text: '표에서 음을 누르면 골라져요 (↑↓ 키로 옮기기 · Delete 키로 지우기) · 길이 1프레임 = 1/60초 · 볼륨 변화: −면 점점 작게, +면 점점 크게 (숫자가 작을수록 빠르게)' }), slotRow),
       el('div', { class: 'bar' }, el('button', { class: 'apply', text: '적용', onclick: apply }), err),
       el('div', { class: 'hint', text: '적용한 뒤 메인 화면에서 [저장하기]를 눌러야 롬 파일에 기록돼요' }));
-    load(25);
-    this.dialog('포켓몬 울음소리 에디터', () => el('div', { class: 'side', style: 'grid-template-columns:200px minmax(0,1fr)' }, list, body), () => { Player.stop(); document.removeEventListener('keydown', onKey, true); alive = false; }, false, true);
+    load(firstSfx);
+    this.dialog(sfxMode ? '기술 사운드 에디터' : '포켓몬 울음소리 에디터', () => el('div', { class: 'side', style: 'grid-template-columns:200px minmax(0,1fr)' }, list, body), () => { Player.stop(); document.removeEventListener('keydown', onKey, true); alive = false; }, false, true);
     setTimeout(drawRoll, 0);
     // 재생 위치 선 움직이기 (1프레임 = 1/60초)
     let alive = true, shown = false;
@@ -8154,6 +9788,343 @@ Object.assign(App.prototype, {
         el('div', { class: 'bar' }, el('span', { text: '두 번째 사각파 세기 %:' }), sq2In, el('span', { text: '노이즈 세기 %:' }), noiseIn)),
       el('div', { class: 'bar', style: 'margin-top:10px' }, convBtn, previewBtn), result,
       el('div', { class: 'bar', style: 'justify-content:space-between' }, el('button', { text: '닫기', onclick: () => close() }), importBtn)), () => Player.stop(), true);
+  }
+});
+
+// ===== 99-movegfx.js
+// ================================================================ 기술 그림 (배틀 애니메이션에 나오는 그림 묶음)
+// AnimObjGFX 표: 한 줄 4바이트 = 타일 수 · 뱅크 · 주소 (LZ 압축 2bpp). 기술 애니메이션이 anim_1gfx~anim_5gfx 로 불러씀
+const ANIM_GFX_NAMES = ['', 'Hit', 'Cut', 'Fire', 'Water', 'Lightning', 'Plant', 'Smoke', 'Explosion', 'Rocks', 'Ice', 'PokeBall', 'Poison', 'Bubble', 'Noise', 'Powder', 'Beam',
+  'Speed', 'Charge', 'Wind', 'Whip', 'Egg', 'Rope', 'Psychic', 'Reflect', 'Status', 'Sand', 'Web', 'Haze', 'Horn', 'Flower', 'Misc', 'SkyAttack', 'Globe', 'Shapes', 'Objects',
+  'Shine', 'Angels', 'Wave', 'Aeroblast'];
+const ANIM_GFX_KO = ['', '타격', '베기', '불꽃', '물', '번개', '풀', '연기', '폭발', '바위', '얼음', '몬스터볼', '독', '거품', '소리', '가루', '광선', '빠르기', '충전', '바람', '채찍',
+  '알', '줄', '사이코', '리플렉터', '상태 이상', '모래', '거미줄', '안개', '뿔', '꽃', '여러 가지', '불새', '구슬', '도형', '물건', '반짝임', '천사', '파동', '에어로블라스트'];
+const ANIM_GRAY = [[255, 255, 255], [176, 176, 176], [96, 96, 96], [0, 0, 0]];
+mixin(Rom.prototype, {
+  loadAnimGfx() {
+    if (this._agfx !== undefined) return this._agfx;
+    this._agfx = null;
+    const d = this.data;
+    // 1번 타격 21칸 · 2번 베기 6칸 · 3번 불꽃 6칸 · 4번 물 20칸 · 5번 번개 26칸
+    const p = this.findPattern([0x15, -1, -1, -1, 0x06, -1, -1, -1, 0x06, -1, -1, -1, 0x14, -1, -1, -1, 0x1A], 0x4000, d.length);
+    if (p < 0) return null;
+    const tab = p - 4, count = ANIM_GFX_NAMES.length;
+    for (let i = 1; i < count; i++) { const a = this.w(tab + i * 4 + 2); if (a < 0x4000 || a >= 0x8000) return null; }
+    const anims = RomCry.moveAnims(d), byGfx = Array.from({ length: count }, () => []), byMove = [];
+    if (anims) {
+      const bank = Math.floor(anims.tab / 0x4000);
+      for (let m = 1; m <= 251; m++) {
+        const a = this.w(anims.tab + m * 2);
+        byMove[m] = a >= 0x4000 && a < 0x8000 ? RomCry.animGfx(d, bank, a).filter(g => g > 0 && g < count) : [];
+        for (const g of byMove[m]) byGfx[g].push(m);
+      }
+    }
+    // 조립 정보: 물체 표(6바이트) → 프레임 묶음 → 조각 배치(OAM). 그림 묶음은 8×8 조각이라 이걸로 맞춰 봐야 알아볼 수 있음
+    //  물체 1~3 = 큰·보통·작은 타격 (BATTLE_ANIM_FRAMESET 0~2, 그림 1번) / 프레임 묶음 0~2 = oamframe 0~2, 6 / oamdelete
+    const obj = this.findPattern([0x01, 0xFF, 0x00, 0x00, -1, 0x01, 0x01, 0xFF, 0x01, 0x00, -1, 0x01, 0x01, 0xFF, 0x02, 0x00, -1, 0x01], 0x4000, d.length);
+    const fs0 = this.findPattern([0x00, 0x06, 0xFC, 0x01, 0x06, 0xFC, 0x02, 0x06, 0xFC], 0x4000, d.length);
+    let asm = null;
+    if (obj >= 0 && fs0 >= 0) {
+      const bank = Math.floor(fs0 / 0x4000), a = 0x4000 + fs0 % 0x4000;
+      let fst = -1;
+      for (let i = bank * 0x4000; i < bank * 0x4000 + 0x3FFA; i++) if (this.w(i) === a && this.w(i + 2) === a + 3 && this.w(i + 4) === a + 6) { fst = i; break; }
+      // 조각 배치 표: 0번 = 조각 16개, 2번 = 8번 칸부터 조각 4개
+      let oam = -1;
+      for (let s = bank * 0x4000; s < bank * 0x4000 + 0x3FF0; s++) if (d[s] === 0 && d[s + 1] === 0x10 && d[s + 8] === 0x08 && d[s + 9] === 0x04 && this.w(s + 2) >= 0x4000 && this.w(s + 2) < 0x8000) { oam = s; break; }
+      if (fst >= 0 && oam >= 0) {
+        const nfs = Math.max(1, (this.w(fst) - 0x4000 - fst % 0x4000) / 2), objs = [];
+        for (let i = 0; i < 256; i++) { const e = obj + i * 6; if (d[e + 2] >= nfs || d[e + 5] >= count) break; objs.push({ fs: d[e + 2], gfx: d[e + 5], pal: d[e + 4] }); }
+        asm = { bank, fst, oam, objs, objTab: obj };
+      }
+    }
+    // 기술 그림 색 6묶음 (회색·노랑·빨강·초록·파랑·갈색 = 물체 색 번호 2~7): ld hl, BattleObjectPals / ld de, wOBPals + 2 팔레트 / ld bc, 6 팔레트 / call CopyBytes
+    let pals = -1;
+    for (let q = 0; ; q++) {
+      q = this.findPattern([0x21, -1, -1, 0x11, -1, -1, 0x01, 0x30, 0x00, 0xCD], q, d.length);
+      if (q < 0) break;
+      const o = this.off(Math.floor(q / 0x4000), this.w(q + 1));
+      if (q >= 0x4000 && this.w(q + 1) >= 0x4000 && d[o] === 0xFF && d[o + 1] === 0x7F && d[o + 8] === 0xFF && d[o + 9] === 0x7F) { pals = o; break; }
+    }
+    return this._agfx = { tab, count, byGfx, byMove, found: !!anims, asm, pals };
+  },
+  // 물체 색 번호 → [rgb×4] (2~7 = 기술 그림 색, 0·1 = 배틀 중인 포켓몬 색이라 회색으로 보여줌)
+  animPal(p) {
+    const A = this.loadAnimGfx();
+    if (!A || A.pals < 0 || p < 2 || p > 7) return ANIM_GRAY;
+    const o = A.pals + (p - 2) * 8;
+    return [0, 1, 2, 3].map(i => C555(this.w(o + i * 2)));
+  },
+  setAnimPal(p, cols) {
+    const o = this.loadAnimGfx().pals + (p - 2) * 8;
+    for (let i = 1; i < 4; i++) { const v = TO555(cols[i]); this.data[o + i * 2] = v & 0xFF; this.data[o + i * 2 + 1] = v >> 8; }
+    this.dirty = true;
+  },
+  // 그림 묶음 g 를 쓰는 물체들의 색 번호들 (많이 쓰는 순)
+  animGfxPals(g) {
+    const m = this.loadAnimGfx().asm, cnt = new Map();
+    if (m) for (const o of m.objs) if (o.gfx === g) cnt.set(o.pal, (cnt.get(o.pal) || 0) + 1);
+    return [...cnt.keys()].sort((a, b) => cnt.get(b) - cnt.get(a));
+  },
+  // 물체 id 와 똑같은데 색 묶음만 pal 인 물체 번호 (없으면 안 쓰는 물체 칸에 복사해서 만듦). 칸이 없으면 -1
+  // 안 쓰는 칸 = 어떤 애니메이션 스크립트에도 안 나오는 물체 (미완성·안 쓰는 물체부터)
+  animObjWithPal(id, pal, scripts) {
+    const m = this.loadAnimGfx().asm, d = this.data, at = i => m.objTab + i * 6;
+    const same = i => { for (let k = 0; k < 6; k++) if (k !== 4 && d[at(i) + k] !== d[at(id) + k]) return false; return d[at(i) + 4] === pal; };
+    for (let i = 0; i < m.objs.length; i++) if (same(i)) return i;
+    const used = new Set();
+    for (const s of scripts) for (const c of s) if (c.op === 0xD0) used.add(c.args[0]);
+    const names = typeof ANIM_OBJ_NAMES !== 'undefined' ? ANIM_OBJ_NAMES : [];
+    const free = [...Array(m.objs.length).keys()].filter(i => !used.has(i) && i !== id && !/FEET|HEAD/.test(names[i] || ''))
+      .sort((a, b) => (/BETA|UNUSED|^B0$/.test(names[b] || '') ? 1 : 0) - (/BETA|UNUSED|^B0$/.test(names[a] || '') ? 1 : 0));
+    if (!free.length) return -1;
+    const slot = free[0];
+    for (let k = 0; k < 6; k++) d[at(slot) + k] = d[at(id) + k];
+    d[at(slot) + 4] = pal;
+    m.objs[slot] = { fs: d[at(slot) + 2], gfx: d[at(slot) + 5], pal };
+    this.dirty = true;
+    return slot;
+  },
+  // 색 번호 p 를 쓰는 그림 묶음들
+  animPalUsers(p) {
+    const m = this.loadAnimGfx().asm, s = new Set();
+    if (m) for (const o of m.objs) if (o.pal === p) s.add(o.gfx);
+    return [...s];
+  },
+  // 그림 묶음 g 로 게임이 조립하는 모양들 [{ set, flags }] (프레임 묶음마다 첫 장면, 같은 모양은 한 번만)
+  animShapes(g) {
+    const A = this.loadAnimGfx(), m = A && A.asm;
+    if (!m) return [];
+    const d = this.data, out = [], seen = new Set();
+    for (const o of m.objs) {
+      if (o.gfx !== g) continue;
+      let p = this.off(m.bank, this.w(m.fst + o.fs * 2));
+      for (let k = 0; k < 40; k++) {
+        const c = d[p];
+        if (c === 0xFD) { p += 2; continue; }
+        if (c >= 0xFC) break;
+        const key = c + ':' + (d[p + 1] & 0xC0) + ':' + o.pal;
+        if (!seen.has(key)) { seen.add(key); out.push({ set: c, flags: d[p + 1] & 0xC0, pal: o.pal }); }
+        break;
+      }
+    }
+    return out;
+  },
+  // 그림 묶음 g 를 쓰는 물체들의 움직임 (프레임 묶음마다 한 번) → [[{ set, flags, dur } | { wait }], …] + 끝 방식
+  // 프레임 명령: oamframe = 조각 배치 번호, 길이(아래 6비트)|뒤집기(위 2비트) · $FD n = 기다리기 · $FE = 처음부터 · $FC = 지우기 · $FF = 끝
+  animMotions(g) {
+    const A = this.loadAnimGfx(), m = A && A.asm;
+    if (!m) return [];
+    const d = this.data, out = [], seen = new Set();
+    for (const o of m.objs) {
+      if (o.gfx !== g || seen.has(o.fs + ':' + o.pal)) continue;
+      seen.add(o.fs + ':' + o.pal);
+      let p = this.off(m.bank, this.w(m.fst + o.fs * 2));
+      const frames = [];
+      let end = 'delete';
+      for (let k = 0; k < 64; k++) {
+        const c = d[p];
+        if (c === 0xFD) { frames.push({ wait: Math.max(1, d[p + 1]) }); p += 2; continue; }
+        if (c === 0xFE) { end = 'loop'; break; }
+        if (c === 0xFF) { end = 'hold'; break; }
+        if (c === 0xFC) break;
+        frames.push({ set: c, flags: d[p + 1] & 0xC0, dur: Math.max(1, d[p + 1] & 0x3F) });
+        p += 2;
+      }
+      if (frames.some(f => f.set != null)) out.push({ frames, end, pal: o.pal });
+    }
+    return out;
+  },
+  // 조각 배치 하나 → 조각들 [{ x, y, t, a }] (가운데 기준 좌표)
+  animSprites(shape) {
+    const m = this.loadAnimGfx().asm, d = this.data, e = m.oam + shape.set * 4, vt = d[e], cnt = d[e + 1], p = this.off(m.bank, this.w(e + 2));
+    const s8 = v => v >= 128 ? v - 256 : v, spr = [];
+    for (let i = 0; i < cnt && i < 64; i++) {
+      let y = s8(d[p + i * 4]), x = s8(d[p + i * 4 + 1]), a = d[p + i * 4 + 3];
+      if (shape.flags & 0x40) { x = -x - 8; a ^= 0x20; }
+      if (shape.flags & 0x80) { y = -y - 8; a ^= 0x40; }
+      spr.push({ x, y, t: vt + d[p + i * 4 + 2], a });
+    }
+    return spr;
+  },
+  // 조각들을 (x0, y0) 기준 w×h 그림에 그리기
+  animComposite(pic, n, spr, x0, y0, w, h) {
+    const out = newPic(w, h);
+    for (const s of spr) {
+      if (s.t >= n) continue;
+      const tw = pic.w / 8, tx = (s.t % tw) * 8, ty = Math.floor(s.t / tw) * 8;
+      for (let yy = 0; yy < 8; yy++) for (let xx = 0; xx < 8; xx++) {
+        const v = pic.px[(ty + yy) * pic.w + tx + xx];
+        if (!v) continue;
+        const px = s.a & 0x20 ? 7 - xx : xx, py = s.a & 0x40 ? 7 - yy : yy, X = s.x - x0 + px, Y = s.y - y0 + py;
+        if (X >= 0 && Y >= 0 && X < w && Y < h) out.px[Y * w + X] = v;
+      }
+    }
+    return out;
+  },
+  // 조립한 모양 → canvas (pic: 그림 묶음 그림, 가로 16칸씩)
+  animShapeCanvas(pic, n, shape, pal, zoom) {
+    const spr = this.animSprites(shape);
+    if (!spr.length) return null;
+    const x0 = Math.min(...spr.map(s => s.x)), y0 = Math.min(...spr.map(s => s.y));
+    const w = Math.max(...spr.map(s => s.x)) + 8 - x0, h = Math.max(...spr.map(s => s.y)) + 8 - y0;
+    if (w > 160 || h > 144) return null;
+    const out = newPic(w, h);
+    for (const s of spr) {
+      if (s.t >= n) continue;
+      const tw = pic.w / 8, tx = (s.t % tw) * 8, ty = Math.floor(s.t / tw) * 8;
+      for (let yy = 0; yy < 8; yy++) for (let xx = 0; xx < 8; xx++) {
+        const v = pic.px[(ty + yy) * pic.w + tx + xx];
+        if (!v) continue;
+        const px = s.a & 0x20 ? 7 - xx : xx, py = s.a & 0x40 ? 7 - yy : yy;
+        out.px[(s.y - y0 + py) * w + s.x - x0 + px] = v;
+      }
+    }
+    return picCanvas(out, pal, true, zoom);
+  },
+  animGfxTiles(g) { return this.data[this.loadAnimGfx().tab + g * 4]; },
+  animGfxOff(g) { const e = this.loadAnimGfx().tab + g * 4; return this.off(this.data[e + 1], this.w(e + 2)); },
+  // 그림 묶음 → 그림 (가로 16칸씩)
+  readAnimGfx(g) {
+    const n = this.animGfxTiles(g), raw = Array.from(this.gfx.decompress(this.animGfxOff(g))).slice(0, n * 16);
+    const tw = Math.min(16, n), th = Math.ceil(n / tw);
+    while (raw.length < tw * th * 16) raw.push(0);
+    return { pic: tilesToPic(raw, tw, th, false), n };
+  },
+  writeAnimGfx(g, pic, n) {
+    const comp = Lz.compress(picToTiles(pic, false).slice(0, n * 16));
+    const p = this.allocPic(comp.length);
+    if (p < 0) return '롬에 그림을 넣을 빈 공간이 부족해요';
+    this.data.set(comp, p);
+    const e = this.loadAnimGfx().tab + g * 4, addr = 0x4000 + p % 0x4000;
+    this.data[e + 1] = Math.floor(p / 0x4000); this.data[e + 2] = addr & 0xFF; this.data[e + 3] = addr >> 8;
+    this.gfx.gfxCache.delete(p);
+    this.dirty = true;
+    return null;
+  }
+});
+
+Object.assign(App.prototype, {
+  // 기술 편집 창 아래쪽: 이 기술 애니메이션에 나오는 그림들
+  moveGfxSection(mv) {
+    const rom = this.rom, A = rom.loadAnimGfx();
+    const fs = el('fieldset', { style: 'margin-top:12px' }, el('legend', { text: '기술 그림 (배틀 애니메이션)' }),
+      el('div', { class: 'bar' }, el('button', { text: '🎬 이 기술 애니메이션 편집기로 열기 (실제 게임처럼 재생)', style: 'font-weight:bold;background:#dcf0ff', onclick: () => this.battleAnimEditor(mv) })));
+    if (!A || !A.found) { fs.append(el('div', { class: 'hint', text: '이 롬에서 기술 애니메이션 그림을 찾지 못했어요' })); return fs; }
+    const ko = rom.cs.kind === 'ko' || rom.cs.kind === 'koen';
+    const gName = g => '#' + String(g).padStart(2, '0') + ' ' + (ko ? ANIM_GFX_KO[g] : ANIM_GFX_NAMES[g]);
+    const gl = A.byMove[mv] || [];
+    if (!gl.length) { fs.append(el('div', { class: 'hint', text: '이 기술 애니메이션은 따로 불러오는 그림이 없어요 (화면 흔들기·색 바꾸기만 써요)' })); return fs; }
+    // 움직임 미리보기: 프레임마다 미리 그려 두고 시간에 맞춰 바꿔 보여줌 (1 = 1/60초)
+    const speedSel = sel([[1, '보통 속도'], [0.5, '느리게 (½)'], [0.25, '아주 느리게 (¼)']], 1);
+    const players = [];
+    const motionCanvas = (pic, n, mo) => {
+      const Z = 3, frames = mo.frames.map(f => f.set != null ? { spr: rom.animSprites(f), dur: f.dur } : { spr: null, dur: f.wait });
+      const all = frames.flatMap(f => f.spr || []);
+      if (!all.length) return null;
+      const x0 = Math.min(...all.map(s => s.x)), y0 = Math.min(...all.map(s => s.y));
+      const w = Math.max(...all.map(s => s.x)) + 8 - x0, h = Math.max(...all.map(s => s.y)) + 8 - y0;
+      if (w > 160 || h > 144) return null;
+      const pal = rom.animPal(mo.pal);
+      const seq = frames.map(f => ({ img: f.spr ? picCanvas(rom.animComposite(pic, n, f.spr, x0, y0, w, h), pal, true, Z) : null, dur: f.dur }));
+      if (mo.end === 'delete') seq.push({ img: null, dur: 24 });
+      if (mo.end === 'hold') seq.push({ img: seq.filter(s => s.img).pop().img, dur: 40 });
+      const total = seq.reduce((a, s) => a + s.dur, 0);
+      const cv = el('canvas', { width: w * Z, height: h * Z, style: 'background:repeating-conic-gradient(#e1e1e1 0% 25%, #bebebe 0% 50%) 0 0/8px 8px;border:1px solid #ccc' });
+      const g2 = cv.getContext('2d');
+      let last = -1;
+      players.push(Object.assign(t => {
+        let f = Math.floor(t * 60 * +speedSel.value) % total, i = 0;
+        while (f >= seq[i].dur) { f -= seq[i].dur; i++; }
+        if (i === last) return;
+        last = i; g2.clearRect(0, 0, cv.width, cv.height);
+        if (seq[i].img) g2.drawImage(seq[i].img, 0, 0);
+      }, { cv }));
+      return cv;
+    };
+    const t0 = performance.now();
+    const tick = () => { if (!fs.isConnected && players.started) return; if (fs.isConnected) players.started = true; const t = (performance.now() - t0) / 1000; for (const p of players) if (p.cv.isConnected) p(t); requestAnimationFrame(tick); };
+    requestAnimationFrame(tick);
+    fs.append(el('div', { class: 'hint', text: '그림 묶음은 여러 기술이 같이 써요. 바꾸면 같은 그림을 쓰는 기술이 모두 바뀌어요. 1번 색은 투명이고, 나머지 3색은 색 묶음(회색·노랑·빨강·초록·파랑·갈색)에서 정해져요.' }));
+    // 색 묶음 (물체 색 번호 2~7). 0·1 은 배틀 중인 포켓몬 색
+    const PAL_NAME = ko ? { 0: '상대 포켓몬 색', 1: '내 포켓몬 색', 2: '회색', 3: '노랑', 4: '빨강', 5: '초록', 6: '파랑', 7: '갈색' }
+      : { 0: 'Enemy Pokémon colors', 1: 'Your Pokémon colors', 2: 'Gray', 3: 'Yellow', 4: 'Red', 5: 'Green', 6: 'Blue', 7: 'Brown' };
+    const palEditable = p => A.pals >= 0 && p >= 2 && p <= 7;
+    const paints = [];
+    for (const g of gl) {
+      const row = el('div', { style: 'display:flex;flex-direction:column;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid var(--line)' });
+      const msg = el('div');
+      const CHECK = 'background:repeating-conic-gradient(#e1e1e1 0% 25%, #bebebe 0% 50%) 0 0/8px 8px;image-rendering:pixelated;max-width:none';
+      const usedPals = rom.animGfxPals(g);
+      let curPal = usedPals.length ? usedPals[0] : 2;
+      const paint = () => {
+        const PAL = rom.animPal(curPal);
+        const { pic, n } = rom.readAnimGfx(g), Z = 3, c = picCanvas(pic, PAL, true, Z);
+        // 8×8 조각 경계선
+        const gx = c.getContext('2d'); gx.fillStyle = 'rgba(47,111,236,.35)';
+        for (let x = 8; x < pic.w; x += 8) gx.fillRect(x * Z, 0, 1, c.height);
+        for (let y = 8; y < pic.h; y += 8) gx.fillRect(0, y * Z, c.width, 1);
+        c.style.cssText = CHECK + ';border:1px solid #888';
+        // 게임이 조각을 붙이고 뒤집어서 만드는 실제 모양
+        const shapes = el('div', { class: 'bar', style: 'align-items:flex-end;gap:6px;margin-top:6px' });
+        for (const s of rom.animShapes(g)) { const sc = rom.animShapeCanvas(pic, n, s, rom.animPal(s.pal), 3); if (sc) { sc.style.cssText = CHECK + ';border:1px solid #ccc'; shapes.append(sc); } }
+        // 움직임 미리보기: 게임의 프레임 순서·길이 그대로 계속 반복 재생
+        const motions = el('div', { class: 'bar', style: 'align-items:flex-end;gap:6px;margin-top:6px' });
+        for (const mo of rom.animMotions(g)) { const mc = motionCanvas(pic, n, mo); if (mc) motions.append(mc); }
+        const sheet = el('div', null, el('div', { class: 'hint', text: '저장된 조각 (8×8 칸 ' + n + '개)' }), c,
+          shapes.children.length ? el('div', { class: 'hint', style: 'margin-top:6px', text: '게임에서 조각을 붙이고 뒤집어서 만드는 모양' }) : null, shapes.children.length ? shapes : null,
+          motions.children.length ? el('div', { class: 'bar', style: 'margin-top:6px' }, el('span', { class: 'hint', text: '▶ 움직임 미리보기 (게임 프레임 그대로 반복)' }), speedSel) : null, motions.children.length ? motions : null);
+        const others = A.byGfx[g].filter(m => m !== mv);
+        // 색: 이 그림이 쓰는 색 묶음 고르기 + 그 색 묶음의 3색 바꾸기 (같은 색 묶음을 쓰는 다른 그림도 같이 바뀜)
+        const palSel = sel((usedPals.length ? usedPals : [2]).map(p => [p, PAL_NAME[p] || ('색 ' + p)]), curPal, v => { curPal = v; paint(); });
+        const sw = [1, 2, 3].map(k => {
+          const i = el('input', { type: 'color', value: rgbHex(PAL[k]), style: 'width:40px;height:26px' });
+          i.disabled = !palEditable(curPal);
+          i.addEventListener('change', () => {
+            const cols = rom.animPal(curPal).map(c => c.slice()); cols[k] = SNAP(hexRgb(i.value));
+            rom.setAnimPal(curPal, cols);
+            for (const p of paints) p();
+            this.say('기술 그림 색 묶음 [' + PAL_NAME[curPal] + ']을(를) 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.');
+          });
+          return i;
+        });
+        const palUsers = rom.animPalUsers(curPal).filter(x => x !== g);
+        const palBar = el('div', null,
+          el('div', { class: 'bar' }, el('span', { text: '색 묶음:' }), palSel, el('span', { text: '밝은색' }), sw[0], el('span', { text: '중간색' }), sw[1], el('span', { text: '어두운색' }), sw[2]),
+          el('div', { class: 'hint', style: 'max-width:520px', text: !palEditable(curPal) ? '이 색은 배틀 중인 포켓몬 색을 그대로 써서 여기서는 못 바꿔요.'
+            : (palUsers.length ? '이 색 묶음을 같이 쓰는 그림 ' + palUsers.length + '개: ' + palUsers.map(x => ko ? ANIM_GFX_KO[x] : ANIM_GFX_NAMES[x]).join(', ') + ' — 색을 바꾸면 같이 바뀌어요.' : '이 그림만 쓰는 색 묶음이에요.')
+              + ' 💡 이 기술만 다른 색으로 하려면 위 [🎬 애니메이션 편집기]에서 물체를 고르고 "색 묶음"을 바꾸세요.' }));
+        row.replaceChildren(sheet, el('div', null,
+          el('b', { text: gName(g) + '  (' + n + '칸 · ' + pic.w + '×' + pic.h + ' 픽셀)' }),
+          el('div', { class: 'hint', style: 'max-width:420px', text: others.length ? '같이 쓰는 기술 ' + others.length + '개: ' + others.slice(0, 12).map(m => rom.moveName(m)).join(', ') + (others.length > 12 ? ' …' : '') : '이 기술만 쓰는 그림이에요' }),
+          palBar,
+          el('div', { class: 'bar' },
+            el('button', { text: '도트로 그리기…', style: 'background:#c8e6ff', onclick: () => edit(rom.readAnimGfx(g)) }),
+            el('button', { text: '그림 파일 불러오기…', onclick: () => importFile(rom.readAnimGfx(g)) }),
+            el('button', { text: 'PNG로 저장', onclick: () => downloadCanvas(picCanvas(pic, PAL, true), 'anim_' + ANIM_GFX_NAMES[g] + '.png') })), msg));
+      };
+      paints.push(paint);
+      const save = (pic, n) => {
+        const e = rom.writeAnimGfx(g, pic, n);
+        if (e) { this.okMsg(msg, e, true); return; }
+        paint(); this.okMsg(msg, '적용했어요');
+        this.say('기술 그림 ' + gName(g) + '을(를) 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.');
+      };
+      const edit = ({ pic, n }) => { const ok = palEditable(curPal); this.pixelEditor({ title: gName(g) + ' · ' + PAL_NAME[curPal], pic, pal: rom.animPal(curPal), editable: [false, ok, ok, ok], transparent0: true,
+        note: pic.w + '×' + pic.h + ' 픽셀 (8×8 칸 ' + n + '개, 가로 16칸씩). 1번 = 투명, 2~4번 = 밝은색·중간색·어두운색' + (ok ? ' (색을 바꾸면 [' + PAL_NAME[curPal] + '] 색 묶음을 쓰는 그림이 모두 바뀌어요)' : '') + '. 숫자키 1~4 = 색 고르기',
+        onOk: (p, pl, palChanged) => { if (palChanged && ok) { rom.setAnimPal(curPal, pl); for (const q of paints) q(); } save(p, n); } }); };
+      const importFile = async ({ pic, n }) => {
+        let src;
+        try { src = await pickImageFile(); } catch (e) { alert('그림을 열 수 없어요: ' + e.message); return; }
+        if (!src) return;
+        if (src.w !== pic.w || src.h !== pic.h) alert('그림 크기를 ' + pic.w + '×' + pic.h + ' 픽셀로 맞춰서 넣어요 (PNG로 저장한 그림을 고쳐서 넣으면 제일 좋아요).');
+        // 지금 색 묶음에서 가장 가까운 색 고르기 (투명한 곳 = 1번)
+        const gray = picFromImage(src, pic.w, pic.h, rom.animPal(curPal), true);
+        save(gray, n);
+      };
+      paint();
+      fs.append(row);
+    }
+    return fs;
   }
 });
 
@@ -8633,6 +10604,8 @@ Object.assign(App.prototype, {
 // 금·은은 게임 시작(오박사 이야기)과 명예의 전당에서 주인공 그림으로 트레이너 직업 '칼(CAL)' 의 그림을 씀.
 // 트레이너 카드의 주인공 그림은 따로 있는 5×7 칸 그림 (압축 안 함)
 const CAL_CLASS = 0x0C;
+// 배틀 때 주인공 뒷모습 (ChrisBackpic, 6×6 칸 압축 그림)
+const BACK_PIC = 0x100;
 mixin(Rom.prototype, {
   loadTrainerPics() {
     if (this._tpic !== undefined) return this._tpic;
@@ -8652,6 +10625,18 @@ mixin(Rom.prototype, {
     // 트레이너 카드: ld hl, ChrisPicAndTrainerCardGFX / ld de, vTiles2 / ld bc, (35 + 6) tiles / ld a, BANK
     const c = this.findPattern([0x21, -1, -1, 0x11, 0x00, 0x90, 0x01, 0x90, 0x02, 0x3E, -1, 0xCD], 0x4000, d.length);
     if (c >= 0) t.card = this.off(d[c + 10], this.w(c + 1));
+    // 배틀 뒷모습: ld hl, ChrisBackpic / ld a, [wBattleType] / cp BATTLETYPE_TUTORIAL / jr nz / ld hl, DudeBackpic / ld de, vTiles2 tile $31 / ld b, BANK / ld c, 7*7
+    // (튜토리얼 배틀의 아저씨 뒷모습과 뱅크 번호를 같이 씀). 다른 곳(명예의 전당 등)에도 같은 그림을 부르는 코드가 있음
+    const b = this.findPattern([0x21, -1, -1, 0xFA, -1, -1, 0xFE, 0x03, 0x20, 0x03, 0x21, -1, -1, 0x11, 0x10, 0x93, 0x06, -1, 0x0E, 0x31], 0x4000, d.length);
+    if (b >= 0) {
+      const addr = this.w(b + 1), bank = d[b + 17], others = [];
+      for (let q = 0x4000; ; q++) {
+        q = this.findPattern([0x21, addr & 0xFF, addr >> 8, 0x11, 0x10, 0x93, 0x06, bank], q, d.length);
+        if (q < 0) break;
+        others.push(q);
+      }
+      t.back = { site: b, others, addr, dude: this.w(b + 11), bank };
+    }
     return this._tpic = t;
   },
   trainerPicOff(cls) {
@@ -8661,6 +10646,10 @@ mixin(Rom.prototype, {
     return this.off(bank, this.w(e + 1));
   },
   readTrainerPic(cls) {
+    if (cls === BACK_PIC) {   // 배틀 뒷모습 (6×6 칸, 세로줄 순서)
+      const b = this.loadTrainerPics().back;
+      return tilesToPic(this.gfx.decompress(this.off(b.bank, b.addr)).slice(0, 36 * 16), 6, 6, true);
+    }
     if (cls === 0) {   // 트레이너 카드 그림 (5×7 칸, 가로줄 순서)
       const o = this.loadTrainerPics().card;
       return tilesToPic(this.data.subarray(o, o + 35 * 16), 5, 7, false);
@@ -8670,6 +10659,21 @@ mixin(Rom.prototype, {
   writeTrainerPic(cls, pic) {
     const t = this.loadTrainerPics();
     if (cls === 0) { this.data.set(picToTiles(pic, false), t.card); this.dirty = true; return null; }
+    if (cls === BACK_PIC) {
+      // 새 뒷모습 + 튜토리얼 아저씨 뒷모습을 같은 뱅크에 같이 넣음 (뱅크 번호를 둘이 같이 써서)
+      const b = t.back, d = this.data;
+      const comp = Lz.compress(picToTiles(pic, true)), dude = Lz.compress(Array.from(this.gfx.decompress(this.off(b.bank, b.dude))));
+      const p = this.allocPic(comp.length + dude.length);
+      if (p < 0) return '롬에 그림을 넣을 빈 공간이 부족해요';
+      d.set(comp, p); d.set(dude, p + comp.length);
+      const bank = Math.floor(p / 0x4000), a = 0x4000 + p % 0x4000, da = a + comp.length;
+      d[b.site + 1] = a & 0xFF; d[b.site + 2] = a >> 8; d[b.site + 11] = da & 0xFF; d[b.site + 12] = da >> 8; d[b.site + 17] = bank;
+      for (const q of b.others) { d[q + 1] = a & 0xFF; d[q + 2] = a >> 8; d[q + 7] = bank; }
+      Object.assign(b, { addr: a, dude: da, bank });
+      this.gfx.gfxCache.delete(p); this.gfx.gfxCache.delete(p + comp.length);
+      this.dirty = true;
+      return null;
+    }
     const comp = Lz.compress(picToTiles(pic, true));
     const p = this.allocPic(comp.length);
     if (p < 0) return '롬에 그림을 넣을 빈 공간이 부족해요';
@@ -8698,7 +10702,11 @@ Object.assign(App.prototype, {
     if (!t) { alert('이 롬에서는 트레이너 그림을 바꿀 수 없어요 (지금은 금·은만 돼요).'); return; }
     const Z = 3, hasPal = t.pal >= 0;
     const st = { cls: -1, pic: null, pal: null, dirty: false, palDirty: false, outline: true, takeColors: true };
-    const W = () => st.cls === 0 ? 40 : 56;
+    const W = () => st.cls === 0 ? 40 : st.cls === BACK_PIC ? 48 : 56;
+    const Hh = () => st.cls === BACK_PIC ? 48 : 56;
+    const palOk = () => hasPal;
+    // 배틀 뒷모습은 0번 색 칸 (GetPlayerOrMonPalettePointer: and a / jp nz, … / ld hl, PlayerPalette = 트레이너 색 표 0번) → 트레이너 카드와 같은 색
+    const palSlot = c => c === BACK_PIC ? 0 : c;
     const box = el('div', { style: 'width:' + (56 * Z + 4) + 'px;height:' + (56 * Z + 4) + 'px;border:1px solid #888;background:#fff;position:relative' });
     const note = el('div', { style: 'color:#e8590c;font-size:12.5px;min-height:18px' });
     const title = el('b'), info = el('div', { class: 'hint' }), err = el('div');
@@ -8708,34 +10716,35 @@ Object.assign(App.prototype, {
     const palBox = el('div', { class: 'bar' }, el('span', { text: '밝은색' }), swatches[0], el('span', { text: '어두운색' }), swatches[1]);
     const redraw = () => {
       box.replaceChildren();
-      swatches.forEach((s, i) => { s.value = rgbHex(st.pal[i + 1]); s.disabled = !hasPal; });
+      swatches.forEach((s, i) => { s.value = rgbHex(st.pal[i + 1]); s.disabled = !palOk(); });
       if (!st.pic) return;
       const c = picCanvas(st.pic, st.pal, false, Z);
-      c.style.cssText = 'position:absolute;left:' + ((56 - W()) / 2 * Z + 1) + 'px;top:1px';
+      c.style.cssText = 'position:absolute;left:' + ((56 - W()) / 2 * Z + 1) + 'px;top:' + ((56 - Hh()) * Z + 1) + 'px';
       box.append(c);
     };
-    const label = c => c === 0 ? '★ 주인공 — 트레이너 카드' : pad3(c) + ' ' + (rom.classNames[c] || '트레이너 ' + c) + (c === CAL_CLASS ? ' ★ 주인공' : '');
+    const label = c => c === BACK_PIC ? '★ 주인공 — 배틀 뒷모습' : c === 0 ? '★ 주인공 — 트레이너 카드' : pad3(c) + ' ' + (rom.classNames[c] || '트레이너 ' + c) + (c === CAL_CLASS ? ' ★ 주인공' : '');
     const load = c => {
       st.cls = c; st.dirty = st.palDirty = false; err.textContent = note.textContent = '';
       st.pic = rom.readTrainerPic(c);
-      st.pal = hasPal ? rom.trainerPaletteRGB(c) : [WHITE, [170, 170, 170], [85, 85, 85], BLACK];
+      st.pal = hasPal ? rom.trainerPaletteRGB(palSlot(c)) : [WHITE, [170, 170, 170], [85, 85, 85], BLACK];
       title.textContent = label(c);
-      info.textContent = c === 0 ? '메뉴에서 내 이름(트레이너 카드)을 열면 나오는 주인공 그림이에요. 40×56 픽셀 (5×7 칸). 색은 게임 시작 때 주인공 그림 색과 따로 정해요.'
+      info.textContent = c === BACK_PIC ? '배틀할 때 화면 왼쪽 아래에 나오는 주인공 뒷모습이에요. 48×48 픽셀 (6×6 칸). 색은 트레이너 카드 그림과 같은 색을 같이 써요 (하나를 바꾸면 둘 다 바뀌어요).'
+        : c === 0 ? '메뉴에서 내 이름(트레이너 카드)을 열면 나오는 주인공 그림이에요. 40×56 픽셀 (5×7 칸). 색은 배틀 뒷모습과 같이 쓰고, 게임 시작 때 주인공 그림 색과는 따로예요.'
         : c === CAL_CLASS ? '게임을 처음 시작할 때 오박사가 이름을 물어볼 때, 그리고 명예의 전당에 나오는 주인공 그림이에요. 56×56 픽셀 (7×7 칸).'
           : '배틀할 때 나오는 이 직업의 트레이너 그림이에요. 56×56 픽셀 (7×7 칸). 같은 직업 트레이너가 모두 같이 바뀌어요.';
       redraw();
     };
     const changed = () => { st.dirty = true; note.textContent = '(아직 적용 안 함)'; redraw(); };
-    const draw = () => this.pixelEditor({ title: label(st.cls), pic: st.pic, pal: st.pal, editable: [false, hasPal, hasPal, false],
-      note: W() + '×56 픽셀. 1번 흰색·4번 검정은 고정이고, 2·3번 색은 마음대로 바꿀 수 있어요. 숫자키 1~4 = 색 고르기',
+    const draw = () => this.pixelEditor({ title: label(st.cls), pic: st.pic, pal: st.pal, editable: [false, palOk(), palOk(), false],
+      note: W() + '×' + Hh() + ' 픽셀. 1번 흰색·4번 검정은 고정이고, ' + (palOk() ? '2·3번 색은 마음대로 바꿀 수 있어요.' : '색은 바꿀 수 없어요 (그림만).') + ' 숫자키 1~4 = 색 고르기',
       onOk: (p, pl, palChanged) => { st.pic = p; if (palChanged) { st.pal = pl; st.palDirty = true; } changed(); } });
     const importPic = async () => {
       let src;
       try { src = await pickImageFile(); } catch (e) { alert('그림을 열 수 없어요: ' + e.message); return; }
       if (!src) return;
       try {
-        const take = st.takeColors && hasPal;
-        const res = SpriteConvert.convert(src, 7, take ? null : st.pal, st.outline);
+        const take = st.takeColors && palOk();
+        const res = SpriteConvert.convert(src, st.cls === BACK_PIC ? 6 : 7, take ? null : st.pal, st.outline);
         if (take) { st.pal = [WHITE, res.c1, res.c2, BLACK]; st.palDirty = true; }
         if (st.cls === 0) { const p = newPic(40, 56); for (let y = 0; y < 56; y++) for (let x = 0; x < 40; x++) p.px[y * 40 + x] = res.img.px[y * 56 + x + 8]; st.pic = p; }
         else st.pic = res.img;
@@ -8745,7 +10754,7 @@ Object.assign(App.prototype, {
     const apply = () => {
       try {
         if (st.dirty) { const e = rom.writeTrainerPic(st.cls, st.pic); if (e) { this.okMsg(err, e, true); return; } }
-        if (st.palDirty) rom.setTrainerPalette(st.cls, st.pal[1], st.pal[2]);
+        if (st.palDirty && palOk()) rom.setTrainerPalette(palSlot(st.cls), st.pal[1], st.pal[2]);
         st.dirty = st.palDirty = false; note.textContent = '';
         this.okMsg(err, '적용했어요');
         this.say('트레이너 그림을 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.');
@@ -8754,6 +10763,7 @@ Object.assign(App.prototype, {
     const opt = (text, key) => { const [c, l] = check(text, st[key]); c.addEventListener('change', () => { st[key] = c.checked; }); return l; };
     const items = [];
     if (t.card >= 0) items.push({ value: 0, label: label(0), group: '주인공' });
+    if (t.back) items.push({ value: BACK_PIC, label: label(BACK_PIC), group: '주인공' });
     items.push({ value: CAL_CLASS, label: label(CAL_CLASS), group: '주인공' });
     for (let c = 1; c <= t.count; c++) if (c !== CAL_CLASS) items.push({ value: c, label: label(c), group: '트레이너 직업' });
     const list = listPanel(items, c => {
