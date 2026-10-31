@@ -179,7 +179,7 @@ const I18N = (() => {
     '🎼 한눈에 보기 (파랑·초록 = 사각파, 빨강 = 노이즈 · 진할수록 큰 소리) — 막대를 누르면 그 음을 골라요': '🎼 Overview (blue/green = square, red = noise · darker = louder) — click a bar to select that note',
     '🎼 피아노 롤 — 막대를 위아래로 끌면 음 높이 (Shift = 더 잘게) · 오른쪽 끝을 끌면 길이 · 마우스 휠 = 볼륨 · 빈 곳을 두 번 누르면 음 넣기 · 파랑·초록 = 사각파, 빨강 = 노이즈': '🎼 Piano roll — drag a bar up/down for pitch (Shift = finer) · drag its right edge for length · mouse wheel = volume · double-click empty space to add a note · blue/green = square, red = noise',
     '🎼 피아노 롤 — 막대를 위아래로 끌면 음 높이 · 좌우로 끌면 자리 옮기기 · 오른쪽 끝을 끌면 길이 · 마우스 휠 = 볼륨 · 오른쪽 클릭 = 지우기 · 빈 곳을 두 번 누르면 음 넣기 (아래 빨간 칸 = 드럼) · 진한 막대 = 지금 채널': '🎼 Piano roll — drag a bar up/down for pitch · left/right to move it · drag its right edge for length · mouse wheel = volume · right-click = delete · double-click empty space to add a note (red rows at the bottom = drums) · dark bars = current channel',
-    '🎹 건반을 누르면:': '🎹 Piano key:', '고른 음의 높이 바꾸기': 'changes the selected note', '고른 음 뒤에 새 음 넣기': 'inserts a new note after it', '새 음 길이:': 'New note length:', '볼륨:': 'Volume:', '볼륨 변화:': 'Fade:',
+    '🎹 건반을 누르면:': '🎹 Piano key:', '✕ 원래 크기로': '✕ Normal size', '고른 음의 높이 바꾸기': 'changes the selected note', '고른 음 뒤에 새 음 넣기': 'inserts a new note after it', '새 음 길이:': 'New note length:', '볼륨:': 'Volume:', '볼륨 변화:': 'Fade:',
     '＋ 끝에 음 추가': '＋ Add note at end', '⧉ 복사': '⧉ Duplicate', '▲ 위로': '▲ Up', '▼ 아래로': '▼ Down', '🗑 지우기 (Delete)': '🗑 Delete', '채널 비우기': 'Clear channel', '⇧ 전체 반음 올리기': '⇧ All up a semitone', '⇩ 전체 반음 내리기': '⇩ All down a semitone',
     '이 채널의 음을 모두 지울까요?': 'Delete all notes in this channel?', '음이 없어요. 아래 건반을 누르면 음이 들어가요': 'No notes. Press a piano key below to add one',
     '표에서 음을 누르면 골라져요 (↑↓ 키로 옮기기 · Delete 키로 지우기) · 길이 1프레임 = 1/60초 · 볼륨 변화: −면 점점 작게, +면 점점 크게 (숫자가 작을수록 빠르게)': 'Click a note in the table to select it (↑↓ to move · Delete to remove) · 1 frame = 1/60 s · Fade: − gets quieter, + gets louder (smaller = faster)',
@@ -5042,6 +5042,10 @@ const CSS = `
 .gsc .dlg-bg{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:2147483100;display:flex;align-items:center;justify-content:center;padding:16px}
 .gsc .dlg{background:var(--bg);border-radius:8px;box-shadow:0 10px 40px rgba(0,0,0,.35);width:min(1100px,100%);max-height:100%;display:flex;flex-direction:column}
 .gsc .dlg.small{width:min(560px,100%)}
+.gsc .dlg-bg.wide{padding:0}
+.gsc .dlg.wide{width:100%;height:100%;max-height:none;border-radius:0}
+.gsc .gsc-rollbox{max-height:400px}
+.gsc .dlg.wide .gsc-rollbox{max-height:62vh}
 .gsc .dlg-head{display:flex;align-items:center;padding:8px 12px;border-bottom:1px solid var(--line);font-weight:bold}
 .gsc .dlg-head span{flex:1}
 .gsc .dlg-body{padding:12px;overflow:auto;flex:1}
@@ -5567,12 +5571,17 @@ class App {
 
 
   // ---------------------------------------------------------------- 창 (데스크톱의 따로 뜨는 창)
-  dialog(title, make, onClose, small) {
+  // wide: 머리줄에 [넓게 보기] 버튼 (창을 화면 가득)
+  dialog(title, make, onClose, small, wide) {
     const close = () => { bg.remove(); if (onClose) onClose(); };
     const body = el('div', { class: 'dlg-body' });
-    const bg = el('div', { class: 'dlg-bg' },
-      el('div', { class: 'dlg' + (small ? ' small' : '') },
-        el('div', { class: 'dlg-head' }, el('span', { text: title }), el('button', { class: 'dlg-close', text: '닫기', onclick: close })), body));
+    const wideBtn = wide ? el('button', { text: '⛶ 넓게 보기', style: 'margin-right:6px', onclick: () => {
+      const on = dlg.classList.toggle('wide'); bg.classList.toggle('wide', on);
+      wideBtn.textContent = on ? '✕ 원래 크기로' : '⛶ 넓게 보기';
+    } }) : null;
+    const dlg = el('div', { class: 'dlg' + (small ? ' small' : '') },
+      el('div', { class: 'dlg-head' }, el('span', { text: title }), wideBtn, el('button', { class: 'dlg-close', text: '닫기', onclick: close })), body);
+    const bg = el('div', { class: 'dlg-bg' }, dlg);
     bg.addEventListener('mousedown', e => { if (e.target === bg) close(); });
     this.host.append(bg);
     try { body.append(make()); } catch (e) { console.error(e); body.append(el('div', { class: 'bad', text: '오류: ' + e.message })); }
@@ -7121,7 +7130,10 @@ Object.assign(App.prototype, {
     const rWrap = el('div', { style: 'overflow-x:auto;flex:1;min-width:0' }, rSpacer);
     const rGut = el('canvas', { width: R_GUT, style: 'display:block;flex-shrink:0;border-right:1px solid var(--line)' });
     const rInfo = el('div', { class: 'hint', style: 'min-height:18px' });
-    const rBox = el('div', { style: 'display:flex;align-items:flex-start;border:1px solid var(--line);background:#fff;max-height:400px;overflow-y:auto' }, rGut, rWrap);
+    const rBox = el('div', { class: 'gsc-rollbox', style: 'display:flex;align-items:flex-start;border:1px solid var(--line);background:#fff;overflow-y:auto' }, rGut, rWrap);
+    // 창 크기가 바뀌면 (넓게 보기 등) 다시 그림
+    if (window.ResizeObserver) { let w = 0; new ResizeObserver(() => { if (rWrap.clientWidth !== w) { w = rWrap.clientWidth; rView = null; drawRoll(); } }).observe(rWrap); }
+    const isWide = () => !!rBox.closest('.dlg.wide');
     const midiOfN = n => (n.octave + 1) * 12 + n.pitch - 1;
     const nameOf = m => R_NAMES[((m % 12) + 12) % 12] + (Math.floor(m / 12) - 1);
     const DRUM_SHORT = ['', '킥', '스네어', '하이햇', '크래시'];
@@ -7137,7 +7149,7 @@ Object.assign(App.prototype, {
         lo -= 3; hi += 3;
         if (hi - lo < 24) { const c = Math.round((lo + hi) / 2); lo = c - 12; hi = c + 12; }
         lo = Math.max(24, lo); hi = Math.min(108, hi);
-        const rowH = Math.max(9, Math.min(14, Math.floor(340 / (hi - lo + 1))));   // 넘치면 위아래로 스크롤
+        const rowH = Math.max(9, Math.min(16, Math.floor((isWide() ? innerHeight * 0.58 : 340) / (hi - lo + 1))));   // 넘치면 위아래로 스크롤
         rView = { lo, hi, rowH, PX: 14, top: 2 };
       }
       const { lo, hi, rowH, PX, top } = rView, pianoH = (hi - lo + 1) * rowH, dTop = top + pianoH, H = dTop + R_DRUM_ROWS * R_DRUM_H + 14;
@@ -7304,7 +7316,7 @@ Object.assign(App.prototype, {
     document.addEventListener('keydown', onKey, true);
     grid.style.maxHeight = '26vh';
     const rollHint = el('div', { class: 'hint', text: '🎼 피아노 롤 — 막대를 위아래로 끌면 음 높이 · 좌우로 끌면 자리 옮기기 · 오른쪽 끝을 끌면 길이 · 마우스 휠 = 볼륨 · 오른쪽 클릭 = 지우기 · 빈 곳을 두 번 누르면 음 넣기 (아래 빨간 칸 = 드럼) · 진한 막대 = 지금 채널' });
-    this.dialog('포켓몬 2세대 BGM 칩튠 시퀀서 & 음표 에디터', () => el('div', null, top, chBar, rollHint, rBox, rInfo, grid, kbBar, keys), () => { alive = false; stop(); document.removeEventListener('keydown', onKey, true); });
+    this.dialog('포켓몬 2세대 BGM 칩튠 시퀀서 & 음표 에디터', () => el('div', null, top, chBar, rollHint, rBox, rInfo, grid, kbBar, keys), () => { alive = false; stop(); document.removeEventListener('keydown', onKey, true); }, false, true);
     showCh();
     // 처음엔 지금 구역의 BGM (없으면 연두마을) 을 원곡 그대로 불러옴
     if (n > 0) loadRomSong(curBgm > 0 && curBgm < n ? curBgm : 0x3C, false, false); else rebuildRows();
@@ -7820,7 +7832,10 @@ Object.assign(App.prototype, {
     const rollHead = el('div', { style: 'position:absolute;top:0;left:0;width:2px;background:#e8590c;box-shadow:0 0 3px #e8590c;pointer-events:none;display:none;z-index:3' });
     const rollWrap = el('div', { style: 'overflow-x:auto;flex:1;min-width:0;position:relative' }, roll, rollHead);
     const rollInfo = el('div', { class: 'hint', style: 'min-height:18px' });
-    const rollBox = el('div', { style: 'display:flex;border:1px solid var(--line);background:#fff;margin-bottom:2px' }, gutter, rollWrap);
+    const rollBox = el('div', { class: 'gsc-rollbox', style: 'display:flex;align-items:flex-start;border:1px solid var(--line);background:#fff;margin-bottom:2px;overflow-y:auto' }, gutter, rollWrap);
+    // 창 크기가 바뀌면 (넓게 보기 등) 다시 그림
+    if (window.ResizeObserver) { let w = 0; new ResizeObserver(() => { if (rollWrap.clientWidth !== w) { w = rollWrap.clientWidth; view = null; drawRoll(); } }).observe(rollWrap); }
+    const isWide = () => !!rollBox.closest('.dlg.wide');
     const midiOf = r => 69 + 12 * Math.log2(regHz(r) / 440);
     const noteName = m => NOTE_NAMES[((m % 12) + 12) % 12] + (Math.floor(m / 12) - 1);
     const BLACK = [1, 3, 6, 8, 10];
@@ -7850,7 +7865,7 @@ Object.assign(App.prototype, {
         let lo = L.lo > L.hi ? 57 : L.lo - 3, hi = L.lo > L.hi ? 81 : L.hi + 3;
         if (hi - lo < 24) { const c = Math.round((lo + hi) / 2); lo = c - 12; hi = c + 12; }
         lo = Math.max(24, lo); hi = Math.min(108, hi);
-        const rowH = Math.max(7, Math.min(16, Math.floor(380 / (hi - lo + 1))));
+        const rowH = Math.max(7, Math.min(18, Math.floor((isWide() ? innerHeight * 0.55 : 340) / (hi - lo + 1))));
         const PX = Math.max(6, Math.min(16, Math.floor(((rollWrap.clientWidth || 600) - 40) / Math.max(1, L.total))));
         view = { lo, hi, rowH, PX, top: 4 };
       }
@@ -8057,7 +8072,7 @@ Object.assign(App.prototype, {
       el('div', { class: 'bar' }, el('button', { class: 'apply', text: '적용', onclick: apply }), err),
       el('div', { class: 'hint', text: '적용한 뒤 메인 화면에서 [저장하기]를 눌러야 롬 파일에 기록돼요' }));
     load(25);
-    this.dialog('포켓몬 울음소리 에디터', () => el('div', { class: 'side', style: 'grid-template-columns:200px minmax(0,1fr)' }, list, body), () => { Player.stop(); document.removeEventListener('keydown', onKey, true); alive = false; });
+    this.dialog('포켓몬 울음소리 에디터', () => el('div', { class: 'side', style: 'grid-template-columns:200px minmax(0,1fr)' }, list, body), () => { Player.stop(); document.removeEventListener('keydown', onKey, true); alive = false; }, false, true);
     setTimeout(drawRoll, 0);
     // 재생 위치 선 움직이기 (1프레임 = 1/60초)
     let alive = true, shown = false;
