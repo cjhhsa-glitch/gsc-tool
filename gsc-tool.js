@@ -8030,6 +8030,17 @@ Object.assign(App.prototype, {
         setTimeout(() => {
           const t = performance.now();
           const res = AnimRunner.run(rom, st.move, { data: d, player: st.player, enemy: st.enemy, turn: st.turn, maxFrames: 1200 });
+          // 스크립트의 "끝"을 지난 뒤는 배틀 화면 정리(HP 칸 다시 그리기)라 미리보기 화면에선 깨져 보임 → 거기까지만
+          if (res && st.pos && res.trace.length) {
+            const endAt = new Set(st.model.cmds.map((c, i) => c.op === 0xFF ? st.pos[i] + 1 : -1).filter(x => x > 0));
+            let started = false, cut = -1;
+            for (let f = 0; f < res.trace.length; f++) {
+              const t = res.trace[f];
+              if (t) started = true;
+              if (endAt.has(t) || (started && !t)) { cut = f + 2; break; }
+            }
+            if (cut > 0 && cut < res.frames.length) { res.frames.length = cut; res.trace.length = cut; }
+          }
           st.res = res; audio = null;
           // 명령마다 처음 실행된 프레임
           st.cmdFrame = [];
