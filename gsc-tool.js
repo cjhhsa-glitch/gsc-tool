@@ -163,6 +163,19 @@ const I18N = (() => {
     "개에서 '": " lines: '", '개에서 포켓몬 이름·타입도 바꿨어요 ([대사] 탭에서 확인)': ' lines also had the Pokémon name/type changed (check the [Dialogue] tab)', '개에서도 포켓몬 이름을 바꿨어요 ([대사] 탭에서 확인)': ' other lines also had the Pokémon name changed (check the [Dialogue] tab)',
     '고를 때 그림': 'Picture when choosing', '곳에서 같이 써요': ' places', '그림·울음소리도 받는 포켓몬과 같게': 'Picture & cry same as the received Pokémon', '다른 대사 ': 'Other lines: ', "다른 대사에서도 '": "Also replace in other dialogue: '",
     '🎲 랜덤 포켓몬으로 바꾸기': '🎲 Randomize Pokémon', '전설·환상 포켓몬 포함': 'Include legendary / mythical', '🎲 레벨 랜덤으로 바꾸기': '🎲 Randomize levels', '검색 (이름·번호)': 'Search (name / number)',
+    '울음소리 에디터': 'Cry Editor', '포켓몬 울음소리 에디터': 'Pokémon Cry Editor', '이 롬에서 울음소리 데이터를 찾지 못했어요.': "Couldn't find cry data in this ROM.",
+    '▶ 들어보기': '▶ Play', '▶ 원래 소리': '▶ Original', '↩ 되돌리기': '↩ Revert', '🎧 소리 파일로 울음소리 만들기 🌟': '🎧 Make a cry from a sound file 🌟',
+    '(다른 포켓몬 울음소리 그대로 쓰기 ▼)': "(Use another Pokémon's cry ▼)", '이 포켓몬의 울음소리': "This Pokémon's cry", '기본 울음소리:': 'Base cry:', '음높이:': 'Pitch:', '길이:': 'Length:',
+    '0 = 그대로, 클수록 높은 소리': '0 = unchanged, higher = higher pitch', '256 = 보통, 클수록 느리고 길게': '256 = normal, higher = slower and longer',
+    '2세대 포켓몬 울음소리는 기본 울음소리 68개 중 하나에 음높이·길이만 바꿔서 만들어요. 위 세 가지만 바꾸면 다른 포켓몬에는 영향이 없어요.': 'Gen 2 cries are one of 68 base cries with a pitch and length. Changing only these three settings does not affect other Pokémon.',
+    '기본 울음소리 음표 (고치면 새 소리로 넣어요)': 'Base cry notes (edits are saved as a new sound)', '길이 (프레임)': 'Length (frames)', '볼륨 (0~15)': 'Volume (0–15)', '볼륨 변화 (−7~7)': 'Fade (−7–7)', '소리 높이': 'Pitch', '음색': 'Duty', '음이 없어요': 'No notes',
+    '길이 1프레임 = 1/60초 · 볼륨 변화: −면 점점 작게, +면 점점 크게 (숫자가 작을수록 빠르게) · 소리 높이: 사각파는 0~2047 (클수록 높음), 노이즈는 0~255 (작을수록 높은 쉭 소리)': '1 frame = 1/60 s · Fade: − gets quieter, + gets louder (smaller = faster) · Pitch: square 0–2047 (higher = higher), noise 0–255 (smaller = higher hiss)',
+    '고친 소리를 넣을 기본 울음소리 번호:': 'Base cry slot for the edited sound:', '게임의 기본 울음소리 68개를 포켓몬들이 나눠 쓰고, 빈 번호는 없어요. 한 마리만 쓰는 번호를 고르면 다른 포켓몬은 그대로예요.': 'The 68 base cries are shared by all Pokémon and none are free. Pick a slot used by only one Pokémon to leave the others unchanged.',
+    '롬에 울음소리를 넣을 빈 공간이 부족해요': 'Not enough free space in the ROM for the cry', '소리 파일 → 2세대 울음소리 변환': 'Sound file → Gen 2 cry converter', '✨ 울음소리로 변환하기': '✨ Convert to cry', '▶ 다시 듣기': '▶ Play again',
+    '✅ 울음소리 에디터로 가져오기': '✅ Import into the Cry Editor', '최대 길이:': 'Max length:', '조옮김 반음:': 'Transpose (semitones):', '두 번째 사각파 세기 %:': 'Second square volume %:', '노이즈 세기 %:': 'Noise volume %:',
+    '앞뒤 조용한 부분은 자동으로 잘라요': 'Silence at the start and end is trimmed automatically', '소리가 너무 낮거나 높을 때': 'If the sound is too low or high', '변환 설정': 'Conversion settings', '먼저 소리 파일을 선택해주세요.': 'Please choose a sound file first.',
+    '🐾 동물 소리·목소리·효과음 파일(MP3, WAV, OGG, M4A 등)을 고르세요.\n소리의 높낮이와 크기를 따라가는 사각파 2개 + 노이즈로 바꿔요.': '🐾 Choose an animal sound, voice or sound effect (MP3, WAV, OGG, M4A …).\nIt becomes 2 square waves + noise that follow its pitch and loudness.',
+    '소리가 거의 없는 파일이에요': 'The file is almost silent',
     '트레이너 그림': 'Trainer Pics', '트레이너 그림 편집': 'Trainer Picture Editor', '트레이너 찾기': 'Find trainer', '주인공': 'Player', '트레이너 직업': 'Trainer classes',
     '★ 주인공 — 트레이너 카드': '★ Player — Trainer Card', ' ★ 주인공': ' ★ Player', '밝은색': 'Light', '어두운색': 'Dark', '사진 가져오기…': 'Import picture…',
     '사진의 색으로 트레이너 색도 바꾸기': "Also take the trainer's colors from the picture",
@@ -1814,6 +1827,233 @@ const Player = {
   },
   stop() { if (this.src) { try { this.src.stop(); } catch (e) { } this.src = null; } }
 };
+
+// ===== 41-cry.js
+// ================================================================ 포켓몬 울음소리 (금·은 사운드 엔진의 울음소리 재생을 흉내)
+// 포켓몬마다 6바이트: 기본 울음소리 번호(2) · 음높이(2, 부호 있음) · 길이(2, $100 = 보통)
+// 기본 울음소리 = 효과음과 같은 머리말 + 채널(사각파 2개 · 노이즈) 음표 목록. 음표 = 길이 · 볼륨 · 주파수
+const RomCry = (() => {
+  const SR = RomMusic.SAMPLE_RATE, FR = RomMusic.FRAME_RATE;
+  const W = (d, o) => d[o] | (d[o + 1] << 8);
+  const Off = (bank, addr) => bank * 0x4000 + (addr & 0x3FFF);
+  const s16 = v => v >= 0x8000 ? v - 0x10000 : v;
+  const DUTY = [0.125, 0.25, 0.5, 0.75];
+
+  // 표 찾기: 포켓몬별 울음소리 표 · 기본 울음소리 포인터 표
+  function find(d) {
+    const m = findPat(d, [0x3E, -1, 0xD7, 0x21, -1, -1, 0x09, 0x09, 0x09, 0x09, 0x09, 0x09, 0x5E, 0x23, 0x56, 0x23], 0);
+    if (m < 0) return null;
+    const hdr = Off(d[m + 1], W(d, m + 4));
+    let count = 0;
+    for (let i = 0; i < 251; i++) count = Math.max(count, W(d, hdr + i * 6) + 1);
+    if (count < 10 || count > 200) return null;
+    // _PlayCry: ld hl, Cries / add hl, de ×3 / ld a, [hli] / ld [wMusicBank], a … 조금 뒤에 ld hl, CHANNEL_PITCH_OFFSET
+    for (let p = 0; ; p++) {
+      p = findPat(d, [0x21, -1, -1, 0x19, 0x19, 0x19, 0x2A, 0xEA, -1, -1, 0x5E, 0x23, 0x56, 0xCD], p);
+      if (p < 0) return null;
+      if (findPat(d.subarray(p, p + 80), [0x21, 0x27, 0x00, 0x09, 0xFA], 0) < 0) continue;
+      return { hdr, tab: Off(Math.floor(p / 0x4000), W(d, p + 1)), count };
+    }
+  }
+  function findPat(d, pat, start) {
+    outer: for (let i = start; i + pat.length <= d.length; i++) {
+      for (let k = 0; k < pat.length; k++) if (pat[k] >= 0 && d[i + k] !== pat[k]) continue outer;
+      return i;
+    }
+    return -1;
+  }
+  const baseOff = (d, t, id) => { const e = t.tab + id * 3; return Off(d[e], W(d, e + 1)); };
+  function header(d, t, mon) { const o = t.hdr + (mon - 1) * 6; return { base: W(d, o), pitch: s16(W(d, o + 2)), length: W(d, o + 4) }; }
+  function setHeader(d, t, mon, h) {
+    const o = t.hdr + (mon - 1) * 6, p = h.pitch & 0xFFFF;
+    d[o] = h.base & 0xFF; d[o + 1] = h.base >> 8; d[o + 2] = p & 0xFF; d[o + 3] = p >> 8; d[o + 4] = h.length & 0xFF; d[o + 5] = h.length >> 8;
+  }
+
+  // 기본 울음소리 → { channels: [{ id, notes: [{ len, env, freq, duty, pattern, sweep }] }] } (반복·호출은 풀어서)
+  function decode(d, off) {
+    const bank = Math.floor(off / 0x4000), n = (d[off] >> 6) + 1, channels = [];
+    for (let i = 0; i < n; i++) {
+      const id = d[off + i * 3] & 7;
+      channels.push({ id, notes: parseChannel(d, bank, W(d, off + i * 3 + 1), id) });
+    }
+    return { channels };
+  }
+  function parseChannel(d, bank, pc, id) {
+    const notes = [], loops = new Map(), noise = (id & 3) === 3;
+    let duty = 2, pattern = null, sweep = 0, ret = -1, guard = 0;
+    const g = () => d[Off(bank, pc++)];
+    while (guard++ < 4000 && notes.length < 400) {
+      const c = g();
+      if (c < 0xD0) {
+        const env = g(); let freq = g();
+        if (!noise) freq |= g() << 8;
+        notes.push({ len: c, env, freq, duty, pattern: pattern && pattern.slice(), sweep });
+        continue;
+      }
+      switch (c) {
+        case 0xDB: duty = g() & 3; pattern = null; break;
+        case 0xDE: { const p = g(); pattern = [p >> 6 & 3, p >> 4 & 3, p >> 2 & 3, p & 3]; break; }
+        case 0xDD: sweep = g(); break;
+        case 0xDA: case 0xE0: case 0xE1: case 0xE6: pc += 2; break;
+        case 0xD8: pc += noise ? 1 : 2; break;
+        case 0xD9: case 0xDC: case 0xE2: case 0xE3: case 0xE4: case 0xE5: case 0xE7: case 0xE8: case 0xE9: case 0xEE: case 0xEF: case 0xF0: case 0xFA: pc += 1; break;
+        case 0xFB: pc += 3; break;
+        case 0xFC: pc = W(d, Off(bank, pc)); break;
+        case 0xFD: {
+          const cnt = g(), to = W(d, Off(bank, pc)), key = pc; pc += 2;
+          if (cnt === 0) return notes;   // 끝없는 반복: 한 번만
+          const rem = (loops.has(key) ? loops.get(key) : cnt) - 1;
+          if (rem > 0) { loops.set(key, rem); pc = to; } else loops.delete(key);
+          break;
+        }
+        case 0xFE: ret = pc + 2; pc = W(d, Off(bank, pc)); break;
+        case 0xFF: if (ret >= 0) { pc = ret; ret = -1; break; } return notes;
+        default: break;   // 옥타브·인자 없는 명령
+      }
+    }
+    return notes;
+  }
+
+  // 머리말 + 채널 데이터 바이트 (base = 롬에 들어갈 주소 $4000~)
+  function encode(cry, base) {
+    const chans = cry.channels;
+    const head = [], body = [];
+    let addr = base + chans.length * 3;
+    chans.forEach((c, i) => {
+      head.push((i === 0 ? (chans.length - 1) << 6 : 0) | c.id, addr & 0xFF, addr >> 8);
+      const b = [], noise = (c.id & 3) === 3;
+      let duty = -1, pat = '', sweep = -1;
+      for (const n of c.notes) {
+        if (n.pattern) { const k = n.pattern.join(); if (k !== pat) { b.push(0xDE, n.pattern[0] << 6 | n.pattern[1] << 4 | n.pattern[2] << 2 | n.pattern[3]); pat = k; duty = -1; } }
+        else if (!noise && n.duty !== duty) { b.push(0xDB, n.duty & 3); duty = n.duty; pat = ''; }
+        if ((c.id & 3) === 0 && (n.sweep || 0) !== sweep && !(sweep < 0 && !n.sweep)) { b.push(0xDD, n.sweep || 0); sweep = n.sweep || 0; }
+        b.push(Math.min(0xCF, n.len), n.env & 0xFF, n.freq & 0xFF);
+        if (!noise) b.push((n.freq >> 8) & 0xFF);
+      }
+      b.push(0xFF);
+      body.push(...b); addr += b.length;
+    });
+    return head.concat(body);
+  }
+
+  // 합성 → Float32Array (pitch: 음높이 더하기, length: 사각파 채널 빠르기 $100 = 보통)
+  function render(cry, pitch, length) {
+    const spf = SR / FR, chans = [];
+    let maxFrames = 0;
+    for (const c of cry.channels) {
+      const noise = (c.id & 3) === 3, tempo = noise ? 0x100 : length;
+      let frac = 0, f = 0;
+      const seq = c.notes.map(n => {
+        const r = frac + (((n.len + 1) & 0xFF) * tempo);
+        frac = r & 0xFF;
+        const frames = Math.max(1, r >> 8), s = { n, start: f, frames };
+        f += frames;
+        return s;
+      });
+      maxFrames = Math.max(maxFrames, f);
+      chans.push({ c, noise, seq });
+    }
+    maxFrames = Math.min(maxFrames, FR * 8);
+    const total = Math.ceil((maxFrames + 6) * spf), out = new Float32Array(total);
+    for (const { c, noise, seq } of chans) {
+      let phase = 0, lfsr = 0x7FFF, clk = 0;
+      for (const s of seq) {
+        if (s.start >= maxFrames) break;
+        const n = s.n, envStep = (n.env & 7) * SR / 64, up = (n.env & 8) !== 0;
+        let vol = n.env >> 4, envT = 0;
+        if (vol === 0 && !up) continue;
+        const sw = (c.id & 3) === 0 ? (n.sweep || 0) : 0, swStep = ((sw >> 4) & 7) * SR / 128, swShift = sw & 7, swDown = (sw & 8) !== 0;
+        let fr = ((n.freq + pitch) & (noise ? 0xFF : 0x7FF)), swT = 0, on = true;
+        const a = Math.floor(s.start * spf), b = Math.min(total, Math.floor((s.start + s.frames) * spf));
+        let hz = 131072 / (2048 - fr), nz = 0;
+        if (noise) { const r = fr & 7, sh = fr >> 4; nz = 524288 / (r === 0 ? 0.5 : r) / Math.pow(2, sh + 1) / SR; }
+        for (let i = a; i < b && on; i++) {
+          let v;
+          if (noise) {
+            clk += nz;
+            while (clk >= 1) { clk -= 1; const x = (lfsr ^ (lfsr >> 1)) & 1; lfsr = (lfsr >> 1) | (x << 14); if (fr & 8) lfsr = (lfsr & ~0x40) | (x << 6); }
+            v = (lfsr & 1) ? -1 : 1;
+          } else {
+            const fi = Math.floor((i / spf)) - s.start;
+            const duty = DUTY[n.pattern ? n.pattern[((fi % 4) + 4) % 4] : n.duty];
+            phase += hz / SR; phase -= Math.floor(phase);
+            v = phase < duty ? 1 : -1;
+          }
+          out[i] += v * vol / 15 * 0.18;
+          if (envStep) { envT++; if (envT >= envStep) { envT = 0; vol = Math.max(0, Math.min(15, vol + (up ? 1 : -1))); } }
+          if (swStep && swShift) { swT++; if (swT >= swStep) { swT = 0; fr = fr + (swDown ? -1 : 1) * (fr >> swShift); if (fr > 2047 || fr < 0) on = false; else hz = 131072 / (2048 - fr); } }
+        }
+      }
+    }
+    // 직류 성분 빼기
+    let pIn = 0, pOut = 0;
+    for (let i = 0; i < total; i++) { const x = out[i]; pOut = x - pIn + 0.996 * pOut; pIn = x; out[i] = pOut; }
+    return out;
+  }
+
+  // ---------------------------------------------------------------- 소리 파일 → 울음소리
+  // x: 모노 샘플, rate: 샘플 빠르기. maxSec: 최대 길이, shift: 반음 조옮김, mix: { sq2, noise } 0~1
+  function convert(x, rate, o) {
+    const maxSec = o.maxSec || 1.5, shift = o.shift || 0;
+    let peak = 0; for (let i = 0; i < x.length; i++) peak = Math.max(peak, Math.abs(x[i]));
+    if (peak < 1e-4) throw new Error('소리가 거의 없는 파일이에요');
+    let a = 0, b = x.length - 1;
+    while (a < b && Math.abs(x[a]) < peak * 0.03) a++;
+    while (b > a && Math.abs(x[b]) < peak * 0.03) b--;
+    b = Math.min(b, a + Math.floor(maxSec * rate));
+    const seg = 2, segLen = rate * seg / FR, nSeg = Math.max(1, Math.floor((b - a) / segLen));
+    const frames = [];
+    let maxRms = 0;
+    for (let k = 0; k < nSeg; k++) {
+      const s0 = a + Math.floor(k * segLen), s1 = Math.min(x.length, s0 + Math.floor(segLen));
+      let e = 0, zc = 0;
+      for (let i = s0; i < s1; i++) { e += x[i] * x[i]; if (i > s0 && (x[i] >= 0) !== (x[i - 1] >= 0)) zc++; }
+      const rms = Math.sqrt(e / Math.max(1, s1 - s0));
+      maxRms = Math.max(maxRms, rms);
+      // 음높이: 정규화한 자기상관 (80~2000Hz)
+      const w0 = Math.max(0, s0 + Math.floor(segLen / 2) - Math.floor(rate * 0.02)), wl = Math.min(Math.floor(rate * 0.04), x.length - w0);
+      const lagMin = Math.floor(rate / 2000), lagMax = Math.min(Math.floor(rate / 80), wl - 1);
+      let best = 0, bestLag = 0;
+      for (let lag = lagMin; lag <= lagMax; lag++) {
+        let s = 0, e1 = 0, e2 = 0;
+        for (let i = 0; i + lag < wl; i += 2) { const p = x[w0 + i], q = x[w0 + i + lag]; s += p * q; e1 += p * p; e2 += q * q; }
+        const r = s / Math.sqrt(e1 * e2 + 1e-12);
+        if (r > best) { best = r; bestLag = lag; }
+      }
+      frames.push({ rms, conf: best, hz: bestLag ? rate / bestLag : 0, zcr: zc / Math.max(1, s1 - s0) * rate / 2 });
+    }
+    // 음높이 없는 칸은 앞뒤 값으로 채움
+    let last = 0;
+    for (const f of frames) { if (f.conf > 0.5 && f.hz) last = f.hz; else f.hz = 0; }
+    for (let i = frames.length - 1, nx = last; i >= 0; i--) { if (frames[i].hz) nx = frames[i].hz; else frames[i].hz = nx; }
+    for (let i = 0, pv = 0; i < frames.length; i++) { if (!frames[i].hz) frames[i].hz = pv || 440; pv = frames[i].hz; }
+    const sq1 = [], sq2 = [], nz = [];
+    const reg = hz => Math.max(0, Math.min(2047, Math.round(2048 - 131072 / (hz * Math.pow(2, shift / 12)))));
+    for (const f of frames) {
+      const lv = maxRms ? Math.sqrt(f.rms / maxRms) : 0, v = Math.max(0, Math.min(15, Math.round(lv * 15)));
+      const tonal = Math.max(0, Math.min(1, (f.conf - 0.3) / 0.5));
+      const fr = reg(f.hz);
+      sq1.push({ len: seg - 1, env: Math.round(v * (0.4 + 0.6 * tonal)) << 4, freq: fr, duty: 2, pattern: null, sweep: 0 });
+      sq2.push({ len: seg - 1, env: Math.round(v * (o.sq2 == null ? 0.6 : o.sq2) * (0.4 + 0.6 * tonal)) << 4, freq: Math.min(2047, fr + 3), duty: 1, pattern: null, sweep: 0 });
+      const nf = Math.max(200, Math.min(200000, f.zcr * 2)), sh = Math.max(0, Math.min(13, Math.round(Math.log2(262144 / nf))));
+      nz.push({ len: seg - 1, env: Math.round(v * (o.noise == null ? 0.7 : o.noise) * (1 - 0.7 * tonal)) << 4, freq: sh << 4 | 1, duty: 0, pattern: null, sweep: 0 });
+    }
+    const merge = l => {
+      const r = [];
+      for (const n of l) {
+        const p = r[r.length - 1];
+        if (p && p.env === n.env && Math.abs(p.freq - n.freq) <= (p.freq > 1900 ? 1 : 0) && p.len + n.len + 1 <= 0x3F) p.len += n.len + 1;
+        else r.push(Object.assign({}, n));
+      }
+      while (r.length && r[r.length - 1].env >> 4 === 0) r.pop();
+      return r;
+    };
+    return { channels: [{ id: 4, notes: merge(sq1) }, { id: 5, notes: merge(sq2) }, { id: 7, notes: merge(nz) }] };
+  }
+
+  const clone = cry => ({ channels: cry.channels.map(c => ({ id: c.id, notes: c.notes.map(n => Object.assign({}, n, { pattern: n.pattern && n.pattern.slice() })) })) });
+  return { find, header, setHeader, baseOff, decode, encode, render, convert, clone, s16 };
+})();
 
 // ===== 50-data.js
 // ================================================================ 게임 데이터 (RomEdit.cs · RomDex.cs · RomMart.cs · RomTypeMatchup.cs 와 같음)
@@ -4951,6 +5191,7 @@ class App {
       B('포켓몬 편집', '', () => this.dialog('포켓몬 편집', () => this.tab_dex())),
       B('포켓몬 그림', '', () => this.spriteDialog()),
       B('트레이너 그림', '', () => this.trainerPicDialog()),
+      B('울음소리 에디터', '', () => this.cryEditor()),
       B('캐릭터 그림', '', () => this.owDialog()),
       B('타이틀 화면', '', () => this.titleDialog()),
       B('기술 편집', '', () => this.dialog('기술 편집', () => this.tab_moves())),
@@ -7196,6 +7437,196 @@ Object.assign(App.prototype, {
     this.say('이 구역만 쓰는 지도 모양으로 복사했어요. 이제 다른 구역은 바뀌지 않아요.');
     if (this.tab === T_BLOCK) this.setTab(T_BLOCK);
     return true;
+  }
+});
+
+// ===== 99-cry.js
+// ================================================================ 울음소리 에디터 · 소리 파일 → 울음소리 변환 창
+const CRY_CH_NAMES = { 4: '🔊 CH1 사각파', 5: '🎵 CH2 사각파', 6: '🎸 CH3 웨이브', 7: '🥁 CH4 노이즈' };
+const CRY_DUTY = ['12.5%', '25%', '50%', '75%'];
+
+Object.assign(App.prototype, {
+  _cry: RomCry,   // 자동 테스트용
+  cryEditor() {
+    const rom = this.rom, d = rom.data, t = RomCry.find(d);
+    if (!t) { alert('이 롬에서 울음소리 데이터를 찾지 못했어요.'); return; }
+    const users = () => { const u = Array.from({ length: t.count }, () => []); for (let m = 1; m <= 251; m++) { const b = RomCry.header(d, t, m).base; if (b < t.count) u[b].push(m); } return u; };
+    let U = users();
+    const st = { mon: 0, h: null, cry: null, edited: false, ch: 0 };
+    const err = el('div'), title = el('b', { style: 'font-size:15px' }), status = el('div', { class: 'hint' });
+    const play = (cry, h) => { Player.stop(); const s = RomCry.render(cry, h.pitch, h.length); if (s.length) Player.play(s, true); };
+    const monLabel = m => pad3(m) + ' ' + rom.monName(m);
+    const baseLabel = id => '#' + String(id).padStart(2, '0') + '  (' + (U[id].length ? U[id].slice(0, 3).map(m => rom.monName(m)).join(', ') + (U[id].length > 3 ? (I18N.lang === 'en' ? ' +' + (U[id].length - 3) + ' more' : ' 외 ' + (U[id].length - 3) + '마리') : '') : (I18N.lang === 'en' ? 'unused' : '쓰는 포켓몬 없음')) + ')';
+    const baseOpts = () => Array.from({ length: t.count }, (_, i) => [i, baseLabel(i)]);
+    const baseSel = sel(baseOpts(), 0, v => { st.h.base = v; st.cry = RomCry.decode(d, RomCry.baseOff(d, t, v)); st.edited = false; refresh(); play(st.cry, st.h); });
+    baseSel.style.maxWidth = '360px';
+    // 음높이 · 길이 (숫자 + 밀대)
+    const pair = (min, max, key) => {
+      const n = num(0, min, max, v => { st.h[key] = v; r.value = v; markHeader(); });
+      const r = el('input', { type: 'range', min, max, style: 'width:180px;vertical-align:middle' });
+      r.addEventListener('input', () => { st.h[key] = +r.value; n.value = r.value; markHeader(); });
+      r.addEventListener('change', () => play(st.cry, st.h));
+      return { n, r, set: v => { n.value = v; r.value = v; } };
+    };
+    const pitchIn = pair(-512, 512, 'pitch'), lenIn = pair(32, 768, 'length');
+    const markHeader = () => { status.textContent = '(아직 적용 안 함)'; };
+    const copySel = sel([[0, '(다른 포켓몬 울음소리 그대로 쓰기 ▼)']].concat(this.monOptions(false).filter(o => o[0] > 0)), 0, m => {
+      if (!m) return;
+      st.h = RomCry.header(d, t, m); st.cry = RomCry.decode(d, RomCry.baseOff(d, t, st.h.base)); st.edited = false;
+      copySel.value = 0; markHeader(); refresh(); play(st.cry, st.h);
+    });
+    copySel.style.maxWidth = '260px';
+    // 음표 표
+    const chBar = el('div', { class: 'bar', style: 'background:#e4e8f0;padding:4px;border-radius:4px' });
+    const tbody = el('tbody');
+    const grid = el('div', { style: 'max-height:34vh;overflow:auto;border:1px solid var(--line);background:#fff' },
+      el('table', { class: 'grid', style: 'width:100%' }, el('thead', null, el('tr', null, ...['#', '길이 (프레임)', '볼륨 (0~15)', '볼륨 변화 (−7~7)', '소리 높이', '음색', ''].map(s => el('th', { text: s, style: 'position:sticky;top:0;background:#f4f4f4' })))), tbody));
+    const edit = () => { st.edited = true; markHeader(); slotRow.style.display = ''; updateSlot(); };
+    const fade = n => (n.env & 7) * ((n.env & 8) ? 1 : -1);
+    const rows = () => {
+      tbody.replaceChildren();
+      const c = st.cry.channels[st.ch];
+      if (!c) return;
+      const noise = (c.id & 3) === 3;
+      c.notes.forEach((n, i) => {
+        const hz = el('span', { class: 'hint' });
+        const showHz = () => { hz.textContent = noise ? '' : ' ≈ ' + Math.round(131072 / (2048 - (n.freq & 0x7FF))) + 'Hz'; };
+        const lenN = num(n.len + 1, 1, 64, v => { n.len = v - 1; edit(); });
+        const volN = num(n.env >> 4, 0, 15, v => { n.env = (v << 4) | (n.env & 15); edit(); });
+        const fadeN = num(fade(n), -7, 7, v => { n.env = (n.env & 0xF0) | (v > 0 ? 8 | v : -v); edit(); });
+        const frN = num(noise ? n.freq & 0xFF : n.freq & 0x7FF, 0, noise ? 255 : 2047, v => { n.freq = v; showHz(); edit(); });
+        const dutyS = noise ? el('span', { text: '-' }) : sel(CRY_DUTY.map((s, k) => [k, s]).concat(n.pattern ? [[9, '바뀜 ' + n.pattern.map(k => CRY_DUTY[k]).join('→')]] : []), n.pattern ? 9 : n.duty, v => { if (v < 4) { n.duty = v; n.pattern = null; } edit(); });
+        [lenN, volN, fadeN, frN].forEach(x => x.style.width = '64px');
+        showHz();
+        tbody.append(el('tr', null, el('th', { text: String(i + 1) }), el('td', null, lenN), el('td', null, volN), el('td', null, fadeN), el('td', null, frN, hz), el('td', null, dutyS),
+          el('td', null, el('button', { text: '＋', title: '아래에 음 추가', onclick: () => { c.notes.splice(i + 1, 0, Object.assign({}, n, { pattern: n.pattern && n.pattern.slice() })); edit(); rows(); } }),
+            el('button', { text: '🗑', title: '이 음 지우기', onclick: () => { c.notes.splice(i, 1); edit(); rows(); } }))));
+      });
+      if (!c.notes.length) tbody.append(el('tr', null, el('td', { colspan: 7, class: 'hint', text: '음이 없어요' })));
+    };
+    const chTabs = () => {
+      chBar.replaceChildren(...st.cry.channels.map((c, i) => el('button', { text: (CRY_CH_NAMES[c.id] || 'CH' + c.id) + ' · ' + c.notes.length + '음', style: i === st.ch ? 'background:#fff;font-weight:bold' : 'background:#ebebeb', onclick: () => { st.ch = i; chTabs(); rows(); } })));
+    };
+    // 새 울음소리를 넣을 자리 (기본 울음소리 번호)
+    const slotSel = sel(baseOpts(), 0, () => updateSlot());
+    slotSel.style.maxWidth = '360px';
+    const slotWarn = el('div', { style: 'color:#8b4513' });
+    const updateSlot = () => {
+      const others = U[+slotSel.value].filter(m => m !== st.mon);
+      slotWarn.textContent = others.length ? '⚠ 이 번호를 쓰는 다른 포켓몬 ' + others.length + '마리 (' + others.slice(0, 6).map(m => rom.monName(m)).join(', ') + (others.length > 6 ? ' …' : '') + ')의 울음소리도 같이 바뀌어요.'
+        : '이 번호는 ' + rom.monName(st.mon) + '만 써서 다른 포켓몬에는 영향이 없어요.';
+    };
+    const slotRow = el('div', { style: 'display:none;margin-top:6px' },
+      el('div', { class: 'bar' }, el('b', { text: '고친 소리를 넣을 기본 울음소리 번호:' }), slotSel), slotWarn,
+      el('div', { class: 'hint', text: '게임의 기본 울음소리 68개를 포켓몬들이 나눠 쓰고, 빈 번호는 없어요. 한 마리만 쓰는 번호를 고르면 다른 포켓몬은 그대로예요.' }));
+    const pickSlot = () => {
+      const own = st.h.base;
+      if (U[own].every(m => m === st.mon)) return own;
+      let best = 0; for (let i = 1; i < t.count; i++) if (U[i].length < U[best].length) best = i;
+      return best;
+    };
+    const refresh = () => {
+      baseSel.value = st.h.base; pitchIn.set(st.h.pitch); lenIn.set(st.h.length);
+      st.ch = Math.min(st.ch, st.cry.channels.length - 1);
+      chTabs(); rows();
+      slotRow.style.display = st.edited ? '' : 'none';
+      if (st.edited) { slotSel.value = pickSlot(); updateSlot(); }
+    };
+    const load = m => {
+      st.mon = m; st.h = RomCry.header(d, t, m); st.cry = RomCry.decode(d, RomCry.baseOff(d, t, st.h.base)); st.edited = false; st.ch = 0;
+      title.textContent = monLabel(m); status.textContent = ''; err.textContent = '';
+      refresh();
+    };
+    const apply = () => {
+      try {
+        const h = Object.assign({}, st.h);
+        if (st.edited) {
+          const slot = +slotSel.value, len = RomCry.encode(st.cry, 0x4000).length;
+          let p = -1;
+          for (const r of rom.free) if (r[1] - r[0] >= len && Math.floor(r[0] / 0x4000) === Math.floor((r[0] + len - 1) / 0x4000)) { p = r[0]; r[0] += len; break; }
+          if (p < 0) { this.okMsg(err, '롬에 울음소리를 넣을 빈 공간이 부족해요', true); return; }
+          d.set(RomCry.encode(st.cry, 0x4000 + p % 0x4000), p);
+          const e = t.tab + slot * 3, addr = 0x4000 + p % 0x4000;
+          d[e] = Math.floor(p / 0x4000); d[e + 1] = addr & 0xFF; d[e + 2] = addr >> 8;
+          h.base = slot;
+        }
+        RomCry.setHeader(d, t, st.mon, h);
+        rom.dirty = true;
+        U = users();
+        for (const s of [baseSel, slotSel]) for (const o of s.options) o.textContent = baseLabel(+o.value);
+        load(st.mon);
+        this.okMsg(err, '적용했어요');
+        this.say(rom.monName(st.mon) + ' 울음소리를 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.');
+      } catch (e) { console.error(e); this.okMsg(err, e.message, true); }
+    };
+    const importAudio = () => this.cryImportDialog(cry => {
+      st.cry = cry; st.h.pitch = 0; st.h.length = 0x100; st.edited = true; st.ch = 0;
+      refresh(); play(st.cry, st.h);
+    });
+    const list = listPanel(this.monOptions(false).filter(o => o[0] > 0).map(([v, s]) => ({ value: v, label: s })), m => {
+      if (m === st.mon) return;
+      if (status.textContent && !confirm('적용하지 않은 변경이 있어요. 버릴까요?')) return;
+      load(m); play(st.cry, st.h);
+    }, '포켓몬 찾기', 25);
+    const body = el('div', null,
+      el('div', { class: 'bar' }, title,
+        el('button', { text: '▶ 들어보기', style: 'font-weight:bold;background:#dcf5dc', onclick: () => play(st.cry, st.h) }),
+        el('button', { text: '▶ 원래 소리', onclick: () => { const h = RomCry.header(d, t, st.mon); play(RomCry.decode(d, RomCry.baseOff(d, t, h.base)), h); } }),
+        el('button', { text: '↩ 되돌리기', onclick: () => load(st.mon) }), status),
+      el('div', { class: 'bar' },
+        el('button', { text: '🎧 소리 파일로 울음소리 만들기 🌟', style: 'font-weight:bold;background:#dcf0ff', onclick: importAudio }), copySel),
+      el('fieldset', null, el('legend', { text: '이 포켓몬의 울음소리' }),
+        el('div', { class: 'bar' }, el('span', { text: '기본 울음소리:' }), baseSel),
+        el('div', { class: 'bar' }, el('span', { text: '음높이:' }), pitchIn.n, pitchIn.r, el('span', { class: 'hint', text: '0 = 그대로, 클수록 높은 소리' })),
+        el('div', { class: 'bar' }, el('span', { text: '길이:' }), lenIn.n, lenIn.r, el('span', { class: 'hint', text: '256 = 보통, 클수록 느리고 길게' })),
+        el('div', { class: 'hint', text: '2세대 포켓몬 울음소리는 기본 울음소리 68개 중 하나에 음높이·길이만 바꿔서 만들어요. 위 세 가지만 바꾸면 다른 포켓몬에는 영향이 없어요.' })),
+      el('fieldset', null, el('legend', { text: '기본 울음소리 음표 (고치면 새 소리로 넣어요)' }), chBar, grid,
+        el('div', { class: 'hint', text: '길이 1프레임 = 1/60초 · 볼륨 변화: −면 점점 작게, +면 점점 크게 (숫자가 작을수록 빠르게) · 소리 높이: 사각파는 0~2047 (클수록 높음), 노이즈는 0~255 (작을수록 높은 쉭 소리)' }), slotRow),
+      el('div', { class: 'bar' }, el('button', { class: 'apply', text: '적용', onclick: apply }), err),
+      el('div', { class: 'hint', text: '적용한 뒤 메인 화면에서 [저장하기]를 눌러야 롬 파일에 기록돼요' }));
+    load(25);
+    this.dialog('포켓몬 울음소리 에디터', () => el('div', { class: 'side', style: 'grid-template-columns:200px minmax(0,1fr)' }, list, body), () => Player.stop());
+  },
+
+  // ---------------------------------------------------------------- 소리 파일 → 울음소리
+  cryImportDialog(onDone) {
+    let file = null, cry = null;
+    const info = el('div', { class: 'hint', text: '선택된 파일 없음' }), result = el('div', { style: 'color:#1c3d9a;white-space:pre-line;margin:6px 0', text: '변환 준비 완료' });
+    const fileInput = el('input', { type: 'file', accept: 'audio/*', style: 'display:none' });
+    const setFile = f => { file = f; info.textContent = '파일: ' + f.name; result.textContent = '[✨ 울음소리로 변환하기]를 누르세요.'; };
+    fileInput.addEventListener('change', () => { if (fileInput.files[0]) setFile(fileInput.files[0]); });
+    const secSel = sel([[0.5, '0.5초'], [0.8, '0.8초'], [1, '1초'], [1.5, '1.5초 (보통)'], [2, '2초'], [3, '3초']], 1.5);
+    const shiftIn = num(0, -24, 24), sq2In = num(60, 0, 100), noiseIn = num(70, 0, 100);
+    const previewBtn = el('button', { text: '▶ 다시 듣기', onclick: () => { if (cry) Player.play(RomCry.render(cry, 0, 0x100), true); } });
+    const importBtn = el('button', { class: 'apply', text: '✅ 울음소리 에디터로 가져오기', style: 'font-weight:bold', onclick: () => { close(); onDone(cry); } });
+    previewBtn.disabled = importBtn.disabled = true;
+    const convBtn = el('button', { text: '✨ 울음소리로 변환하기', style: 'font-weight:bold;background:#dcf5e6', onclick: async () => {
+      if (!file) { alert('먼저 소리 파일을 선택해주세요.'); return; }
+      convBtn.disabled = true; result.textContent = '변환하는 중…';
+      try {
+        const { x, rate } = await AudioConverter.decodeFile(await file.arrayBuffer());
+        cry = RomCry.convert(x, rate, { maxSec: +secSel.value, shift: +shiftIn.value, sq2: +sq2In.value / 100, noise: +noiseIn.value / 100 });
+        const cnt = cry.channels.map(c => c.notes.length);
+        result.textContent = '🎉 변환 성공! 사각파 ' + cnt[0] + '음 · 사각파 ' + cnt[1] + '음 · 노이즈 ' + cnt[2] + '음';
+        previewBtn.disabled = importBtn.disabled = false;
+        Player.play(RomCry.render(cry, 0, 0x100), true);
+      } catch (e) { console.error(e); result.textContent = '변환 실패: ' + e.message; }
+      finally { convBtn.disabled = false; }
+    } });
+    const drop = el('div', { style: 'border:2px dashed var(--line);border-radius:8px;padding:14px;text-align:center;background:#fff' },
+      el('button', { text: '📂 파일 찾기...', style: 'background:#ebf0ff', onclick: () => fileInput.click() }), el('div', { class: 'hint', text: '또는 여기에 끌어다 놓기' }), fileInput);
+    drop.addEventListener('dragover', e => e.preventDefault());
+    drop.addEventListener('drop', e => { e.preventDefault(); e.stopPropagation(); if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]); });
+    let close;
+    close = this.dialog('소리 파일 → 2세대 울음소리 변환', () => el('div', null,
+      el('div', { style: 'font-weight:bold;color:#3b3b98;margin-bottom:10px;white-space:pre-line', text: '🐾 동물 소리·목소리·효과음 파일(MP3, WAV, OGG, M4A 등)을 고르세요.\n소리의 높낮이와 크기를 따라가는 사각파 2개 + 노이즈로 바꿔요.' }),
+      drop, info,
+      el('fieldset', { style: 'margin-top:10px' }, el('legend', { text: '변환 설정' }),
+        el('div', { class: 'bar' }, el('span', { text: '최대 길이:' }), secSel, el('span', { class: 'hint', text: '앞뒤 조용한 부분은 자동으로 잘라요' })),
+        el('div', { class: 'bar' }, el('span', { text: '조옮김 반음:' }), shiftIn, el('span', { class: 'hint', text: '소리가 너무 낮거나 높을 때' })),
+        el('div', { class: 'bar' }, el('span', { text: '두 번째 사각파 세기 %:' }), sq2In, el('span', { text: '노이즈 세기 %:' }), noiseIn)),
+      el('div', { class: 'bar', style: 'margin-top:10px' }, convBtn, previewBtn), result,
+      el('div', { class: 'bar', style: 'justify-content:space-between' }, el('button', { text: '닫기', onclick: () => close() }), importBtn)), () => Player.stop(), true);
   }
 });
 
