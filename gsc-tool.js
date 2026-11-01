@@ -180,7 +180,11 @@ const I18N = (() => {
     '🎼 피아노 롤 — 막대를 위아래로 끌면 음 높이 (Shift = 더 잘게) · 오른쪽 끝을 끌면 길이 · 마우스 휠 = 볼륨 · 빈 곳을 두 번 누르면 음 넣기 · 파랑·초록 = 사각파, 빨강 = 노이즈': '🎼 Piano roll — drag a bar up/down for pitch (Shift = finer) · drag its right edge for length · mouse wheel = volume · double-click empty space to add a note · blue/green = square, red = noise',
     '🎼 피아노 롤 — 막대를 위아래로 끌면 음 높이 · 좌우로 끌면 자리 옮기기 · 오른쪽 끝을 끌면 길이 · 마우스 휠 = 볼륨 · 오른쪽 클릭 = 지우기 · 빈 곳을 두 번 누르면 음 넣기 (아래 빨간 칸 = 드럼) · 진한 막대 = 지금 채널 · 빈 곳 클릭 = 재생 줄 옮기기 · 스페이스바 = 재생/멈춤 · Home = 처음으로': '🎼 Piano roll — drag a bar up/down for pitch · left/right to move it · drag its right edge for length · mouse wheel = volume · right-click = delete · double-click empty space to add a note (red rows at the bottom = drums) · dark bars = current channel · click empty space = move the playhead · Space = play/pause · Home = go to start',
     '⏮ 처음으로': '⏮ To start',
-    '🎬 기술 애니메이션': '🎬 Move Animation', '🗑 여러 개 지우기…': '🗑 Delete several…', '모두 체크': 'Check all', '모두 해제': 'Uncheck all', '종류별로 체크:': 'Check by kind:',
+    '🎬 기술 애니메이션': '🎬 Move Animation', '📤 프리셋 내보내기…': '📤 Export preset…', '📥 프리셋 불러오기…': '📥 Import preset…', '프리셋 내보내기': 'Export preset',
+    '고친 능력치를 파일로 저장해서 다른 롬에 그대로 넣을 수 있어요': 'Save your edited stats to a file and apply them to another ROM', '📤 파일로 내보내기': '📤 Export to file', '📥 고른 것 넣기': '📥 Apply selected',
+    '이름도 넣기 (포켓몬·기술 이름)': 'Include names (Pokémon / moves)', '원본 롬과 비교해서 바뀐 것만 넣기 (원본 롬 파일을 골라요)': 'Only what changed vs. an original ROM (pick the original ROM file)',
+    '　진화 · 레벨업 기술 포함': '　Include evolutions and level-up moves', '　기술머신·비전머신 호환 포함': '　Include TM/HM compatibility', '진화 · 레벨업 기술도 넣기': 'Also apply evolutions and level-up moves', '기술머신 호환도 넣기': 'Also apply TM/HM compatibility',
+    '🐾 포켓몬만': '🐾 Pokémon only', '⚔ 기술만': '⚔ Moves only', '🗑 여러 개 지우기…': '🗑 Delete several…', '모두 체크': 'Check all', '모두 해제': 'Uncheck all', '종류별로 체크:': 'Check by kind:',
     '✨ 물체': '✨ Objects', '🔊 효과음': '🔊 Sounds', '⏳ 기다리기': '⏳ Waits', '🧹 모두 지우기 (끝만 남기기)': '🧹 Delete all (keep End)', '🗑 체크한 명령 지우기': '🗑 Delete checked',
     '적용하지 않은 변경이 있어요': 'You have unapplied changes', '취소 (계속 고치기)': 'Cancel (keep editing)', '버리고 이동': 'Discard and switch', '💾 적용하고 이동': '💾 Apply and switch', '기술 애니메이션 편집기': 'Move Animation Editor', '🎬 이 기술 애니메이션 편집기로 열기 (실제 게임처럼 재생)': '🎬 Open in the Move Animation Editor (plays like the real game)',
     '▶ 재생': '▶ Play', '⏸ 멈춤': '⏸ Pause', '반복': 'Loop', '소리': 'Sound', '물체 위치 표시': 'Show object positions', '내 포켓몬': 'My Pokémon', '상대': 'Opponent',
@@ -6052,7 +6056,7 @@ class App {
     this.saveBtn = B('저장하기', 'save', () => this.save());
     this.toolBtns = [
       this.playBtn = B('▶ 게임으로 확인', 'play', () => this.playTest()),
-      B('포켓몬 편집', '', () => this.dialog('포켓몬 편집', () => this.tab_dex())),
+      B('포켓몬 편집', '', () => this.dialog('포켓몬 편집', () => el('div', null, this.presetBar('pokemon'), this.tab_dex()))),
       B('포켓몬 그림', '', () => this.spriteDialog()),
       B('트레이너 그림', '', () => this.trainerPicDialog()),
       B('울음소리 에디터', '', () => this.cryEditor()),
@@ -6060,7 +6064,7 @@ class App {
       B('🎬 기술 애니메이션', '', () => this.battleAnimEditor()),
       B('캐릭터 그림', '', () => this.owDialog()),
       B('타이틀 화면', '', () => this.titleDialog()),
-      B('기술 편집', '', () => this.dialog('기술 편집', () => this.tab_moves())),
+      B('기술 편집', '', () => this.dialog('기술 편집', () => el('div', null, this.presetBar('moves'), this.tab_moves()))),
       B('트레이너 편집', '', () => this.dialog('트레이너 편집', () => this.tab_trainer(), () => this.refreshArea())),
       B('타입 상성', '', () => this.dialog('타입 상성', () => this.tab_types())),
       B('BGM 에디터', '', () => this.bgmEditor()),
@@ -10503,6 +10507,188 @@ Object.assign(App.prototype, {
       () => { if (frame) frame.remove(); setTimeout(() => URL.revokeObjectURL(romUrl), 1000); });
     start();
     this.say('▶ 테스트 롬으로 게임을 켰어요 (원래 롬 파일은 그대로 · 고친 걸 남기려면 [저장하기])');
+  }
+});
+
+// ===== 99-preset.js
+// ================================================================ 프리셋: 포켓몬·기술 능력치를 파일로 내보내고 다른 롬에 불러오기
+// 포켓몬·기술 번호는 금·은 롬마다 같아서 번호로 저장 (한글판 ↔ 북미판 ↔ 개조롬)
+const PRESET_FORMAT = 'gsc-tool-preset';
+mixin(Rom.prototype, {
+  presetOk() { return this.baseStatsOff >= 0 && this.movesOff >= 0 && this.pokemonNames.length > 251; },
+  // 포켓몬 한 마리 → 저장할 값
+  presetMon(mon, o) {
+    const d = this.data, s = this.statOff(mon), r = {
+      types: [d[s + 7], d[s + 8]], stats: [1, 2, 3, 4, 5, 6].map(i => d[s + i]), catchRate: d[s + 9], baseExp: d[s + 10], items: [d[s + 11], d[s + 12]],
+      gender: d[s + 13], eggSteps: d[s + 15], growth: d[s + 22], eggGroups: d[s + 23], tmhm: Array.from(d.subarray(s + 24, s + 32))
+    };
+    if (o.names) r.name = this.pokemonNames[mon];
+    if (o.evos && this.evosBank >= 0) { const e = this.readEvos(mon); r.evos = e.evos; r.learnset = e.moves; }
+    return r;
+  },
+  presetMove(mv, o) {
+    const d = this.data, m = this.moveOff(mv), r = { effect: d[m + 1], power: d[m + 2], type: d[m + 3], accuracy: d[m + 4], pp: d[m + 5], chance: d[m + 6] };
+    if (o.names) r.name = this.moveNames[mv];
+    return r;
+  },
+  // 프리셋 값 넣기 → 문제 있으면 이유 (부분만 들어갈 수 있음)
+  applyPresetMon(mon, p, o) {
+    const d = this.data, s = this.statOff(mon), b = (v, lo, hi) => Number.isInteger(v) && v >= lo && v <= hi;
+    const errs = [];
+    if (p.types && b(p.types[0], 0, 255) && b(p.types[1], 0, 255)) { d[s + 7] = p.types[0]; d[s + 8] = p.types[1]; }
+    if (p.stats && p.stats.length === 6 && p.stats.every(v => b(v, 1, 255))) p.stats.forEach((v, i) => d[s + 1 + i] = v);
+    if (b(p.catchRate, 0, 255)) d[s + 9] = p.catchRate;
+    if (b(p.baseExp, 0, 255)) d[s + 10] = p.baseExp;
+    if (p.items) p.items.forEach((v, i) => { if (b(v, 0, 255)) d[s + 11 + i] = v; });
+    if (b(p.gender, 0, 255)) d[s + 13] = p.gender;
+    if (b(p.eggSteps, 0, 255)) d[s + 15] = p.eggSteps;
+    if (b(p.growth, 0, 255)) d[s + 22] = p.growth;
+    if (b(p.eggGroups, 0, 255)) d[s + 23] = p.eggGroups;
+    if (o.tmhm && p.tmhm && p.tmhm.length === 8 && p.tmhm.every(v => b(v, 0, 255))) d.set(p.tmhm, s + 24);
+    if (o.names && typeof p.name === 'string' && p.name && p.name !== this.pokemonNames[mon]) { try { this.setPokemonName(mon, p.name); } catch (e) { errs.push(pad3(mon) + ' 이름: ' + e.message); } }
+    if (o.evos && this.evosBank >= 0 && Array.isArray(p.evos) && Array.isArray(p.learnset)) {
+      const ev = p.evos.filter(e => b(e.method, 1, 5) && b(e.species, 1, 251)).map(e => ({ method: e.method, p1: e.p1 & 255, p2: (e.p2 || 0) & 255, species: e.species }));
+      const ls = p.learnset.filter(m => b(m.level, 1, 100) && b(m.move, 1, this.moveNames.length - 1));
+      const e = this.writeEvos(mon, ev, ls);
+      if (e) errs.push(pad3(mon) + ' 진화·기술: ' + e);
+    }
+    this.dirty = true;
+    return errs;
+  },
+  applyPresetMove(mv, p, o) {
+    const d = this.data, m = this.moveOff(mv), b = (v, lo, hi) => Number.isInteger(v) && v >= lo && v <= hi, errs = [];
+    if (b(p.effect, 0, 255)) d[m + 1] = p.effect;
+    if (b(p.power, 0, 255)) d[m + 2] = p.power;
+    if (b(p.type, 0, 255)) d[m + 3] = p.type;
+    if (b(p.accuracy, 0, 255)) d[m + 4] = p.accuracy;
+    if (b(p.pp, 1, 40)) d[m + 5] = p.pp;
+    if (b(p.chance, 0, 255)) d[m + 6] = p.chance;
+    if (o.names && typeof p.name === 'string' && p.name && p.name !== this.moveNames[mv]) { try { this.setMoveName(mv, p.name); } catch (e) { errs.push(pad3(mv) + ' 이름: ' + e.message); } }
+    this.dirty = true;
+    return errs;
+  }
+});
+
+Object.assign(App.prototype, {
+  // 포켓몬 편집·기술 편집 창 위에 붙는 단추줄
+  presetBar(kind) {
+    return el('div', { class: 'bar', style: 'margin-bottom:6px' },
+      el('button', { text: '📤 프리셋 내보내기…', onclick: () => this.presetExport(kind) }),
+      el('button', { text: '📥 프리셋 불러오기…', onclick: () => this.presetImport(kind) }),
+      el('span', { class: 'hint', text: '고친 능력치를 파일로 저장해서 다른 롬에 그대로 넣을 수 있어요' }));
+  },
+
+  // ---------------------------------------------------------------- 내보내기
+  presetExport(kind) {
+    const rom = this.rom;
+    if (!rom.presetOk()) { alert('이 롬에서는 프리셋을 만들 수 없어요 (능력치 표를 찾지 못했어요).'); return; }
+    const opt = (label, on) => check(label, on);
+    const [cMon, lMon] = opt('🐾 포켓몬 능력치 (타입·능력치·잡히는 정도·도구·성별·성장·알)', kind !== 'moves');
+    const [cEvo, lEvo] = opt('　진화 · 레벨업 기술 포함', true);
+    const [cTm, lTm] = opt('　기술머신·비전머신 호환 포함', true);
+    const [cMove, lMove] = opt('⚔ 기술 능력치 (효과·위력·타입·명중·PP·추가 효과)', kind !== 'pokemon');
+    const [cName, lName] = opt('이름도 넣기 (포켓몬·기술 이름)', true);
+    const [cDiff, lDiff] = opt('원본 롬과 비교해서 바뀐 것만 넣기 (원본 롬 파일을 골라요)', false);
+    const info = el('div', { class: 'hint' });
+    let close;
+    const go = async () => {
+      const o = { names: cName.checked, evos: cEvo.checked, tmhm: cTm.checked };
+      let base = null;
+      if (cDiff.checked) {
+        const f = await new Promise(res => { const i = el('input', { type: 'file', accept: '.gbc,.gb' }); i.addEventListener('change', () => res(i.files[0] || null)); i.click(); });
+        if (!f) return;
+        try { base = new Rom(new Uint8Array(await f.arrayBuffer()), f.name); } catch (e) { alert('원본 롬을 열 수 없어요: ' + e.message); return; }
+        if (!base.presetOk()) { alert('원본 롬에서 능력치 표를 찾지 못했어요.'); return; }
+      }
+      const out = { format: PRESET_FORMAT, version: 1, from: rom.fileName + ' (' + rom.versionName + ')', lang: rom.cs.kind, created: new Date().toISOString(), options: o, pokemon: {}, moves: {} };
+      const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+      if (cMon.checked) for (let m = 1; m <= 251; m++) {
+        const v = rom.presetMon(m, o);
+        if (!o.tmhm) delete v.tmhm;
+        if (base) { const w = base.presetMon(m, o); if (!o.tmhm) delete w.tmhm; if (same(v, w)) continue; }
+        out.pokemon[m] = v;
+      }
+      if (cMove.checked) for (let m = 1; m < Math.min(252, rom.moveNames.length); m++) {
+        const v = rom.presetMove(m, o);
+        if (base && same(v, base.presetMove(m, o))) continue;
+        out.moves[m] = v;
+      }
+      const np = Object.keys(out.pokemon).length, nm = Object.keys(out.moves).length;
+      if (!np && !nm) { this.okMsg(info, '넣을 게 없어요 (원본과 바뀐 게 없어요)', true); return; }
+      const name = (rom.fileName || 'rom').replace(/\.[^.]+$/, '') + '_프리셋_' + (base ? '바뀐것' : '전체') + '.json';
+      const blob = new Blob([JSON.stringify(out, null, 1)], { type: 'application/json' }), u = URL.createObjectURL(blob), a = el('a', { href: u, download: name });
+      document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 5000);
+      this.okMsg(info, '✅ 내보냈어요: 포켓몬 ' + np + '마리 · 기술 ' + nm + '개 → ' + name);
+    };
+    close = this.dialog('프리셋 내보내기', () => el('div', null,
+      el('div', { class: 'hint', text: '지금 롬의 능력치를 파일(.json)로 저장해요. 다른 롬을 연 뒤 [📥 프리셋 불러오기]로 넣으면 같은 번호의 포켓몬·기술에 그대로 들어가요.' }),
+      el('div', { style: 'margin:8px 0' }, el('div', null, lMon), el('div', null, lEvo), el('div', null, lTm), el('div', null, lMove), el('div', null, lName), el('div', { style: 'margin-top:6px' }, lDiff)),
+      el('div', { class: 'hint', text: '💡 "바뀐 것만"을 켜면 내가 고친 포켓몬·기술만 들어가서, 다른 개조롬에 넣어도 나머지는 건드리지 않아요.' }),
+      info,
+      el('div', { class: 'bar', style: 'justify-content:flex-end;margin-top:8px' }, el('button', { text: '닫기', onclick: () => close() }),
+        el('button', { class: 'apply', text: '📤 파일로 내보내기', onclick: go }))), null, true);
+  },
+
+  // ---------------------------------------------------------------- 불러오기 (미리 보고 고르기)
+  async presetImport(kind) {
+    const rom = this.rom;
+    if (!rom.presetOk()) { alert('이 롬에서는 프리셋을 넣을 수 없어요 (능력치 표를 찾지 못했어요).'); return; }
+    const f = await new Promise(res => { const i = el('input', { type: 'file', accept: '.json,application/json' }); i.addEventListener('change', () => res(i.files[0] || null)); i.click(); });
+    if (!f) return;
+    let p;
+    try { p = JSON.parse(await f.text()); } catch (e) { alert('프리셋 파일을 읽을 수 없어요 (JSON 형식이 아니에요).'); return; }
+    if (!p || p.format !== PRESET_FORMAT || !p.pokemon || !p.moves) { alert('이 툴에서 만든 프리셋 파일이 아니에요.'); return; }
+    if (p.version > 1) alert('더 새 버전의 툴에서 만든 프리셋이에요. 일부는 안 들어갈 수 있어요.');
+    const monIds = Object.keys(p.pokemon).map(Number).filter(m => m >= 1 && m <= 251).sort((a, b) => a - b);
+    const moveIds = Object.keys(p.moves).map(Number).filter(m => m >= 1 && m < rom.moveNames.length).sort((a, b) => a - b);
+    const sameLang = p.lang === rom.cs.kind || (['ko', 'koen'].includes(p.lang) && ['ko', 'koen'].includes(rom.cs.kind));
+    const [cName, lName] = check('이름도 덮어쓰기' + (sameLang ? '' : ' (⚠ 프리셋과 롬의 언어가 달라요)'), sameLang && !!(p.options && p.options.names));
+    const [cEvo, lEvo] = check('진화 · 레벨업 기술도 넣기', !!(p.options && p.options.evos));
+    const [cTm, lTm] = check('기술머신 호환도 넣기', !!(p.options && p.options.tmhm));
+    // 고르기 목록
+    const box = el('div', { style: 'max-height:340px;overflow:auto;border:1px solid var(--line);background:#fff;padding:4px' });
+    const rows = [];
+    const TYPE = new Map(TYPES);
+    const diffText = (a, b) => { const out = []; for (const k of Object.keys(a)) if (k !== 'name' && JSON.stringify(a[k]) !== JSON.stringify(b[k])) out.push(k); return out; };
+    const LABEL = { types: '타입', stats: '능력치', catchRate: '잡히는 정도', baseExp: '경험치', items: '도구', gender: '성별', eggSteps: '알', growth: '성장', eggGroups: '알 그룹', tmhm: '기술머신', evos: '진화', learnset: '레벨업 기술',
+      effect: '효과', power: '위력', type: '타입', accuracy: '명중', pp: 'PP', chance: '추가 효과' };
+    if (monIds.length) box.append(el('div', { class: 'grp', text: '🐾 포켓몬 ' + monIds.length + '마리' }));
+    for (const m of monIds) {
+      const v = p.pokemon[m], cur = rom.presetMon(m, { names: true, evos: true });
+      const ch = diffText(v, cur);
+      const [c, l] = check(pad3(m) + ' ' + rom.monName(m) + (v.name && v.name !== rom.monName(m) ? ' → ' + v.name : '') + (v.stats ? '  [' + v.stats.join('/') + '] ' + (v.types || []).map(t => TYPE.get(t) || t).join('·') : '') + (ch.length ? '  · 바뀜: ' + ch.map(k => LABEL[k] || k).join(', ') : '  · 지금과 같음'), ch.length > 0 || (v.name && v.name !== rom.monName(m)));
+      rows.push({ c, kind: 'mon', id: m }); box.append(el('div', null, l));
+    }
+    if (moveIds.length) box.append(el('div', { class: 'grp', text: '⚔ 기술 ' + moveIds.length + '개' }));
+    for (const m of moveIds) {
+      const v = p.moves[m], cur = rom.presetMove(m, { names: true }), ch = diffText(v, cur);
+      const [c, l] = check(pad3(m) + ' ' + rom.moveName(m) + (v.name && v.name !== rom.moveName(m) ? ' → ' + v.name : '') + '  [위력 ' + v.power + ' · 명중 ' + Math.round(v.accuracy * 100 / 255) + '% · PP ' + v.pp + ' · ' + (TYPE.get(v.type) || v.type) + ']' + (ch.length ? '  · 바뀜: ' + ch.map(k => LABEL[k] || k).join(', ') : '  · 지금과 같음'), ch.length > 0 || (v.name && v.name !== rom.moveName(m)));
+      rows.push({ c, kind: 'move', id: m }); box.append(el('div', null, l));
+    }
+    const count = el('b');
+    const upd = () => count.textContent = rows.filter(r => r.c.checked).length + '개 고름';
+    rows.forEach(r => r.c.addEventListener('change', upd)); upd();
+    const setAll = (k, v) => { rows.forEach(r => { if (!k || r.kind === k) r.c.checked = v; }); upd(); };
+    const msg = el('div');
+    let close;
+    const apply = () => {
+      const o = { names: cName.checked, evos: cEvo.checked, tmhm: cTm.checked }, errs = [];
+      let n = 0;
+      for (const r of rows) if (r.c.checked) { errs.push(...(r.kind === 'mon' ? rom.applyPresetMon(r.id, p.pokemon[r.id], o) : rom.applyPresetMove(r.id, p.moves[r.id], o))); n++; }
+      this.say('프리셋을 넣었어요 (' + n + '개). [저장하기]를 눌러야 롬 파일에 기록돼요.');
+      close();
+      alert('✅ 프리셋 ' + n + '개를 넣었어요.' + (errs.length ? '\n\n일부는 못 넣었어요:\n' + errs.slice(0, 15).join('\n') + (errs.length > 15 ? '\n…' : '') : '') + '\n\n열려 있는 편집 창은 닫았다 다시 열면 바뀐 값이 보여요.\n메인 화면에서 [저장하기]를 눌러야 롬 파일에 기록돼요.');
+    };
+    close = this.dialog('프리셋 불러오기 · ' + f.name, () => el('div', null,
+      el('div', { class: 'hint', text: '만든 롬: ' + (p.from || '?') + (p.created ? ' · ' + p.created.slice(0, 10) : '') + ' — 넣을 것을 고르세요. 지금 롬과 다른 것만 미리 체크돼 있어요.' }),
+      el('div', { class: 'bar', style: 'margin:6px 0' }, el('button', { text: '모두 체크', onclick: () => setAll(null, true) }), el('button', { text: '모두 해제', onclick: () => setAll(null, false) }),
+        monIds.length ? el('button', { text: '🐾 포켓몬만', onclick: () => { setAll(null, false); setAll('mon', true); } }) : null,
+        moveIds.length ? el('button', { text: '⚔ 기술만', onclick: () => { setAll(null, false); setAll('move', true); } }) : null, count),
+      box,
+      el('div', { style: 'margin-top:6px' }, el('div', null, lName), el('div', null, lEvo), el('div', null, lTm)),
+      msg,
+      el('div', { class: 'bar', style: 'justify-content:flex-end;margin-top:8px' }, el('button', { text: '취소', onclick: () => close() }),
+        el('button', { class: 'apply', text: '📥 고른 것 넣기', onclick: apply }))), null, false);
   }
 });
 
