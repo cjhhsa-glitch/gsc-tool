@@ -4622,13 +4622,16 @@ mixin(Rom.prototype, {
     this.dirty = true;
     return { group: g, map: n + 1 };
   },
-  // 툴에서만 보이는 지도 이름 바꾸기 (이 툴이 더한 지도)
-  renameCustomArea(a, name) {
-    this.customAreaNames.set(a.group * 256 + a.map, name);
-    a.name = name;
+  // 툴 목록에 보이는 장소(지도) 이름 바꾸기 — 롬 안 표시(GSCMAP1)에 적어 둠. 빈 이름이면 원래 이름으로
+  renameArea(a, name) {
+    const k = a.group * 256 + a.map;
+    if (name) this.customAreaNames.set(k, name); else this.customAreaNames.delete(k);
+    if (this.customAreaNames.size > 255) { this.customAreaNames.delete(k); return '이름을 바꾼 장소가 너무 많아요 (255곳까지)'; }
     const e = this.writeMapMarker();
-    if (!e) this.dirty = true;
-    return e;
+    if (e) return e;
+    a.name = name || Names.area(a.group, a.map, this.groupCounts);
+    this.dirty = true;
+    return null;
   }
 });
 
@@ -6416,7 +6419,8 @@ class App {
       for (const a of reg.areas) {
         const owners = q ? a.owners.filter(o => o.texts.some(t => t.current.includes(q))) : a.owners;
         if (q && !owners.length) continue;
-        const sum = el('summary', { text: a.name });
+        const sum = el('summary', { text: a.name },
+          el('span', { class: 'ren', text: '✏', title: '장소 이름 바꾸기', onclick: e => { e.preventDefault(); e.stopPropagation(); this.renameAreaDialog(a); } }));
         const ad = el('details', null, sum);
         sum.addEventListener('click', () => this.selectArea(a, null));
         this.areaNodes.set(a, sum);
@@ -10477,21 +10481,62 @@ Object.assign(App.prototype, {
     setTimeout(() => { nameIn.focus(); nameIn.select(); }, 0);
   },
 
-  // 지역 이름을 바꾼 뒤: 옛 이름이 나오는 대사(표지판·사람 말)도 바꿀지 골라요
-  regionTextDialog(oldN, newN, after) {
-    const rom = this.rom, found = oldN && oldN !== newN ? rom.textsWithWord(oldN) : [];
-    if (!found.length) { if (after) after(); return; }
-    const conv = s => replaceWord(s, oldN, newN).split(oldN).join(newN);
-    const checks = found.map(() => { const c = el('input', { type: 'checkbox' }); c.checked = true; return c; });
+  // 왼쪽 목록 지도 줄의 ✏ → 장소 이름 바꾸기 (이 툴 목록에 보이는 이름. 게임 화면에는 안 나오니 대사도 같이 바꿀 수 있게)
+  renameAreaDialog(a) {
+    const rom = this.rom, orig = Names.area(a.group, a.map, rom.groupCounts);
+    const nameIn = el('input', { class: 'txt', value: a.name, style: 'width:200px' }), msg = el('div');
+    let close;
+    const apply = () => {
+      const nn = nameIn.value.trim(), old = a.name;
+      if (nn === old) { close(); return; }
+      const e = rom.renameArea(a, nn === orig ? '' : nn);
+      if (e) { this.okMsg(msg, e, true); return; }
+      close();
+      this.buildTree(); this.setTab(this.tab);
+      this.say('장소 이름을 "' + a.name + '"(으)로 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.');
+      this.regionTextDialog(old, a.name, null, true);
+    };
+    nameIn.addEventListener('keydown', e => { if (e.key === 'Enter') apply(); });
+    close = this.dialog('✏ 장소 이름 바꾸기', () => el('div', null,
+      el('div', { class: 'hint', text: a.regionName + ' › ' + a.name }),
+      el('div', { class: 'bar', style: 'margin-top:6px' }, el('span', { text: '새 이름' }), nameIn,
+        orig !== a.name ? el('button', { text: '원래 이름으로', onclick: () => { nameIn.value = orig; } }) : null),
+      el('div', { class: 'hint', text: '이 툴 왼쪽 목록에 보이는 이름이에요 (게임 화면에는 장소 이름 대신 지역 이름이 떠요). 바꾼 다음, 옛 이름이 나오는 대사가 있으면 같이 바꿀지 물어봐요.' }),
+      msg,
+      el('div', { class: 'bar', style: 'justify-content:flex-end;margin-top:10px' }, el('button', { text: '취소', onclick: () => close() }),
+        el('button', { class: 'apply', text: '바꾸기', onclick: apply }))), null, true);
+    setTimeout(() => { nameIn.focus(); nameIn.select(); }, 0);
+  },
+
+  // 이름을 바꾼 뒤: 옛 이름이 나오는 대사(표지판·사람 말)도 바꿀지 골라요.
+  // 찾을 말·바꿀 말은 창에서 고쳐서 다시 찾을 수 있어요. always = 하나도 없어도 창을 띄움 (장소 이름은 대사에 그대로 안 나오는 경우가 많아서)
+  regionTextDialog(oldN, newN, after, always) {
+    const rom = this.rom;
+    if (!oldN || oldN === newN) { if (after) after(); return; }
+    let found = rom.textsWithWord(oldN), checks = [];
+    if (!found.length && !always) { if (after) after(); return; }
+    const findIn = el('input', { class: 'txt', value: oldN, style: 'width:150px' }), replIn = el('input', { class: 'txt', value: newN, style: 'width:150px' });
+    const conv = s => { const o = findIn.value, n = replIn.value; return !o ? s : n ? replaceWord(s, o, n) : s.split(o).join(''); };
     const before = el('textarea', { readonly: '', style: 'width:100%;height:100px' }), aft = el('textarea', { readonly: '', style: 'width:100%;height:100px' });
-    const show = t => { before.value = t.current; aft.value = conv(t.current); };
-    const tbl = el('table', { class: 'grid', style: 'width:100%' }, el('tr', null, el('th', { text: '바꾸기' }), el('th', { text: '어디서 나오는 대사' }), el('th', { text: '바뀐 뒤 대사' })));
-    found.forEach(([t, where], i) => {
-      const tr = el('tr', { style: 'cursor:pointer' }, el('td', null, checks[i]), el('td', { text: where }), el('td', { text: RAW + conv(t.current).replace(/\n/g, ' / ') }));
-      tr.addEventListener('click', e => { if (e.target !== checks[i]) show(t); });
-      tbl.append(tr);
-    });
-    show(found[0][0]);
+    const show = t => { before.value = t ? t.current : ''; aft.value = t ? conv(t.current) : ''; };
+    const info = el('div', { class: 'hint', style: 'color:#334;margin:6px 0' }), tblBox = el('div', { style: 'max-height:340px;overflow:auto' });
+    const fill = () => {
+      found = findIn.value ? rom.textsWithWord(findIn.value) : [];
+      checks = found.map(() => { const c = el('input', { type: 'checkbox' }); c.checked = true; return c; });
+      const tbl = el('table', { class: 'grid', style: 'width:100%' }, el('tr', null, el('th', { text: '바꾸기' }), el('th', { text: '어디서 나오는 대사' }), el('th', { text: '바뀐 뒤 대사' })));
+      found.forEach(([t, where], i) => {
+        const tr = el('tr', { style: 'cursor:pointer' }, el('td', null, checks[i]), el('td', { text: where }), el('td', { text: RAW + conv(t.current).replace(/\n/g, ' / ') }));
+        tr.addEventListener('click', e => { if (e.target !== checks[i]) show(t); });
+        tbl.append(tr);
+      });
+      tblBox.replaceChildren(tbl);
+      info.textContent = found.length
+        ? "게임 대사 중 '" + findIn.value + "' 이(가) 나오는 곳 " + found.length + '개를 찾았어요 (표지판, 사람들 말 등). 바꿀 대사만 체크하세요. 뒤에 붙는 조사(은/는, 이/가…)도 새 이름에 맞춰 바꿔요. 줄을 누르면 아래에서 바뀌기 전·후를 볼 수 있어요.'
+        : "'" + findIn.value + "' 이(가) 나오는 대사가 없어요. 찾을 말을 줄여서 (예: '공박사 연구소' → '연구소') [다시 찾기]를 눌러 보세요.";
+      show(found.length ? found[0][0] : null);
+    };
+    for (const i of [findIn, replIn]) i.addEventListener('keydown', e => { if (e.key === 'Enter') fill(); });
+    fill();
     let close;
     const ok = el('button', { class: 'apply', text: '✅ 체크한 대사 바꾸기', onclick: () => {
       let n = 0;
@@ -10501,11 +10546,11 @@ Object.assign(App.prototype, {
         if (s !== t.current) { rom.setTextChecked(t, s); n++; }
       });
       close();
-      if (n) { this.buildTree(); this.setTab(this.tab); this.say('대사 ' + n + "개에서 '" + oldN + "' → '" + newN + "' 로 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요."); }
+      if (n) { this.buildTree(); this.setTab(this.tab); this.say('대사 ' + n + "개에서 '" + findIn.value + "' → '" + replIn.value + "' 로 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요."); }
     } });
     close = this.dialog("대사에서도 '" + oldN + "' → '" + newN + "' 로 바꿀까요?", () => el('div', null,
-      el('div', { class: 'hint', style: 'color:#334;margin-bottom:6px', text: "게임 대사 중 '" + oldN + "' 이(가) 나오는 곳 " + found.length + '개를 찾았어요 (마을 표지판, 사람들 말 등). 바꿀 대사만 체크하세요. 뒤에 붙는 조사(은/는, 이/가…)도 새 이름에 맞춰 바꿔요.\n줄을 누르면 아래에서 바뀌기 전·후를 볼 수 있어요.' }),
-      el('div', { style: 'max-height:340px;overflow:auto' }, tbl),
+      el('div', { class: 'bar' }, el('span', { text: '찾을 말' }), findIn, el('span', { text: '→ 바꿀 말' }), replIn, el('button', { text: '🔍 다시 찾기', onclick: fill })),
+      info, tblBox,
       el('div', { class: 'side', style: 'grid-template-columns:1fr 1fr;margin-top:8px' }, el('div', null, el('b', { text: '지금 대사' }), before), el('div', null, el('b', { text: '바뀐 뒤' }), aft)),
       el('div', { class: 'bar', style: 'margin-top:8px;justify-content:flex-end' },
         el('button', { text: '모두 체크', onclick: () => checks.forEach(c => c.checked = true) }),
