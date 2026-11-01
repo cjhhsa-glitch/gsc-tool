@@ -11,6 +11,217 @@ const SONG_GROUPS = [["🏘 마을 · 도시",[0x3C, 0x26, 0x2D, 0x25, 0x3D, 0x2
 const VANILLA_MUSIC_TABLE = "3A85513AB1773B00403BCA423B06453BF0753B20473BFA493B6D503BC6553D11743B9B573B2D583C97463B2F773BDD583B295B3BD85B3B6D5D3B19613CBF453D00403D5B433A9F7E3D18453D2C463D15483DAE483D0C4B3D9F4C3DEA4D3D794F3D27513D8A513CE1463DE854074C783DE8573D035B3DB8793D605C3DC55D3D96603B017C3BD0723C00403AB6643A6A693AF8563A185B3AE95F3A67623C86433A92543A426D3DC3663B3E6E3DA2743AD57D3B5E633A7C723AFC733A1F763B5F643D137B3D11683D74693D996A3B69653BC5663B52683B4B693B756B3BE86C3D5C603BCB6D3D02463BB26F3DF26B3D726C3D796D3D236E3D55703D08733DFD783A927D3D6D763BBC793B3E7B3D167C3BB1753CFD4733D27C";
 const EFFECT_CONSTS = "NORMAL_HIT SLEEP POISON_HIT LEECH_HIT BURN_HIT FREEZE_HIT PARALYZE_HIT SELFDESTRUCT DREAM_EATER MIRROR_MOVE ATTACK_UP DEFENSE_UP SPEED_UP SP_ATK_UP SP_DEF_UP ACCURACY_UP EVASION_UP ALWAYS_HIT ATTACK_DOWN DEFENSE_DOWN SPEED_DOWN SP_ATK_DOWN SP_DEF_DOWN ACCURACY_DOWN EVASION_DOWN RESET_STATS BIDE RAMPAGE FORCE_SWITCH MULTI_HIT CONVERSION FLINCH_HIT HEAL TOXIC PAY_DAY LIGHT_SCREEN TRI_ATTACK UNUSED_25 OHKO RAZOR_WIND SUPER_FANG STATIC_DAMAGE TRAP_TARGET UNUSED_2B DOUBLE_HIT JUMP_KICK MIST FOCUS_ENERGY RECOIL_HIT CONFUSE ATTACK_UP_2 DEFENSE_UP_2 SPEED_UP_2 SP_ATK_UP_2 SP_DEF_UP_2 ACCURACY_UP_2 EVASION_UP_2 TRANSFORM ATTACK_DOWN_2 DEFENSE_DOWN_2 SPEED_DOWN_2 SP_ATK_DOWN_2 SP_DEF_DOWN_2 ACCURACY_DOWN_2 EVASION_DOWN_2 REFLECT POISON PARALYZE ATTACK_DOWN_HIT DEFENSE_DOWN_HIT SPEED_DOWN_HIT SP_ATK_DOWN_HIT SP_DEF_DOWN_HIT ACCURACY_DOWN_HIT EVASION_DOWN_HIT SKY_ATTACK CONFUSE_HIT POISON_MULTI_HIT UNUSED_4E SUBSTITUTE HYPER_BEAM RAGE MIMIC METRONOME LEECH_SEED SPLASH DISABLE LEVEL_DAMAGE PSYWAVE COUNTER ENCORE PAIN_SPLIT SNORE CONVERSION2 LOCK_ON SKETCH DEFROST_OPPONENT SLEEP_TALK DESTINY_BOND REVERSAL SPITE FALSE_SWIPE HEAL_BELL PRIORITY_HIT TRIPLE_KICK THIEF MEAN_LOOK NIGHTMARE FLAME_WHEEL CURSE UNUSED_6E PROTECT SPIKES FORESIGHT PERISH_SONG SANDSTORM ENDURE ROLLOUT SWAGGER FURY_CUTTER ATTRACT RETURN PRESENT FRUSTRATION SAFEGUARD SACRED_FIRE MAGNITUDE BATON_PASS PURSUIT RAPID_SPIN UNUSED_82 UNUSED_83 MORNING_SUN SYNTHESIS MOONLIGHT HIDDEN_POWER RAIN_DANCE SUNNY_DAY DEFENSE_UP_HIT ATTACK_UP_HIT ALL_UP_HIT FAKE_OUT BELLY_DRUM PSYCH_UP MIRROR_COAT SKULL_BASH TWISTER EARTHQUAKE FUTURE_SIGHT GUST STOMP SOLARBEAM THUNDER TELEPORT BEAT_UP FLY DEFENSE_CURL";
 const EFFECT_KO = {NORMAL_HIT:"일반 공격",SLEEP:"잠들게 하기",POISON_HIT:"공격 + 독 (확률)",LEECH_HIT:"공격 + HP 흡수",BURN_HIT:"공격 + 화상 (확률)",FREEZE_HIT:"공격 + 얼음 (확률)",PARALYZE_HIT:"공격 + 마비 (확률)",SELFDESTRUCT:"자폭 (쓰러짐)",DREAM_EATER:"꿈먹기 (잠든 상대만)",MIRROR_MOVE:"따라하기",ALWAYS_HIT:"반드시 명중",RESET_STATS:"능력 변화 없애기 (흑안개)",BIDE:"참기",RAMPAGE:"난동 (2~3턴 후 혼란)",FORCE_SWITCH:"강제 교체·도망 (울부짖기)",MULTI_HIT:"2~5번 연속 공격",CONVERSION:"텍스처 (타입 바꾸기)",FLINCH_HIT:"공격 + 풀죽음 (확률)",HEAL:"HP 절반 회복",TOXIC:"맹독",PAY_DAY:"고양이돈받기",LIGHT_SCREEN:"빛의장막",TRI_ATTACK:"트라이어택",OHKO:"일격필살",RAZOR_WIND:"2턴 공격 (모으기)",SUPER_FANG:"상대 HP 절반 데미지",STATIC_DAMAGE:"고정 데미지 (위력 = 데미지)",TRAP_TARGET:"조이기·묶기 (2~5턴)",DOUBLE_HIT:"2번 공격",JUMP_KICK:"빗나가면 반동 (점프킥)",MIST:"흰안개",FOCUS_ENERGY:"기충전 (급소율 상승)",RECOIL_HIT:"반동 데미지",CONFUSE:"혼란시키기",TRANSFORM:"변신",REFLECT:"리플렉터",POISON:"독 걸기",PARALYZE:"마비시키기",SKY_ATTACK:"2턴 공격 (불새)",CONFUSE_HIT:"공격 + 혼란 (확률)",POISON_MULTI_HIT:"2번 공격 + 독 (더블니들)",SUBSTITUTE:"대타출동",HYPER_BEAM:"파괴광선 (다음 턴 쉼)",RAGE:"분노",MIMIC:"흉내내기",METRONOME:"손가락흔들기",LEECH_SEED:"씨뿌리기",SPLASH:"튀어오르기 (효과 없음)",DISABLE:"사슬묶기",LEVEL_DAMAGE:"레벨만큼 데미지",PSYWAVE:"사이코웨이브",COUNTER:"카운터",ENCORE:"앵콜",PAIN_SPLIT:"아픔나누기",SNORE:"코골기",CONVERSION2:"텍스처2",LOCK_ON:"록온",SKETCH:"스케치",DEFROST_OPPONENT:"공격 + 상대 얼음 녹임",SLEEP_TALK:"잠꼬대",DESTINY_BOND:"길동무",REVERSAL:"기사회생 (HP 적을수록 강함)",SPITE:"원한",FALSE_SWIPE:"칼등치기 (HP 1 남김)",HEAL_BELL:"치료방울",PRIORITY_HIT:"선제공격",TRIPLE_KICK:"트리플킥",THIEF:"도둑질",MEAN_LOOK:"검은눈빛 (도망 못 감)",NIGHTMARE:"악몽",FLAME_WHEEL:"공격 + 화상, 자신 얼음 녹임",CURSE:"저주",PROTECT:"방어 (막기)",SPIKES:"압정뿌리기",FORESIGHT:"꿰뚫어보기",PERISH_SONG:"멸망의노래",SANDSTORM:"모래바람",ENDURE:"버티기",ROLLOUT:"구르기",SWAGGER:"뽐내기",FURY_CUTTER:"연속자르기",ATTRACT:"헤롱헤롱",RETURN:"은혜갚기 (친밀도 높을수록 강함)",PRESENT:"프레젠트",FRUSTRATION:"화풀이 (친밀도 낮을수록 강함)",SAFEGUARD:"신비의부적",SACRED_FIRE:"성스러운불꽃",MAGNITUDE:"매그니튜드",BATON_PASS:"바톤터치",PURSUIT:"따라가때리기",RAPID_SPIN:"고속스핀",MORNING_SUN:"아침햇살",SYNTHESIS:"광합성",MOONLIGHT:"달의불빛",HIDDEN_POWER:"잠재파워",RAIN_DANCE:"비바라기",SUNNY_DAY:"쾌청",DEFENSE_UP_HIT:"공격 + 자신 방어 상승",ATTACK_UP_HIT:"공격 + 자신 공격 상승",ALL_UP_HIT:"공격 + 자신 모든 능력 상승",FAKE_OUT:"속이기 (첫 턴 풀죽음)",BELLY_DRUM:"배북",PSYCH_UP:"자기암시",MIRROR_COAT:"미러코트",SKULL_BASH:"로케트박치기",TWISTER:"회오리",EARTHQUAKE:"지진",FUTURE_SIGHT:"미래예지",GUST:"바람일으키기",STOMP:"짓밟기",SOLARBEAM:"솔라빔",THUNDER:"번개",TELEPORT:"순간이동",BEAT_UP:"집단구타",FLY:"공중날기·구멍파기",DEFENSE_CURL:"웅크리기"};
+// ===== 04-i18n-extra.js
+// ================================================================ 화면 언어 — 새로 만든 기능들의 영어 (05-i18n.js 사전에 더해짐)
+// 게임에 들어가는 글자(기본 대사·롬에서 찾는 이름 등)는 넣지 않음
+const EN_EXTRA = {
+  // ---- 곡 이름 (크리스탈) · 공통
+  '이향 테마': "Clair's Theme", '모바일 어댑터 메뉴': 'Mobile Adapter Menu', '모바일 어댑터': 'Mobile Adapter', '부에나의 비밀번호': "Buena's Password", '수수께끼의 남자': 'Mysterious Man',
+  '크리스탈 오프닝': 'Crystal Opening', '배틀타워 테마': 'Battle Tower Theme', '스이쿤 배틀': 'Suicune Battle', '배틀타워 로비': 'Battle Tower Lobby', '모바일 센터': 'Mobile Center',
+  '명령이 하나도 없어요': 'There are no commands', '번째 명령의 이동 대상이 없어요': ': jump target of this command is missing', '마지막 명령이 "끝"이 아니에요': 'The last command is not "End"',
+  '이름이 너무 길어요 (': 'Name is too long (', '글자까지)': ' characters max)', '트레이너': 'Trainer',
+  '🌐 한국어': '🌐 한국어', '숲': 'Forest', '섬': 'Island', '🗺 새 지도 만들기': '🗺 New Map', '🗾 타운맵': '🗾 Town Map', '지역 이름 바꾸기': 'Rename region', '장소 이름 바꾸기': 'Rename place',
+  '엔터 = 다음 줄      빈 줄 = 다음 말풍선\n': 'Enter = next line      Blank line = next text box\n',
+  ' 같은 중괄호는 이름 등이 들어가는 자리예요\n다 고친 뒤 [저장하기]를 누르면 새 롬 파일로 저장돼요 (원래 롬은 그대로)': ' are placeholders for names — keep them as they are\nWhen done, press [Save] to download a new ROM file (your original ROM stays unchanged)',
+  "게임 대사 중 '": "In-game dialogue containing '", '잠깐 기다려!': 'Wait a moment!', '빨간 줄을 맨 앞으로 (Home 키)': 'Move the red line to the start (Home key)',
+  '킥': 'Kick', '스네어': 'Snare', '하이햇': 'Hi-hat', '크래시': 'Crash', '번째 스텝 · ': ' step · ', ' · 길이 ': ' · length ', '스텝 · 볼륨 ': ' steps · volume ',
+  ' 픽셀. 1번 흰색·4번 검정은 고정이고, ': ' pixels. Color 1 (white) and 4 (black) are fixed; ', '2·3번 색은 마음대로 바꿀 수 있어요.': 'colors 2 and 3 can be changed freely.',
+  '색은 바꿀 수 없어요 (그림만).': 'Colors cannot be changed (picture only).', ' 숫자키 1~4 = 색 고르기': ' Number keys 1–4 = pick color',
+  '📜 스토리 동작 보기·고치기': '📜 View / edit story actions', "⚠ 이 NPC 의 모습 '": "⚠ This NPC's look '", '엔터 = 다음 줄, 빈 줄 = 다음 말풍선, 한 줄 18자까지. ': 'Enter = next line, blank line = next text box, up to 18 characters per line. ', ' 사용 가능': ' can be used',
+  // ---- 새 지도 · 지역 이름 (63-newmap)
+  '지역 이름표를 찾지 못했어요': 'Could not find the region name table', '이름은 1~8글자로 해 주세요': 'Use 1–8 characters for the name',
+  '지역 이름을 넣을 빈 공간이 부족해요 (원래 이름보다 짧게 하면 돼요)': 'Not enough free space for the region name (a name no longer than the original fits)',
+  '지도 표를 찾지 못했어요': 'Could not find the map table', '이 지역 묶음에는 더 이상 지도를 넣을 수 없어요': 'No more maps can be added to this map group',
+  '지도 블록을 넣을 빈 공간이 부족해요': 'Not enough free space for the map blocks', '지도 이벤트를 넣을 빈 공간이 부족해요': 'Not enough free space for the map events',
+  '지도 정보를 넣을 빈 공간이 부족해요': 'Not enough free space for the map data', '지도 목록 자리가 부족해요 (지도 표가 있는 곳의 빈 공간을 다 썼어요)': 'No room left in the map list (the bank with the map table is full)',
+  '새 지도 ': 'New map ', '새 지도': 'New map', '이름을 바꾼 장소가 너무 많아요 (255곳까지)': 'Too many renamed places (up to 255)',
+
+  // ---- 스토리 동작 (65-story · 99-story)
+  '시작': 'Start', '고개': 'look', '돌기': 'turn', '천천히': 'slow', '걷기': 'walk', '빨리': 'fast', '미끄러짐(느림)': 'slide (slow)', '미끄러짐': 'slide', '미끄러짐(빠름)': 'slide (fast)',
+  '돌아서기': 'turn away', '돌아보기': 'turn in', '점프(느림)': 'jump (slow)', '점프': 'jump', '점프(빠름)': 'jump (fast)', '미끄러짐 끄기': 'sliding off', '미끄러짐 켜기': 'sliding on',
+  '방향 고정 풀기': 'unfix facing', '방향 고정': 'fix facing', '나타나기': 'appear', '숨기': 'hide', '사라지기': 'disappear', '제자리 반복': 'loop in place', '순간이동(떠남)': 'teleport (leave)',
+  '순간이동(도착)': 'teleport (arrive)', '하늘에서 떨어짐': 'fall from sky', '부딪힘': 'bump', '감정 표시 끄기': 'hide emote', '감정 표시': 'emote', '나무 흔들기': 'shake tree', '바위 깨기': 'smash rock',
+  '구멍에서 나옴': 'come out of hole', '쉬기': 'wait', '흔들기': 'shake', '갈래 ': 'Branch ',
+  '이 지도가 있는 곳(뱅크)에 빈 공간이 부족해요 (': 'Not enough free space in the bank of this map (', '바이트 필요)': ' bytes needed)', '↑ 위': '↑ Up', '↓ 아래': '↓ Down', '← 왼쪽': '← Left', '→ 오른쪽': '→ Right',
+  '대화창 열기': 'open text box', '대화창 닫기': 'close text box', '⏎ 버튼 누를 때까지 기다림': '⏎ wait for button', '⏎ 다음 말풍선': '⏎ next text box', '배틀 끝나고 지도로 돌아옴': 'return to map after battle',
+  '효과음 끝날 때까지 기다림': 'wait for sound effect', '따라가기 그만': 'stop following', '창 닫기': 'close window',
+  '이 NPC는 말 걸었을 때 하는 동작이 없어요.': 'This NPC does nothing when talked to.', ' (말 건 사람)': ' (talked to)',
+  '스토리 동작을 고쳤어요. [저장하기]를 눌러야 롬 파일에 기록돼요.': 'Story actions changed. Press [Save] to write them to the ROM file.',
+  '켜지는 곳: ': 'Set at: ', ' 외 ': ' and ', '지도 장면이나 게임 코드에서 켜져요': 'set by a map scene or game code', '아직 켜는 곳이 없어요 — ✅ 이벤트 표시 켜기 카드로 켜요': 'nothing sets it yet — use a ✅ Set event flag card',
+  '(갈래 밖)': '(outside)', '가기': 'Go', '(다른 곳)': '(elsewhere)', '이 이벤트 표시에 알아보기 쉬운 이름 붙이기': 'Give this event flag an easy name',
+  '번호를 바꾸면 다른 이벤트와 엉킬 수 있어요. 잘 모르면 그대로 두세요': 'Changing the number may clash with other events. Leave it if unsure', '잘 모르면 그대로 두세요': 'Leave it if unsure',
+  ' (새로 넣은 대사 · 한 줄 18자 · 빈 줄 = 다음 말풍선)': ' (new dialogue · 18 characters per line · blank line = next text box)', '(대사를 읽지 못했어요)': '(could not read the dialogue)',
+  '(움직임 없음)': '(no movement)', '🗺 지도에서 길 그리기': '🗺 Draw path on map', '이벤트 표시 #': 'Event flag #', ' 이(가) 켜져 있으면': ' is set', ' 이(가) 꺼져 있으면': ' is not set',
+  '게임 기록(배지·기능 등) #': 'Engine flag (badges etc.) #', ' 을(를) 가지고 있으면': ' is in the bag', ' 이(가) 없으면': ' is missing', ' 을(를) 데리고 있으면': ' is in the party',
+  '"예/아니요"에서 "예"를 고르면': 'the player picks "Yes"', '"예/아니요"에서 "아니요"를 고르면': 'the player picks "No"', '방금 배틀했으면': 'just battled', '방금 배틀하지 않았으면': 'did not just battle',
+  ') 확인 결과가 ': ') check result ', '맞으면': 'is true', '아니면': 'is false', ' 이면': '', '만약 ': 'If ', '대사 (보여주고 끝)': 'Dialogue (then end)',
+  '주인공 쪽을 보고 대사 (보여주고 끝)': 'Face the player, dialogue (then end)', '배틀에서 이겼을 때 상대 대사': "Opponent's line when they lose", '배틀에서 졌을 때 상대 대사': "Opponent's line when they win",
+  '주인공 쪽을 봐요': 'Face the player', '가지고 있는지 확인: ': 'Check bag for: ', '이벤트 표시 확인 #': 'Check event flag #', '게임 기록 확인 #': 'Check engine flag #',
+  '앞의 확인이 맞으면 → ': 'If the check above is true → ', '앞의 확인이 아니면 → ': 'If the check above is false → ', '앞의 값이 ': 'If the value is ', ' 이(가) 아니면': ' not equal',
+  ' 보다 크면': ' or more (greater)', ' 보다 작으면': ' or less (smaller)', '값을 ': 'Set value to ', ' (으)로 정하기': '', '값에 ': 'Add ', ' 더하기': ' to value', ' 중 아무 수 뽑기': ' (random number)',
+  '게임 정보 읽기: ': 'Read game info: ', '데리고 있는 포켓몬 수': 'party size', '배틀 결과': 'battle result', '박스 빈자리': 'free box space', '주인공 X 위치': 'player X', '주인공 Y 위치': 'player Y',
+  '이 지도의 장면 번호 읽기': "Read this map's scene number", '시간대 확인 (': 'Check time of day (', '아침': 'morning', '낮': 'day', '밤': 'night', '"예 / 아니요" 고르기': 'Ask "Yes / No"',
+  ' 켜기 (이 일을 했다고 기록)': ' set (record that this happened)', ' 끄기': ' clear', '게임 기록 #': 'Engine flag #', ' 켜기': ' set',
+  '개 주기 (메시지 없이)': ' — give (no message)', '개 주기': ' — give', '개 가져가기': ' — take away', '  지닌 물건 ': '  held item ', '알 주기: ': 'Give egg: ', ' (태어나면 Lv': ' (hatches at Lv',
+  '야생 ': 'Wild ', ' 와(과) 배틀 준비': ' — prepare battle', '트레이너 배틀 준비: ': 'Prepare trainer battle: ', ' 팀 ': ' team ', '배틀 시작!': 'Start battle!', ' 움직이기: ': ' moves: ',
+  ' 쪽을 봐요': ' (faces)', ' 사라지기': ' disappears', ' 나타나기': ' appears', ' 자리 옮기기 → X ': ' moves to → X ', ' 머리 위에 감정 표시': ' shows an emote', ' 을(를) 따라가기': ' (follows)',
+  '음악 바꾸기: ': 'Change music: ', '음악 줄이고 바꾸기: ': 'Fade music to: ', '원래 지도 음악으로': 'Back to the map music', '트레이너 만남 음악': 'Trainer encounter music', '효과음 #': 'Sound effect #',
+  '잠깐 쉬기 ': 'Wait ', ' 프레임 (60 = 1초)': ' frames (60 = 1 s)', '이 지도의 장면 번호를 ': "Set this map's scene number to ", ' (으)로 (다음 이야기로 넘어감)': ' (moves the story on)',
+  ' 지도의 장면 번호를 ': " map's scene number → ", '돈 주기 ': 'Give money ', '원': '', '돈 가져가기 ': 'Take money ', ' 그림 보여주기': ' picture shown', '상점 열기 (물건 목록 ': 'Open shop (item list ',
+  '번 · [프렌들리숍] 탭에서 고쳐요)': ' · edit it in the [Poké Mart] tab)', '화면 흔들기': 'Shake the screen', '게임 특수 동작 #': 'Special game action #', ' (그대로 둬요)': ' (leave as is)',
+  '공통 동작 #': 'Shared script #', ' (하고 끝)': ' (then end)', '게임 코드 실행 (그대로 둬요)': 'Run game code (leave as is)', ' 을(를) 하고 돌아오기': ' — run and come back', ' (으)로 가기': ' — go to',
+  '끝': 'End', '원래 게임 동작 (': 'Original game action (', ') — 그대로 동작해요': ') — works as before',
+  '🙂 주인공 쪽 보기': '🙂 Face the player', '주고받기': 'Give / take', '🎒 아이템 가져가기': '🎒 Take item', '💰 돈 주기': '💰 Give money', '💰 돈 가져가기': '💰 Take money', '배틀': 'Battle',
+  '만약 (갈래 나누기)': 'If (split into branches)', '❓ 만약 이벤트 표시가 켜져 있으면': '❓ If an event flag is set', '❓ 만약 이벤트 표시가 꺼져 있으면': '❓ If an event flag is not set',
+  '❓ 만약 아이템을 가지고 있으면': '❓ If the player has an item', '❓ 만약 포켓몬을 데리고 있으면': '❓ If a Pokémon is in the party', '❓ 예/아니요 묻고 "아니요"면': '❓ Ask Yes/No, if "No"',
+  '↪ 다른 갈래로 가기': '↪ Go to another branch', '📞 다른 갈래 하고 돌아오기': '📞 Run another branch and come back', '기록': 'Record', '✅ 이벤트 표시 켜기 (했다고 기록)': '✅ Set event flag (record it)',
+  '⬜ 이벤트 표시 끄기': '⬜ Clear event flag', '움직이기·장면': 'Movement · scene', '🚶 이 NPC 걷기 (지도에서 길 그리기)': '🚶 This NPC walks (draw path on map)',
+  '🚶 주인공 걷기 (지도에서 길 그리기)': '🚶 Player walks (draw path on map)', '🎬 이 지도의 장면 번호 바꾸기': "🎬 Change this map's scene number", '사람·화면': 'People · screen',
+  '👻 사라지기': '👻 Disappear', '✨ 나타나기': '✨ Appear', '❗ 감정 표시': '❗ Emote', '⏸ 잠깐 쉬기': '⏸ Wait', '🎵 음악 바꾸기': '🎵 Change music', '🎵 원래 지도 음악으로': '🎵 Back to map music',
+  '끝내기': 'Ending', '⏹ 끝': '⏹ End', '✔ 카드 변경 적용하기': '✔ Apply card changes', '↶ 카드 되돌리기': '↶ Undo card change', '🗑 갈래 ': '🗑 Branch ', ' 지우기': ' — delete',
+  '이 갈래로 오는 곳이 ': 'Places that lead to this branch: ', '군데 있어요: ': ' — ', ' (이어짐)': ' (falls through)',
+  '지우면 그 "만약…" · "갈래로 가기" 카드도 같이 빠져요. [카드 되돌리기]로 되돌릴 수 있어요.': 'Deleting also removes those "If…" / "Go to branch" cards. [Undo card change] brings them back.',
+  '같이 지우기': 'Delete them too', '📍 시작 (말을 걸면 여기부터)': '📍 Start (runs from here when talked to)', '📍 갈래 ': '📍 Branch ', '  (불러 쓰는 부분 · 끝나면 돌아감)': '  (called part · returns when done)',
+  '  다른 곳에 있는 공통 부분 — 값만 고칠 수 있어요 (고치면 같이 쓰는 곳도 바뀜)': '  shared part stored elsewhere — only values can be edited (changes affect every user)',
+  '  아무 데서도 안 와요 — 적용하면 없어져요': '  nothing leads here — removed when applied', '🗑 갈래 지우기': '🗑 Delete branch', '위로': 'Up', '아래로': 'Down', '아래에 카드 넣기': 'Insert a card below',
+  '이 카드 빼기': 'Remove this card', '이어서 ': 'Continues into ', '⚠ "끝" 카드 다음에 있는 카드는 실행되지 않아요. ↑로 끝 앞으로 옮기세요': '⚠ Cards after an "End" card never run. Move them above it with ↑',
+  '＋ 이 갈래에 카드 넣기 (끝 앞에)': '＋ Add a card to this branch (before End)', '＋ 새 갈래 만들기 (만약·다른 갈래로 가기에서 고를 수 있어요)': '＋ New branch (pick it in "If…" / "Go to branch")',
+  '⚠ 카드를 넣거나 뺀 것은 [적용하기]를 눌러야 롬에 들어가요': '⚠ Added / removed cards go into the ROM only after [Apply]',
+  '스토리 동작을 새로 썼어요. [저장하기]를 눌러야 롬 파일에 기록돼요.': 'Story script rewritten. Press [Save] to write it to the ROM file.', '↶ 값 고친 것 모두 되돌리기': '↶ Undo all value edits',
+  '⟲ 처음 스크립트로 되돌리기': '⟲ Back to the original script', '이번에 툴을 연 뒤 [적용하기] 전의 원래 스크립트로': 'Back to the script from before [Apply] in this session', '📜 스토리 동작 — ': '📜 Story actions — ',
+  '말을 걸었을 때 게임이 하는 일을 순서대로 보여줘요. 📍 갈래 버튼을 누르면 그 부분으로 가요.\n파란 칸(아이템·포켓몬·레벨·음악·대사 등)은 바로 고쳐져요.\n카드에 마우스를 올리면 ↑↓(순서) ＋(아래에 넣기) ✕(빼기)가 나와요. 넣고 뺀 것은 [적용하기]를 눌러야 들어가요 (원래 스크립트는 지우지 않고 그대로 둬요).\n🔒 카드는 아직 풀어서 보여주지 못하는 동작이에요 (그대로 동작해요).':
+    'Shows what the game does when this NPC is talked to, in order. Press a 📍 branch button to jump to it.\nBlue fields (items, Pokémon, levels, music, dialogue…) change right away.\nHover a card for ↑↓ (order), ＋ (insert below) and ✕ (remove). Added / removed cards need [Apply] (the original script is kept, not erased).\n🔒 cards are actions not decoded yet (they still work as before).',
+  '적용하지 않은 카드 변경은 버렸어요.': 'Card changes that were not applied were discarded.', '천천히 걷기': 'Slow walk', '빨리 걷기': 'Fast walk', '미끄러지기': 'Slide', '점프 (2칸)': 'Jump (2 tiles)',
+  '움직임: ': 'Movement: ', '(아직 없음 — 지도에서 갈 칸을 누르세요)': '(none yet — click tiles on the map)', '⚠ 빨간 칸 ': '⚠ Red tiles: ',
+  '개는 벽·물이에요. 게임에서는 거기서 멈추거나 이상하게 움직일 수 있어요': ' are walls / water. In game the walker may stop there or move oddly', '↶ 마지막 지우기': '↶ Remove last',
+  '🔵 시작 칸 고르기': '🔵 Pick start tile', '움직이기 시작하는 칸 (지도에서 누르기)': 'Tile where the movement starts (click on the map)', '그 방향 보기 (안 움직임)': 'Look that way (no step)',
+  '🚶 걷는 길 그리기 — ': '🚶 Draw walking path — ',
+  '갈 칸을 차례로 누르세요. 지금 끝(초록) 칸에서 그 칸까지 가로 → 세로 순서로 걸어요. 파랑 = 시작 칸, 빨강 테두리 = NPC.\n': 'Click the tiles to walk to, in order. From the current end (green) tile it walks horizontally, then vertically. Blue = start tile, red outline = NPC.\n',
+  '주인공은 시작 칸을 모르니 [🔵 시작 칸 고르기]로 말 거는 자리를 골라 주세요.': "The player's start tile is unknown — pick where they stand with [🔵 Pick start tile].",
+  '걸음': 'Step', '  방향만 보기': '  Look only', '⏸ 쉬기': '⏸ Wait', '이 길로 정하기': 'Use this path', '예: 공박사한테 알 받음': "e.g. Got the egg from Elm", '✏ 이벤트 표시 #': '✏ Event flag #',
+  '이 번호를 켜는 NPC·표지판이 없어요 (지도 장면이나 게임 코드에서 켜져요)': 'No NPC or sign sets this number (it is set by a map scene or game code)',
+  '\n이름은 이 툴에서만 보여요 (게임에는 영향 없음). 비우면 이름을 지워요.': '\nThe name shows only in this tool (no effect on the game). Leave empty to remove it.', '저장': 'Save',
+  '✏ 이름': '✏ Name', '✔': '✔',
+
+  // ---- 타운맵 (99-townmap)
+  '이 롬에서 타운맵 데이터를 찾지 못했어요.': 'Could not find the town map data in this ROM.', '타운맵을 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.': 'Town map changed. Press [Save] to write it to the ROM file.',
+  '장소 위치를 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.': 'Place position changed. Press [Save] to write it to the ROM file.', '타일 ': 'Tile ', '고른 타일: ': 'Selected tile: ',
+  '번 · 지도 위 오른쪽 클릭 = 그 칸의 타일 집기': ' · right-click on the map = pick that tile', '타운맵 타일 그림 (48칸)': 'Town map tile graphics (48 tiles)',
+  '128×24 픽셀 = 8×8 타일 48개 (가로 16칸씩). 색은 지금 고른 타일의 색 묶음으로 보여줘요 (타일마다 색 묶음이 달라요). 숫자키 1~4 = 색 고르기': '128×24 pixels = 48 tiles of 8×8 (16 per row). Shown in the palette of the selected tile (each tile has its own palette). Number keys 1–4 = pick color',
+  '타운맵 타일 그림을 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.': 'Town map tiles changed. Press [Save] to write them to the ROM file.',
+  '이 롬에서는 타운맵 색 위치를 찾지 못해서 색은 못 바꿔요.': 'The town map colors could not be found in this ROM, so they cannot be changed.', '목록이나 지도에서 장소를 고르세요': 'Pick a place in the list or on the map',
+  '번 장소': ' — place', '바꿨어요': 'Changed', '위치 X': 'Position X',
+  '이름은 지도에 들어갈 때 뜨는 이름·포켓기어 지도 이름이에요 (그 지역의 모든 지도). 위치는 지도 위 점을 끌어서 옮겨도 돼요.': 'The name shows when entering the area and on the PokéGear map (for every map in that region). You can also drag the dot on the map to move it.',
+  '칸 줄': 'Grid', '장소 점': 'Place dots', '장소 이름': 'Place names', '성도 지도': 'Johto map', '관동 지도': 'Kanto map', '🖌 타일 칠하기': '🖌 Paint tiles', '📍 장소 옮기기': '📍 Move places',
+  '🗾 타운맵 편집': '🗾 Town Map Editor', '🖌 칠하기: 아래에서 타일을 고르고 지도를 누르거나 끌어요 · 오른쪽 클릭 = 타일 집기 · 📍 장소 옮기기: 주황 점을 끌어요 (칠하기 중에도 Alt+끌기)': '🖌 Paint: pick a tile below, then click or drag on the map · right-click = pick tile · 📍 Move places: drag the orange dots (Alt+drag while painting)',
+  '타일': 'Tile', '이 타일의 색': "This tile's palette", '🎨 타일 그림 고치기…': '🎨 Edit tile graphics…', '장소 (지역 이름 · 위치)': 'Places (region name · position)',
+  '포켓기어 지도·타운맵 화면의 색이에요. 타일마다 위에서 고른 색 묶음을 써요.': 'Colors of the PokéGear / town map screen. Each tile uses the palette chosen above.',
+  // ---- 지역·장소 이름 · 새 지도 (99-newmap)
+  '지역 이름을 "': 'Region renamed to "', '"(으)로 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.': '". Press [Save] to write it to the ROM file.', '✏ 지역 이름 바꾸기': '✏ Rename region', '새 이름': 'New name',
+  '게임에서 이 지역 지도에 들어갈 때 뜨는 이름이에요. 포켓기어 지도·타운맵의 이름도 같이 바뀌어요. (': 'The name shown in game when entering this region. The PokéGear / town map name changes too. (',
+  '개 지도)': ' maps)', '장소 이름을 "': 'Place renamed to "', '✏ 장소 이름 바꾸기': '✏ Rename place', '원래 이름으로': 'Original name',
+  '이 툴 왼쪽 목록에 보이는 이름이에요 (게임 화면에는 장소 이름 대신 지역 이름이 떠요). 바꾼 다음, 옛 이름이 나오는 대사가 있으면 같이 바꿀지 물어봐요.': "The name shown in this tool's list on the left (the game shows the region name instead). Afterwards it asks whether to change dialogue that uses the old name.",
+  '개를 찾았어요 (표지판, 사람들 말 등). 바꿀 대사만 체크하세요. 뒤에 붙는 조사(은/는, 이/가…)도 새 이름에 맞춰 바꿔요. 줄을 누르면 아래에서 바뀌기 전·후를 볼 수 있어요.': ' lines found (signs, people…). Check only the ones to change. Korean particles after the name are adjusted too. Click a row to see before / after below.',
+  "' 이(가) 나오는 대사가 없어요. 찾을 말을 줄여서 (예: '공박사 연구소' → '연구소') [다시 찾기]를 눌러 보세요.": "' does not appear in any dialogue. Try a shorter search word and press [Search again].",
+  "대사에서도 '": "Also change '", "' 로 바꿀까요?": "' in dialogue?", '찾을 말': 'Find', '→ 바꿀 말': '→ Replace with', '🔍 다시 찾기': '🔍 Search again',
+  '이 롬에서는 지도 표를 찾지 못해서 새 지도를 만들 수 없어요.': 'The map table was not found in this ROM, so new maps cannot be made.', ' 블록)': ' blocks)', '(특수 장소 · 이름 안 뜸)': '(special place · no name shown)',
+  '지역 ': 'Region ', '이 지역 이름을 바꾸기': 'Rename this region', '🚪 문(워프)도 복사 — 나가는 문이 원래 지도처럼 같은 곳으로 이어져요': '🚪 Copy doors (warps) too — exits lead to the same places as the original map',
+  '🧑 사람 · 표지판 · 트리거도 복사 — ⚠ 대사·스크립트는 원래 지도와 같이 써서, 대사를 고치면 원래 지도도 바뀌어요': '🧑 Copy people, signs and triggers too — ⚠ they share dialogue/scripts with the original map, so editing one changes both',
+  '새 지도는 "': 'The new map becomes map #', '" 지역 묶음(': ' in group "', '번)의 ': '") — ', '번째 지도로 생겨요. 크기 ': '. Size ', ' 블록, 타일·음악·색은 원래 지도와 같아요.': ' blocks; tiles, music and colors are the same as the original.',
+  '새 지도 "': 'New map "', '"을(를) 만들었어요. [저장하기]를 눌러야 롬 파일에 기록돼요.': '" created. Press [Save] to write it to the ROM file.', '✅ 새 지도 "': '✅ New map "', '"을(를) 만들었어요.\n\n': '" created.\n\n',
+  '이제 이렇게 하면 돼요:\n': 'Next steps:\n', '1. [지도 블록] 탭에서 모양을 고쳐요\n': '1. Shape it in the [Map Blocks] tab\n', '2. [NPC · 이벤트] 탭에서 사람·표지판을 넣어요\n': '2. Add people and signs in the [NPCs · Events] tab\n',
+  '3. 원래 있던 지도의 [워프 · 트리거] 탭에서 이 새 지도로 가는 칸을 만들어야 게임에서 들어갈 수 있어요\n\n': '3. In the [Warps · Triggers] tab of an existing map, add a tile that leads to the new map, or it cannot be reached in game\n\n',
+  '※ 옆 지도와 이어지는 길(지도 가장자리)은 없어서, 마을 끝으로는 못 나가요. 문·트리거로 오가게 해 주세요.\n': '※ It has no edge connections to neighboring maps, so you cannot walk off its edges. Use doors / triggers.\n',
+  '※ 저장한 뒤 [게임으로 확인]으로 꼭 들어가 보세요.': '※ After saving, check it with [Test Play].', '기존 지도를 바탕으로 복사해서 새 지도를 만들어요. 원래 지도는 그대로예요.': 'Makes a new map by copying an existing one. The original map is unchanged.',
+  '바탕으로 쓸 지도': 'Base map', '툴에서 보일 이름': 'Name in the tool', ' 목록에 이 이름으로 나와요': ' shown in the list with this name', '게임 속 지역 이름': 'In-game region name',
+  '지도에 들어갈 때 뜨는 이름이에요. 게임은 지역 이름 수가 정해져 있어서 기존 지역 중에 골라요. 이름을 바꾸면 그 지역에 속한 모든 지도에서 바뀐 이름이 떠요.': 'The name shown when entering the map. The game has a fixed number of region names, so pick an existing one. Renaming it changes the name for every map in that region.',
+  '같이 복사할 것': 'Also copy', '🗺 지형(블록)은 항상 복사해요': '🗺 The terrain (blocks) is always copied',
+  // ---- 프리셋 (99-preset)
+  '이 롬에서는 프리셋을 만들 수 없어요 (능력치 표를 찾지 못했어요).': 'Presets cannot be made for this ROM (stat tables not found).',
+  '🐾 포켓몬 능력치 (타입·능력치·잡히는 정도·도구·성별·성장·알)': '🐾 Pokémon stats (types, stats, catch rate, items, gender, growth, egg)', '⚔ 기술 능력치 (효과·위력·타입·명중·PP·추가 효과)': '⚔ Move stats (effect, power, type, accuracy, PP, effect chance)',
+  '원본 롬을 열 수 없어요: ': 'Cannot open the original ROM: ', '원본 롬에서 능력치 표를 찾지 못했어요.': 'Stat tables not found in the original ROM.', '넣을 게 없어요 (원본과 바뀐 게 없어요)': 'Nothing to export (no changes from the original)',
+  '_프리셋_': '_preset_', '바뀐것': 'changed', '전체': 'all', '✅ 내보냈어요: 포켓몬 ': '✅ Exported: Pokémon ', '개 → ': ' → ',
+  '지금 롬의 능력치를 파일(.json)로 저장해요. 다른 롬을 연 뒤 [📥 프리셋 불러오기]로 넣으면 같은 번호의 포켓몬·기술에 그대로 들어가요.': "Saves this ROM's stats to a file (.json). Open another ROM and use [📥 Import preset] to apply them to the same-numbered Pokémon / moves.",
+  '💡 "바뀐 것만"을 켜면 내가 고친 포켓몬·기술만 들어가서, 다른 개조롬에 넣어도 나머지는 건드리지 않아요.': '💡 With "Changed only", only the Pokémon / moves you edited are included, so other hacks keep the rest.',
+  '이 롬에서는 프리셋을 넣을 수 없어요 (능력치 표를 찾지 못했어요).': 'Presets cannot be imported into this ROM (stat tables not found).', '프리셋 파일을 읽을 수 없어요 (JSON 형식이 아니에요).': 'Cannot read the preset file (not JSON).',
+  '이 툴에서 만든 프리셋 파일이 아니에요.': 'This is not a preset file made by this tool.', '더 새 버전의 툴에서 만든 프리셋이에요. 일부는 안 들어갈 수 있어요.': 'This preset was made by a newer version of the tool. Some parts may not import.',
+  '이름도 덮어쓰기': 'Overwrite names too', ' (⚠ 프리셋과 롬의 언어가 달라요)': ' (⚠ preset and ROM languages differ)', '능력치': 'Stats', '경험치': 'Exp.', '알': 'Egg', '성장': 'Growth',
+  '알 그룹': 'Egg groups', '명중': 'Accuracy', '추가 효과': 'Effect chance', '  · 바뀜: ': '  · changes: ', '  · 지금과 같음': '  · same as now', ' · 명중 ': ' · accuracy ', '개 고름': ' selected',
+  '프리셋을 넣었어요 (': 'Preset imported (', '개). [저장하기]를 눌러야 롬 파일에 기록돼요.': '). Press [Save] to write it to the ROM file.', '✅ 프리셋 ': '✅ Preset: ', '개를 넣었어요.': ' imported.',
+  '\n\n일부는 못 넣었어요:\n': '\n\nSome could not be imported:\n', '\n\n열려 있는 편집 창은 닫았다 다시 열면 바뀐 값이 보여요.\n메인 화면에서 [저장하기]를 눌러야 롬 파일에 기록돼요.': '\n\nReopen any open editor window to see the new values.\nPress [Save] on the main screen to write them to the ROM file.',
+  '프리셋 불러오기 · ': 'Import preset · ', '만든 롬: ': 'Made from: ', ' — 넣을 것을 고르세요. 지금 롬과 다른 것만 미리 체크돼 있어요.': ' — pick what to import. Only entries different from this ROM are pre-checked.',
+
+  // ---- 기술 그림 (99-movegfx)
+  '상대 포켓몬 색': "Foe Pokémon's colors", '내 포켓몬 색': "Player Pokémon's colors", '회색': 'Gray', '노랑': 'Yellow', '빨강': 'Red', '초록': 'Green', '파랑': 'Blue', '갈색': 'Brown',
+  '누르면 이 모양 그대로 도트를 고쳐요': 'Click to edit the pixels of this shape as is', '저장된 조각 (8×8 칸 ': 'Stored pieces (8×8 tiles: ', '개)': ')',
+  '👆 모양을 누르면 그 모양 그대로 도트를 고칠 수 있어요 (위 조각에 자동으로 반영)': '👆 Click a shape to edit it as a whole picture (the pieces above update automatically)',
+  ']을(를) 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.': '] changed. Press [Save] to write it to the ROM file.', '이 색 묶음을 같이 쓰는 그림 ': 'Graphics sharing this palette: ', '개: ': ': ',
+  ' — 색을 바꾸면 같이 바뀌어요.': ' — changing the colors changes them too.',
+  ' 💡 이 기술만 다른 색으로 하려면 위 [🎬 애니메이션 편집기]에서 물체를 고르고 "색 묶음"을 바꾸세요.': ' 💡 To recolor only this move, pick the object in [🎬 Animation editor] above and change its "palette".',
+  ' 픽셀)': ' pixels)', '같이 쓰는 기술 ': 'Moves sharing it: ', '을(를) 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.': ' changed. Press [Save] to write it to the ROM file.',
+  '개, 가로 16칸씩). 1번 = 투명, 2~4번 = 밝은색·중간색·어두운색': ', 16 per row). Color 1 = transparent, 2–4 = light / mid / dark', ' (색을 바꾸면 [': ' (changing colors changes every graphic using the [',
+  '] 색 묶음을 쓰는 그림이 모두 바뀌어요)': '] palette)', '. 숫자키 1~4 = 색 고르기': '. Number keys 1–4 = pick color', ' · 모양 고치기 · ': ' · Edit shape · ', '게임에 나오는 모양 그대로 고쳐요 (': 'Edit the shape exactly as it appears in game (',
+  ' 픽셀). 고친 점은 그 점을 그리는 조각에 들어가요.\n': ' pixels). Edited pixels go into the piece that draws them.\n',
+  '같은 조각을 뒤집어서 여러 번 쓰는 모양(예: 별)은 한 곳을 고치면 대칭으로 같이 바뀌어요. 조각이 없는 빈 곳에 그린 점은 들어가지 않아요.': 'Shapes that reuse a flipped piece (e.g. stars) change symmetrically. Pixels drawn where there is no piece are not stored.',
+  '적용했어요 (조각이 없는 빈 곳에 그린 점 ': 'Applied (pixels drawn outside the pieces: ', '개는 들어가지 않았어요)': ' were not stored)',
+  '그림 크기를 ': 'The picture is resized to ', ' 픽셀로 맞춰서 넣어요 (PNG로 저장한 그림을 고쳐서 넣으면 제일 좋아요).': ' pixels (editing a saved PNG and loading it back works best).',
+  // ---- 울음소리 · 기술 사운드 (99-cry)
+  '🔊 CH1 사각파': '🔊 CH1 Square', '🎵 CH2 사각파': '🎵 CH2 Square', '🎸 CH3 웨이브': '🎸 CH3 Wave', '🥁 CH4 노이즈': '🥁 CH4 Noise',
+  '쓰는 포켓몬 없음': 'no Pokémon uses it', '바뀜 ': 'changed ', '이 음만 듣기': 'Play only this note', '음': 'Note',
+  '쉭 (아주 높음)': 'Hiss (very high)', '치익': 'Sizzle', '스윽': 'Swish', '샤아': 'Shaa', '쏴아': 'Rush', '후우': 'Whoo', '부우': 'Boo', '쿠웅 (아주 낮음)': 'Boom (very low)',
+  '1프레임': '1 frame', '2프레임': '2 frames', '3프레임': '3 frames', '4프레임': '4 frames', '6프레임': '6 frames', '8프레임': '8 frames', '12프레임': '12 frames', '16프레임': '16 frames',
+  '고른 음을 바로 뒤에 복사': 'Copy the selected note right after it', '노이즈': 'Noise', '번째 음 · ': ' note · ', ' · 볼륨 ': ' · volume ', '⚠ 이 번호를 쓰는 다른 포켓몬 ': '⚠ Other Pokémon using this number: ',
+  ')의 울음소리도 같이 바뀌어요.': ') — their cries change too.', '이 번호는 ': 'This number is used only by ', '만 써서 다른 포켓몬에는 영향이 없어요.': ', so other Pokémon are not affected.',
+  ' 기술 소리를 ': ' move sound changed to ', '(으)로 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.': '. Press [Save] to write it to the ROM file.',
+  ' 효과음을 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.': ' sound effect changed. Press [Save] to write it to the ROM file.', ' 울음소리를 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.': ' cry changed. Press [Save] to write it to the ROM file.',
+  '재생 줄을 맨 앞으로 (Home 키)': 'Move the playhead to the start (Home key)', '[✨ 울음소리로 변환하기]를 누르세요.': 'Press [✨ Convert to cry].', '변환하는 중…': 'Converting…',
+  '🎉 변환 성공! 사각파 ': '🎉 Converted! Square ', '음 · 사각파 ': ' notes · Square ', '음 · 노이즈 ': ' notes · Noise ',
+
+  // ---- 기술 애니메이션 편집기 (99-battleanim) — 물체·화면 효과·그림 이름은 영어 화면이면 영어 이름표를 씀
+  // 편집기 화면
+  '이 롬에서 기술 애니메이션 데이터를 찾지 못했어요. (금·은 구조와 다른 롬일 수 있어요)': 'Could not find move animation data in this ROM (it may not be laid out like Gold/Silver).',
+  '상대 색': 'Foe colors', '내 색': 'Player colors', '물체 ': 'Object ', ' 프레임 · ': ' frames · ', '이 롬은 미리보기용 코드를 찾지 못해서 화면 재생은 안 돼요 (편집·저장은 돼요)': 'Preview code was not found in this ROM, so playback is unavailable (editing and saving still work)',
+  '⚠ 데이터가 너무 커서 넣을 자리가 없어요 — 명령을 줄여 주세요': '⚠ The data is too big to fit — remove some commands', '미리보기 만드는 중…': 'Building preview…', '미리보기를 만들지 못했어요': 'Could not build the preview',
+  '⚠ 미리보기 중 게임 코드가 멈췄어요 — 고친 내용 때문일 수 있어요. [원래대로]와 비교해 보세요': '⚠ Game code stopped during preview — maybe because of your edits. Compare with [Revert]',
+  '⚠ 미리보기 환경에서 게임 코드가 멈췄어요. 이 롬의 추가 코드가 배틀 정보를 필요로 하는 것 같아요 (실제 게임에서는 괜찮을 수 있어요)': '⚠ Game code stopped in the preview. Extra code in this ROM seems to need real battle data (it may be fine in the real game)',
+  '⚠ 애니메이션이 끝나지 않아요 (20초 넘게 계속돼요)': '⚠ The animation does not end (runs over 20 seconds)', '✅ 실제 게임 엔진으로 재생 (': '✅ Played with the real game engine (',
+  '물체': 'Object', '효과음': 'Sound', '화면 효과': 'Screen effect', '그림·색': 'Graphics · color', '프레임 기다리기 (': 'Wait frames (', ' 나타내기 · 위치 ': ' appears · position ', '그림 불러오기: ': 'Load graphics: ',
+  '효과음: ': 'Sound: ', '울음소리 (음높이 ': 'Cry (pitch ', '화면 효과: ': 'Screen effect: ', '쓰는 쪽': 'User', '맞는 쪽': 'Target', '배경': 'Background', ' 색 바꾸기 (': ' palette change (',
+  '번째 물체에 신호 보내기 (다음 동작으로)': ' — signal object (next phase)', '번째 물체 상태를 ': ' — set object state to ', '번째 화면 효과에 신호 보내기': ' — signal screen effect', '물체 모두 지우기': 'Clear all objects',
+  '공용 동작 실행 (': 'Run shared part (', '개 애니메이션이 같이 씀)': ' animations share it)', '번 명령으로 이동': ' — jump to command', '다른 곳으로 이동': 'Jump elsewhere', '번부터': ' from', ' 다시 반복 (': ' repeat (',
+  '설정 값이 ': 'If setting is ', '이면 ': ', go to ', '번으로': '', '이동': 'Jump', '변수가 ': 'If variable is ', '설정 값 & ': 'Setting & ', '조건이 될 때까지 ': 'Until condition ', ' 되돌기': ' loop back',
+  '변수를 ': 'Set variable to ', '변수 1 늘리기': 'Variable +1', '고급 명령: ': 'Advanced command: ', '● 고친 내용 있음 (아직 롬에 안 씀)': '● Unsaved edits (not in the ROM yet)', '데이터 ': 'Data ',
+  '바이트 (원래 ': ' bytes (originally ', ') · 뱅크 빈 공간 ': ') · free in bank ', '바이트': ' bytes', ' · ⚠ 넣을 자리 없음': ' · ⚠ no room', '마지막 "끝" 명령은 지울 수 없어요.': 'The final "End" command cannot be deleted.',
+  '번: ': ': ', '기다리는 시간': 'Wait time', '프레임 (60프레임 = 1초)': 'frames (60 frames = 1 s)', '× 2배 길게': '× 2 longer', '÷ 절반': '÷ half', ' ⚠ 게임에서 안 쓰던 물체': ' ⚠ object unused in the game',
+  '그림 불러오기 칸이 꽉 차서 이 물체 그림을 더할 수 없어요 (최대 5개).': "The graphics load slots are full, so this object's graphics cannot be added (max 5).", '화면 위 동그라미를 끌어도 돼요': 'You can also drag the circle on screen',
+  '세부 값': 'Parameter', '물체마다 뜻이 달라요 (방향·속도·모양 등). 바꿔 보면서 확인하세요': 'Means something different per object (direction, speed, shape…). Try values and watch',
+  '색을 따로 쓸 빈 물체 칸이 없어요. (게임에서 안 쓰는 물체 칸을 빌려서 만드는데, 다 썼어요)': 'No free object slot for a separate color (it borrows unused object slots and they are all used)',
+  '이 기술의 이 물체만 다른 색 묶음으로 바꿔요 (다른 기술은 그대로). 게임보이 엔진은 기술 그림 색 칸이 6개뿐이라, 6개 중에서 골라요. 색 묶음 자체의 색을 바꾸면 그 묶음을 쓰는 모든 기술이 같이 바뀌어요. (색을 따로 만들 수 있는 남은 칸: ':
+    'Gives only this object in this move a different palette (other moves unchanged). The engine has just 6 move palettes, so pick one of them. Editing a palette itself changes every move using it. (Slots left for separate colors: ',
+  '개, 같은 물체+같은 색은 칸을 같이 써요)': '; same object + same color share a slot)', '개가 같이 써요. 그림이나 색을 고치면 그 기술들도 같이 바뀌어요.': ' share this. Editing the graphics or colors changes those moves too.',
+  '⚠ 이 물체의 그림(': "⚠ No command loads this object's graphics (", ')을 불러오는 명령이 없어요. 물체를 고르면 자동으로 더해요.': '). Picking the object adds it automatically.',
+  '물체가 쓰는 그림 묶음을 미리 불러와요. 최대 5개, 불러온 순서대로 화면 그림 칸에 들어가요.': 'Loads graphics sets used by objects. Max 5, placed in load order.', '이 소리만 듣기': 'Play this sound only',
+  '나오는 쪽': 'Side', '가운데 (2)': 'Center (2)', '효과음 자체를 고치려면 [기술 사운드 에디터]에서 고쳐요.': 'To edit the sound itself, use the [Move Sound Editor].', '음높이': 'Pitch',
+  '쓰는 포켓몬의 울음소리를 이 높이로': "Plays the user's cry at this pitch", '대상': 'Target', '맞는 쪽 (상대)': 'Target (foe)', '쓰는 쪽 (나)': 'User (self)', '효과마다 뜻이 달라요 (세기·길이 등)': 'Means something different per effect (strength, length…)',
+  '기타 값': 'Other value', '여러 애니메이션이 같이 쓰는 동작 묶음이에요 (': 'A part shared by several animations (', '개가 씀). 그대로 두면 같이 쓰고, 이 기술에서만 고치려면 아래 버튼으로 풀어서 넣으세요.': ' use it). Leave it shared, or unpack it with the button below to edit it only for this move.',
+  '반복 횟수': 'Repeat count', '번 명령부터 여기까지를': ' — from that command to here,', ' 반복해요.': ' times.', '애니메이션 끝이에요. 이 뒤에 명령을 넣으려면 바로 앞 명령을 고르고 [＋ 명령 넣기]를 쓰세요.': 'End of animation. To add commands after, select the command before it and use [＋ Insert command].',
+  '게임 엔진의 고급 명령이에요 (': 'An advanced engine command (', '). 잘 모르면 그대로 두는 게 안전해요.': '). Leave it if unsure.', '값 ': 'Value ',
+  '이 묶음 안에 또 다른 공용 동작이 있어요. 그 부분은 공용으로 남겨요. 계속할까요?': 'This part contains another shared part, which stays shared. Continue?',
+  '가져올 명령을 체크하세요. 지금 고른 명령 뒤에 그대로 들어가고, 필요한 그림 불러오기는 자동으로 더해요. (이동·반복 같은 흐름 명령은 빼요)': 'Check commands to import. They go after the selected command, and needed graphics loads are added automatically (jump/loop commands are left out).',
+  '그림 불러오기 칸이 꽉 차서 일부 물체 그림을 더하지 못했어요 (최대 5개). 미리보기에서 확인하세요.': 'Graphics load slots are full, so some object graphics were not added (max 5). Check the preview.',
+  '마지막 "끝"은 남겨야 해요': 'The final "End" must stay', '개 명령을 지웠어요. [되돌리기]로 되살릴 수 있어요.': ' commands deleted. [Undo] brings them back.', '명령 여러 개 지우기 · ': 'Delete several commands · ',
+  '지울 명령을 체크하세요. 마지막 "끝"은 남아요. 지운 뒤에도 [↶ 되돌리기]로 되살릴 수 있어요.': 'Check commands to delete. The final "End" stays. [↶ Undo] brings them back.',
+  'ℹ 이 기술 애니메이션의 일부를 다른 애니메이션도 같이 써요. 저장하면 이 기술만 새 자리에 따로 저장돼서 다른 기술은 그대로예요.': 'ℹ Part of this animation is shared with others. Saving stores this move separately, so other moves stay unchanged.',
+  '저장할 수 없어요:\n': 'Cannot save:\n', '이 기술 데이터가 너무 커서 넣을 자리가 없어요.\n명령을 줄이거나 기다리기를 합쳐 주세요. (뱅크 빈 공간 ': 'This move data is too big to fit.\nRemove commands or merge waits. (Free in bank ',
+  ' 기술 애니메이션을 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.': ' animation changed. Press [Save] to write it to the ROM file.', '✅ 롬에 넣었어요 (': '✅ Written to the ROM (', ', 원래 자리': ', in place', ', 새 자리': ', new location',
+  '" 애니메이션을 고친 내용이 아직 롬에 안 들어갔어요. 어떻게 할까요?': '" animation has edits not yet applied. What should happen?', '처음으로 (Home)': 'To start (Home)',
+  '🎞 시간표 — 아래 칸을 누르면 그 시간으로 가요 · 색 블록 = 그 시간에 실행되는 명령 (누르면 골라져요) · 스페이스바 = 재생/멈춤 · ←→ = 한 프레임씩 · Ctrl+Z / Ctrl+Y = 되돌리기 / 다시하기':
+    '🎞 Timeline — click to jump to a time · colored blocks = commands running then (click to select) · Space = play/pause · ←→ = one frame · Ctrl+Z / Ctrl+Y = undo / redo',
+  '미리보기는 롬 안의 진짜 배틀 애니메이션 코드를 그대로 실행해서 보여줘요. 적용한 뒤 메인 화면에서 [저장하기]를 눌러야 롬 파일에 기록돼요. 금·은 엔진에 있는 명령만 쓸 수 있어서, 넣은 것은 실제 게임에서도 똑같이 돌아가요.':
+    "The preview runs the ROM's real battle animation code. After applying, press [Save] on the main screen to write the ROM file. Only commands the Gold/Silver engine has can be used, so what you add plays the same in the real game.",
+  '넓게': 'Wide',
+};
+
 // ===== 05-i18n.js
 // ================================================================ 화면 언어 (한국어 / English)
 // 화면에 보이는 글자만 바꿈 (대사 편집 칸·롬 안 글자·롬에서 찾는 데 쓰는 글자는 그대로).
@@ -436,14 +647,14 @@ const I18N = (() => {
   // 남은 한 글자 단위 (숫자 뒤)
   const POST = [
     [/(\d+)\s?개(?![가-힣])/g, '$1'], [/(\d+)\s?번째(?![가-힣])/g, '#$1'], [/(\d+)\s?번(?![가-힣])/g, '#$1'], [/(\d+)\s?칸(?![가-힣])/g, '$1 tiles'], [/(\d+)\s?곳(?![가-힣])/g, '$1 places'],
-    [/(\d+)\s?명(?![가-힣])/g, '$1'], [/(\d+)\s?마리(?![가-힣])/g, '$1'], [/(\d+)\s?초(?![가-힣])/g, '$1s'], [/(\d+)\s?스텝(?![가-힣])/g, '$1 steps'],
+    [/(\d+)\s?명(?![가-힣])/g, '$1'], [/(\d+)\s?마리(?![가-힣])/g, '$1'], [/(\d+)\s?초(?![가-힣])/g, '$1s'], [/(\d+)\s?스텝(?![가-힣])/g, '$1 steps'], [/(\d+)\s?음(?![가-힣])/g, '$1 notes'],
     [/을\(를\)|이\(가\)|은\(는\)|\(으\)로/g, ''], [/(\d+)의 /g, '$1 '],
   ];
 
   let dict = null, re = null, reExact = null;
   const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   function build() {
-    dict = Object.assign({}, EN);
+    dict = Object.assign({}, EN, typeof EN_EXTRA === 'object' ? EN_EXTRA : {});
     // 이름표: 한국어 표 (SPRITE_NAMES·SONG_NAMES) 와 같은 순서의 영어
     for (let id = 1; id < SPRITE_EN.length; id++) if (SPRITE_NAMES[id]) dict[SPRITE_NAMES[id]] = SPRITE_EN[id];
     // 포켓몬 모양 NPC 이름은 롬의 포켓몬 이름과 겹쳐서 (푸린 → 푸푸린) 정확히 같을 때만
@@ -454,7 +665,9 @@ const I18N = (() => {
     for (let i = 0; i < SPRITE_MON_EN.length; i++) if (SPRITE_NAMES[0x80 + i]) { dict[SPRITE_NAMES[0x80 + i]] = SPRITE_MON_EN[i]; exact.add(SPRITE_NAMES[0x80 + i]); monSprite.add(SPRITE_NAMES[0x80 + i]); }
     for (let i = 0; i < SONG_EN.length && i < SONG_NAMES.length; i++) dict[SONG_NAMES[i]] = SONG_EN[i];
     Object.assign(dict, TYPE_EN, AREA_EN, PLACE_EN);
-    for (const k of Object.keys(EN)) exact.delete(k);
+    for (const k of Object.keys(EN).concat(typeof EN_EXTRA === 'object' ? Object.keys(EN_EXTRA) : [])) exact.delete(k);
+    // 새로 더한 낱말 하나짜리(띄어쓰기 없는 짧은 말)는 앞뒤가 띄어쓰기·기호일 때만 (몬스터볼·엘리트트레이너 같은 이름 속은 그대로)
+    if (typeof EN_EXTRA === 'object') for (const k of Object.keys(EN_EXTRA)) if (/^[가-힣0-9]{1,6}$/.test(k) && k !== '바이트') exact.add(k);
     // 한 글자 낱말은 숫자 규칙·정확히 같을 때만 (다른 말 속 글자를 바꾸지 않게)
     const keys = Object.keys(dict).filter(k => k.length >= 2 && HANGUL.test(k) && !exact.has(k)).sort((a, b) => b.length - a.length);
     re = new RegExp(keys.map(esc).join('|'), 'g');
@@ -6422,6 +6635,8 @@ const CSS = `
 .gsc .st-add{margin:4px 0 2px;font-size:12px;padding:1px 10px;background:#f1f3f5}
 .gsc .st-mini{font-size:11px;padding:0 5px;margin-left:4px}
 .gsc .st-evname{color:#2b8a3e;margin-left:4px}
+.gsc .st-head{display:flex;align-items:center;flex-wrap:wrap;gap:4px}
+.gsc .st-del{margin-left:auto;color:var(--warn)}
 .gsc .st-bar{position:sticky;top:-10px;z-index:2;background:var(--panel,#fff);padding:6px 0;margin:4px 0;flex-wrap:wrap}
 .gsc .st-menu{position:fixed;z-index:2147483200;background:#fff;border:1px solid #ccd;border-radius:8px;box-shadow:0 4px 16px #0003;max-height:420px;overflow:auto;width:250px;padding:4px 0;font-size:13px}
 .gsc .st-menu-g{font-size:11px;color:var(--sub);padding:4px 10px 2px;font-weight:bold}
@@ -7039,9 +7254,10 @@ function listPanel(items, onPick, placeholder, current) {
 }
 
 Object.assign(App.prototype, {
-  monOptions(withNone) { const r = this.rom, o = []; if (withNone) o.push([0, '(없음)']); for (let i = 1; i < r.pokemonNames.length; i++) o.push([i, pad3(i) + ' ' + r.pokemonNames[i]]); return o; },
-  itemOptions() { const r = this.rom, o = [[0, '(없음)']]; for (let i = 1; i < r.itemNames.length; i++) o.push([i, r.itemNames[i]]); return o; },
-  moveOptions() { const r = this.rom, o = [[0, '(없음)']]; for (let i = 1; i < r.moveNames.length; i++) o.push([i, pad3(i) + ' ' + r.moveNames[i]]); return o; },
+  // 롬 안 이름 앞에 RAW (영어 화면에서 이름 속 낱말이 번역돼 섞이지 않게)
+  monOptions(withNone) { const r = this.rom, o = []; if (withNone) o.push([0, '(없음)']); for (let i = 1; i < r.pokemonNames.length; i++) o.push([i, pad3(i) + ' ' + RAW + r.pokemonNames[i]]); return o; },
+  itemOptions() { const r = this.rom, o = [[0, '(없음)']]; for (let i = 1; i < r.itemNames.length; i++) o.push([i, RAW + r.itemNames[i]]); return o; },
+  moveOptions() { const r = this.rom, o = [[0, '(없음)']]; for (let i = 1; i < r.moveNames.length; i++) o.push([i, pad3(i) + ' ' + RAW + r.moveNames[i]]); return o; },
   typeOptions() { return TYPES.map(([v, n]) => [v, n]); },
   notFound(what) { return el('div', { class: 'box' }, el('div', { text: '이 롬에서 ' + what + ' 데이터를 찾지 못했어요.' })); },
   okMsg(box, msg, bad) { box.textContent = msg; box.className = bad ? 'bad' : 'ok'; },
@@ -8408,7 +8624,8 @@ Object.assign(App.prototype, {
     const rom = this.rom, mv = RomCry.moveAnims(rom.data), AG = rom.loadAnimGfx();
     if (!mv || !AG || !AG.asm) { alert('이 롬에서 기술 애니메이션 데이터를 찾지 못했어요. (금·은 구조와 다른 롬일 수 있어요)'); return; }
     const bank = Math.floor(mv.tab / 0x4000), A = AnimRunner.locate(rom.data, mv.tab);
-    const ko = rom.cs.kind === 'ko' || rom.cs.kind === 'koen';
+    // 이름(물체·화면 효과·그림·색)은 한글 롬 + 한국어 화면일 때만 한국어 (영어 화면이면 영어 이름)
+    const ko = (rom.cs.kind === 'ko' || rom.cs.kind === 'koen') && I18N.lang !== 'en';
     const W = (o) => rom.data[o] | (rom.data[o + 1] << 8);
     // 표에 있는 애니메이션 수 (기술 251개 + 특수)
     let animCount = 252;
@@ -9819,16 +10036,17 @@ Object.assign(App.prototype, {
     const sfxUses = () => { const u = Array.from({ length: 256 }, () => []); if (S && S.moves) for (let m = 1; m <= 251; m++) for (const x of S.moves.byMove[m] || []) u[x.sfx].push({ m, at: x.at }); return u; };
     let SU = sfxUses();
     // 효과음 이름: 롬 언어대로 (기술 소리는 롬의 기술 이름, 그 밖은 한글판이면 한국어 · 아니면 영어)
-    const koRom = rom.cs.kind === 'ko' || rom.cs.kind === 'koen';
+    const koRom = (rom.cs.kind === 'ko' || rom.cs.kind === 'koen') && I18N.lang !== 'en';   // 효과음 이름: 한글 롬 + 한국어 화면일 때만 한국어
     const sfxDisp = id => {
       const n = RomCry.sfxName(id), two = n.match(/^(.*)_2$/);
       if (SFX_MOVE[n]) return rom.moveName(SFX_MOVE[n]);
       if (two && SFX_MOVE[two[1]]) return rom.moveName(SFX_MOVE[two[1]]) + ' 2';
       return koRom && SFX_KO[n] ? SFX_KO[n] : sfxTitle(n);
     };
-    const sfxLabel = id => '#' + String(id).padStart(3, '0') + ' ' + sfxDisp(id);
+    // 기술 이름으로 된 소리 이름·기술 이름 목록은 롬 안 이름이라 RAW (영어 화면에서 섞여 번역되지 않게)
+    const sfxLabel = id => { const n = RomCry.sfxName(id).replace(/_2$/, ''); return '#' + String(id).padStart(3, '0') + ' ' + (SFX_MOVE[n] ? RAW : '') + sfxDisp(id); };
     // 이 소리를 쓰는 기술 이름 (소리 이름과 같은 건 빼고)
-    const usedBy = (id, max) => { const own = sfxDisp(id).replace(/ 2$/, ''), l = [...new Set(SU[id].map(x => rom.moveName(x.m)))].filter(nm => nm !== own); return l.length ? ' — ' + (max && l.length > max ? l.slice(0, max).join(', ') + ' …' : l.join(', ')) : ''; };
+    const usedBy = (id, max) => { const own = sfxDisp(id).replace(/ 2$/, ''), l = [...new Set(SU[id].map(x => rom.moveName(x.m)))].filter(nm => nm !== own); return l.length ? ' — ' + RAW + (max && l.length > max ? l.slice(0, max).join(', ') + ' …' : l.join(', ')) : ''; };
     const sfxOpts = () => Array.from({ length: S ? S.count : 0 }, (_, i) => [i, sfxLabel(i) + usedBy(i, 2)]);
     const users = () => { const u = Array.from({ length: t.count }, () => []); for (let m = 1; m <= 251; m++) { const b = RomCry.header(d, t, m).base; if (b < t.count) u[b].push(m); } return u; };
     let U = users();
@@ -10199,7 +10417,7 @@ Object.assign(App.prototype, {
           this.say(rom.moveName(x.m) + ' 기술 소리를 ' + sfxDisp(v) + '(으)로 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.');
         });
         s.style.maxWidth = '320px';
-        movesBox.append(el('div', { class: 'bar' }, el('b', { text: pad3(x.m) + ' ' + rom.moveName(x.m), style: 'min-width:150px' }), el('span', { text: '→ 소리:' }), s,
+        movesBox.append(el('div', { class: 'bar' }, el('b', { text: pad3(x.m) + ' ' + RAW + rom.moveName(x.m), style: 'min-width:150px' }), el('span', { text: '→ 소리:' }), s,
           el('button', { text: '▶', title: '이 기술의 첫 소리 듣기', onclick: () => { const ids = (S.moves.byMove[x.m] || []).map(y => y.sfx); const c = RomCry.decode(d, RomCry.sfxOff(d, S, ids[0] != null ? ids[0] : st.mon)); play(c, { pitch: 0, length: 0x100 }); } })));
       }
     };
@@ -10605,7 +10823,7 @@ Object.assign(App.prototype, {
     const fs = el('fieldset', { style: 'margin-top:12px' }, el('legend', { text: '기술 그림 (배틀 애니메이션)' }),
       el('div', { class: 'bar' }, el('button', { text: '🎬 이 기술 애니메이션 편집기로 열기 (실제 게임처럼 재생)', style: 'font-weight:bold;background:#dcf0ff', onclick: () => this.battleAnimEditor(mv) })));
     if (!A || !A.found) { fs.append(el('div', { class: 'hint', text: '이 롬에서 기술 애니메이션 그림을 찾지 못했어요' })); return fs; }
-    const ko = rom.cs.kind === 'ko' || rom.cs.kind === 'koen';
+    const ko = (rom.cs.kind === 'ko' || rom.cs.kind === 'koen') && I18N.lang !== 'en';
     const gName = g => '#' + String(g).padStart(2, '0') + ' ' + (ko ? ANIM_GFX_KO[g] : ANIM_GFX_NAMES[g]);
     const gl = A.byMove[mv] || [];
     if (!gl.length) { fs.append(el('div', { class: 'hint', text: '이 기술 애니메이션은 따로 불러오는 그림이 없어요 (화면 흔들기·색 바꾸기만 써요)' })); return fs; }
@@ -11514,7 +11732,7 @@ Object.assign(App.prototype, {
     // 갈래 고르기 (점프 대상)
     const segPick = arg => {
       if (arg.seg == null) return el('span', { class: 'hint', text: '(갈래 밖)' });
-      const s = sel(m.segs.filter(x => !x.ext).map(x => [x.id, '📍 ' + segLabel(x)]), arg.seg, v => { snap(); arg.seg = v; touch(); });
+      const s = sel(m.segs.filter(x => !x.ext && !x.deleted).map(x => [x.id, '📍 ' + segLabel(x)]), arg.seg, v => { snap(); arg.seg = v; touch(); });
       s.className = 'st-go';
       return el('span', null, s, el('button', { class: 'st-go', text: '가기', onclick: () => goSeg(arg.seg) }));
     };
@@ -11534,8 +11752,9 @@ Object.assign(App.prototype, {
     const ed = (arg, c) => {
       const t = arg.t, v = arg.v;
       if (c.argsOff) return el('b', { text: String(typeof v === 'object' ? '' : v) });
-      if (t === 'item') return sel(rom.itemNames.map((n, i) => [i, n || ('도구 ' + i)]).slice(1).filter(x => x[1]), v, x => setV(arg, x));
-      if (t === 'mon' || t === 'cry') return sel(rom.pokemonNames.map((n, i) => [i, n]).slice(1, 252), v, x => setV(arg, x));
+      // 롬 안 이름(아이템·포켓몬·트레이너)은 번역하지 않게 RAW 표시를 붙임
+      if (t === 'item') return sel(rom.itemNames.map((n, i) => [i, n ? RAW + n : '']).slice(1).filter(x => x[1]), v, x => setV(arg, x));
+      if (t === 'mon' || t === 'cry') return sel(rom.pokemonNames.map((n, i) => [i, RAW + n]).slice(1, 252), v, x => setV(arg, x));
       if (t === 'lv') return num(v, 1, 100, x => setV(arg, x));
       if (t === 'qty') return num(v, 1, 99, x => setV(arg, x));
       if (t === 'x' || t === 'y' || t === 'b') return num(v, 0, 255, x => setV(arg, x));
@@ -11546,7 +11765,7 @@ Object.assign(App.prototype, {
       if (t === 'dir') return sel(ST_DIRS.map((n, i) => [i, n]), v & 3, x => setV(arg, x));
       if (t === 'obj') return sel([[0, '주인공'], [0xFE, o.name + ' (말 건 사람)'], ...objs.map(x => [rom.eventIndex(a, x) + 2, x.name])].concat(v === 0 || v === 0xFE || objs.some(x => rom.eventIndex(a, x) + 2 === v) ? [] : [[v, objName(v)]]), v, x => setV(arg, x));
       if (t === 'map') return sel(areas.map(x => [x.group * 256 + x.map, x.regionName + ' › ' + x.name]), (v & 0xFF) * 256 + (v >> 8), x => setV(arg, (x >> 8) | (x & 0xFF) << 8));
-      if (t === 'tcls') return sel(rom.trainerClasses.map(x => [x.cls, x.name]), v, x => setV(arg, x));
+      if (t === 'tcls') return sel(rom.trainerClasses.map(x => [x.cls, RAW + x.name]), v, x => setV(arg, x));
       if (t === 'tid') return num(v, 1, 99, x => setV(arg, x));
       return el('b', { text: String(v) });
     };
@@ -11642,8 +11861,8 @@ Object.assign(App.prototype, {
         case 'givepoke': return [row('🐣', w(S('포켓몬 주기: '), ed(A[0], c), S(' Lv'), ed(A[1], c), S('  지닌 물건 '), ed(A[2], c))), 1];
         case 'giveegg': return [row('🥚', w(S('알 주기: '), ed(A[0], c), S(' (태어나면 Lv'), ed(A[1], c), S(')'))), 1];
         case 'loadwildmon': return [row('⚔', w(S('야생 '), ed(A[0], c), S(' Lv'), ed(A[1], c), S(' 와(과) 배틀 준비'))), 1];
-        case 'loadtrainer': { const lab = el('div', { class: 'hint', text: rom.trainerLabel(A[0].v, A[1].v) });
-          const upd = () => lab.textContent = rom.trainerLabel(A[0].v, A[1].v);
+        case 'loadtrainer': { const lab = el('div', { class: 'hint', text: RAW + rom.trainerLabel(A[0].v, A[1].v) });
+          const upd = () => lab.textContent = RAW + rom.trainerLabel(A[0].v, A[1].v);
           const s1 = ed(A[0], c), s2 = ed(A[1], c); s1.addEventListener('change', upd); s2.addEventListener('change', upd);
           return [row('⚔', w(S('트레이너 배틀 준비: '), s1, S(' 팀 '), s2), lab), 1]; }
         case 'startbattle': return [row('⚔', w(B('배틀 시작!'))), 1];
@@ -11758,16 +11977,41 @@ Object.assign(App.prototype, {
     const applyBtn = el('button', { class: 'apply', text: '✔ 카드 변경 적용하기', disabled: '' });
     const undoBtn = el('button', { text: '↶ 카드 되돌리기', disabled: '' });
     const pend = el('span', { class: 'hint' });
-    const reach = () => { const r = new Set([0]), q = [0]; while (q.length) { const s = m.segs[q.pop()]; if (!s) continue; const go = id => { if (id != null && !r.has(id)) { r.add(id); q.push(id); } }; for (const c of s.cards) for (const x of c.args) go(x.seg); go(s.next); } return r; };
+    // 갈래 지우기: 이 갈래로 오는 카드(만약·가기·하고 돌아오기)도 같이 빼고, 이어지던 갈래는 거기서 끝나게
+    const delSeg = s => {
+      const refs = [];
+      for (const x of m.segs) if (!x.deleted && x !== s) { x.cards.forEach((c, i) => { if (c.args.some(g => g.seg === s.id)) refs.push([x, c]); }); if (x.next === s.id) refs.push([x, null]); }
+      const go = () => {
+        snap();
+        for (const [x, c] of refs) {
+          if (!c) { x.next = null; continue; }
+          const i = x.cards.indexOf(c); if (i < 0) continue;
+          const pair = ST_IFS.has(c.name) && i > 0 && ST_CHECK[x.cards[i - 1].name];
+          x.cards.splice(pair ? i - 1 : i, pair ? 2 : 1);
+        }
+        s.deleted = true; s.cards = []; s.next = null;
+        touch();
+      };
+      if (!refs.length) { go(); return; }
+      let close;
+      close = this.dialog('🗑 갈래 ' + s.label + ' 지우기', () => el('div', null,
+        el('div', { text: '이 갈래로 오는 곳이 ' + refs.length + '군데 있어요: ' + refs.map(([x, c]) => segLabel(x) + (c ? '' : ' (이어짐)')).join(', ') }),
+        el('div', { class: 'hint', text: '지우면 그 "만약…" · "갈래로 가기" 카드도 같이 빠져요. [카드 되돌리기]로 되돌릴 수 있어요.' }),
+        el('div', { class: 'bar', style: 'justify-content:flex-end;margin-top:10px' }, el('button', { text: '취소', onclick: () => close() }),
+          el('button', { class: 'apply', text: '같이 지우기', onclick: () => { close(); go(); } }))), null, true);
+    };
+    const reach = () => { const r = new Set([0]), q = [0]; while (q.length) { const s = m.segs[q.pop()]; if (!s || s.deleted) continue; const go = id => { if (id != null && !r.has(id)) { r.add(id); q.push(id); } }; for (const c of s.cards) for (const x of c.args) go(x.seg); go(s.next); } return r; };
     const render = () => {
       const sc = body.closest('.dlg-body'), top = sc ? sc.scrollTop : 0;
       body.replaceChildren(); segBoxes.clear();
       const R = reach();
       for (const s of m.segs) {
+        if (s.deleted) continue;
         const box = el('div', { class: 'st-seg' + (s.id === 0 ? ' start' : '') + (s.ext ? ' ext' : '') + (R.has(s.id) ? '' : ' dead') });
         box.append(el('div', { class: 'st-head' }, el('span', { text: s.id === 0 ? '📍 시작 (말을 걸면 여기부터)' : '📍 갈래 ' + s.label + (s.sub ? '  (불러 쓰는 부분 · 끝나면 돌아감)' : '') }),
           s.ext ? el('span', { class: 'hint', text: '  다른 곳에 있는 공통 부분 — 값만 고칠 수 있어요 (고치면 같이 쓰는 곳도 바뀜)' }) : null,
-          !R.has(s.id) ? el('span', { class: 'hint', text: '  아무 데서도 안 와요 — 적용하면 없어져요' }) : null));
+          !R.has(s.id) ? el('span', { class: 'hint', text: '  아무 데서도 안 와요 — 적용하면 없어져요' }) : null,
+          s.id !== 0 && !s.ext ? el('button', { class: 'st-mini st-del', text: '🗑 갈래 지우기', onclick: () => delSeg(s) }) : null));
         for (let i = 0; i < s.cards.length;) {
           curBank = s.ext ? s.cards[i].bank : a.scriptBank; curExt = s.ext;
           if (s.cards[i].off >= 0) curBank = s.cards[i].bank;
