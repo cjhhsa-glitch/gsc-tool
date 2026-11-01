@@ -6423,7 +6423,7 @@ const CSS = `
 .gsc .st-mini{font-size:11px;padding:0 5px;margin-left:4px}
 .gsc .st-evname{color:#2b8a3e;margin-left:4px}
 .gsc .st-bar{position:sticky;top:-10px;z-index:2;background:var(--panel,#fff);padding:6px 0;margin:4px 0;flex-wrap:wrap}
-.gsc .st-menu{position:fixed;z-index:1000;background:#fff;border:1px solid #ccd;border-radius:8px;box-shadow:0 4px 16px #0003;max-height:420px;overflow:auto;width:250px;padding:4px 0;font-size:13px}
+.gsc .st-menu{position:fixed;z-index:2147483200;background:#fff;border:1px solid #ccd;border-radius:8px;box-shadow:0 4px 16px #0003;max-height:420px;overflow:auto;width:250px;padding:4px 0;font-size:13px}
 .gsc .st-menu-g{font-size:11px;color:var(--sub);padding:4px 10px 2px;font-weight:bold}
 .gsc .st-menu-i{padding:3px 14px;cursor:pointer}
 .gsc .st-menu-i:hover{background:#e7f0ff}
@@ -11744,9 +11744,11 @@ Object.assign(App.prototype, {
           seg.cards.splice(at, 0, ...cs); touch();
         } }));
       }
-      const r = btn.getBoundingClientRect();
+      // 버튼 아래(자리가 모자라면 위)에, 화면 안에 다 보이게
+      const r = btn.getBoundingClientRect(), below = innerHeight - r.bottom - 8, above = r.top - 8;
       menu.style.left = Math.max(4, Math.min(r.left, innerWidth - 260)) + 'px';
-      menu.style.top = Math.max(4, Math.min(r.bottom + 2, innerHeight - 420)) + 'px';
+      if (below >= 260 || below >= above) { menu.style.top = (r.bottom + 2) + 'px'; menu.style.maxHeight = Math.max(160, below) + 'px'; }
+      else { menu.style.bottom = (innerHeight - r.top + 2) + 'px'; menu.style.maxHeight = Math.max(160, above) + 'px'; }
       this.host.append(menu);
       setTimeout(() => document.addEventListener('mousedown', function f(e) { if (menu && !e.composedPath().includes(menu)) { closeMenu(); document.removeEventListener('mousedown', f); } }), 0);
     };
