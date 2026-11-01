@@ -9976,6 +9976,38 @@ mixin(Rom.prototype, {
     }
     return out;
   },
+  // 조립한 모양을 한 장의 그림으로 + 그림의 각 점이 어느 조각의 어느 점인지 (모양에서 고친 걸 조각으로 되돌릴 때 씀)
+  animShapeEdit(pic, n, shape) {
+    const spr = this.animSprites(shape);
+    if (!spr.length) return null;
+    const x0 = Math.min(...spr.map(s => s.x)), y0 = Math.min(...spr.map(s => s.y));
+    const w = Math.max(...spr.map(s => s.x)) + 8 - x0, h = Math.max(...spr.map(s => s.y)) + 8 - y0;
+    const img = this.animComposite(pic, n, spr, x0, y0, w, h);
+    // src[점] = 조각 그림 안 위치 (+1, 0 = 조각 없는 곳). 보이는 점은 그 점을 그린 조각, 투명한 곳은 덮고 있는 조각
+    const src = new Int32Array(w * h), tw = pic.w / 8;
+    for (const s of spr) {
+      if (s.t >= n) continue;
+      const tx = (s.t % tw) * 8, ty = Math.floor(s.t / tw) * 8;
+      for (let yy = 0; yy < 8; yy++) for (let xx = 0; xx < 8; xx++) {
+        const v = pic.px[(ty + yy) * pic.w + tx + xx];
+        const px = s.a & 0x20 ? 7 - xx : xx, py = s.a & 0x40 ? 7 - yy : yy, X = s.x - x0 + px, Y = s.y - y0 + py;
+        if (X < 0 || Y < 0 || X >= w || Y >= h) continue;
+        const i = Y * w + X;
+        if (v || !src[i] || !img.px[i]) src[i] = (ty + yy) * pic.w + tx + xx + 1;
+      }
+    }
+    return { img, src, w, h };
+  },
+  // 고친 모양 → 조각 그림에 반영 (바뀐 점만). 조각이 없는 곳에 그린 점 수를 돌려줌
+  animShapeApply(pic, ed, newImg) {
+    let lost = 0;
+    for (let i = 0; i < ed.img.px.length; i++) {
+      if (newImg.px[i] === ed.img.px[i]) continue;
+      if (!ed.src[i]) { lost++; continue; }
+      pic.px[ed.src[i] - 1] = newImg.px[i];
+    }
+    return lost;
+  },
   // 조립한 모양 → canvas (pic: 그림 묶음 그림, 가로 16칸씩)
   animShapeCanvas(pic, n, shape, pal, zoom) {
     const spr = this.animSprites(shape);
@@ -10081,12 +10113,21 @@ Object.assign(App.prototype, {
         c.style.cssText = CHECK + ';border:1px solid #888';
         // 게임이 조각을 붙이고 뒤집어서 만드는 실제 모양
         const shapes = el('div', { class: 'bar', style: 'align-items:flex-end;gap:6px;margin-top:6px' });
-        for (const s of rom.animShapes(g)) { const sc = rom.animShapeCanvas(pic, n, s, rom.animPal(s.pal), 3); if (sc) { sc.style.cssText = CHECK + ';border:1px solid #ccc'; shapes.append(sc); } }
+        for (const s of rom.animShapes(g)) {
+          const sc = rom.animShapeCanvas(pic, n, s, rom.animPal(s.pal), 3);
+          if (!sc) continue;
+          sc.style.cssText = CHECK + ';border:1px solid #ccc;cursor:pointer';
+          sc.title = '누르면 이 모양 그대로 도트를 고쳐요';
+          sc.addEventListener('mouseenter', () => sc.style.outline = '3px solid #e8590c');
+          sc.addEventListener('mouseleave', () => sc.style.outline = '');
+          sc.addEventListener('click', () => editShape(s));
+          shapes.append(sc);
+        }
         // 움직임 미리보기: 게임의 프레임 순서·길이 그대로 계속 반복 재생
         const motions = el('div', { class: 'bar', style: 'align-items:flex-end;gap:6px;margin-top:6px' });
         for (const mo of rom.animMotions(g)) { const mc = motionCanvas(pic, n, mo); if (mc) motions.append(mc); }
         const sheet = el('div', null, el('div', { class: 'hint', text: '저장된 조각 (8×8 칸 ' + n + '개)' }), c,
-          shapes.children.length ? el('div', { class: 'hint', style: 'margin-top:6px', text: '게임에서 조각을 붙이고 뒤집어서 만드는 모양' }) : null, shapes.children.length ? shapes : null,
+          shapes.children.length ? el('div', { class: 'hint', style: 'margin-top:6px' }, '게임에서 조각을 붙이고 뒤집어서 만드는 모양 — ', el('b', { text: '👆 모양을 누르면 그 모양 그대로 도트를 고칠 수 있어요 (위 조각에 자동으로 반영)', style: 'color:#e8590c' })) : null, shapes.children.length ? shapes : null,
           motions.children.length ? el('div', { class: 'bar', style: 'margin-top:6px' }, el('span', { class: 'hint', text: '▶ 움직임 미리보기 (게임 프레임 그대로 반복)' }), speedSel) : null, motions.children.length ? motions : null);
         const others = A.byGfx[g].filter(m => m !== mv);
         // 색: 이 그림이 쓰는 색 묶음 고르기 + 그 색 묶음의 3색 바꾸기 (같은 색 묶음을 쓰는 다른 그림도 같이 바뀜)
@@ -10127,6 +10168,21 @@ Object.assign(App.prototype, {
       const edit = ({ pic, n }) => { const ok = palEditable(curPal); this.pixelEditor({ title: gName(g) + ' · ' + PAL_NAME[curPal], pic, pal: rom.animPal(curPal), editable: [false, ok, ok, ok], transparent0: true,
         note: pic.w + '×' + pic.h + ' 픽셀 (8×8 칸 ' + n + '개, 가로 16칸씩). 1번 = 투명, 2~4번 = 밝은색·중간색·어두운색' + (ok ? ' (색을 바꾸면 [' + PAL_NAME[curPal] + '] 색 묶음을 쓰는 그림이 모두 바뀌어요)' : '') + '. 숫자키 1~4 = 색 고르기',
         onOk: (p, pl, palChanged) => { if (palChanged && ok) { rom.setAnimPal(curPal, pl); for (const q of paints) q(); } save(p, n); } }); };
+      // 조립된 모양 하나를 한 장의 그림처럼 고치기 → 바뀐 점을 조각으로 되돌려 저장
+      const editShape = s => {
+        const { pic, n } = rom.readAnimGfx(g), ed = rom.animShapeEdit(pic, n, s);
+        if (!ed) return;
+        const p = s.pal != null ? s.pal : curPal, ok = palEditable(p);
+        this.pixelEditor({ title: gName(g) + ' · 모양 고치기 · ' + PAL_NAME[p], pic: clonePic(ed.img), pal: rom.animPal(p), editable: [false, ok, ok, ok], transparent0: true,
+          note: '게임에 나오는 모양 그대로 고쳐요 (' + ed.w + '×' + ed.h + ' 픽셀). 고친 점은 그 점을 그리는 조각에 들어가요.\n' +
+            '같은 조각을 뒤집어서 여러 번 쓰는 모양(예: 별)은 한 곳을 고치면 대칭으로 같이 바뀌어요. 조각이 없는 빈 곳에 그린 점은 들어가지 않아요.',
+          onOk: (np, pl, palChanged) => {
+            if (palChanged && ok) { rom.setAnimPal(p, pl); for (const q of paints) q(); }
+            const lost = rom.animShapeApply(pic, ed, np);
+            save(pic, n);
+            if (lost) this.okMsg(msg, '적용했어요 (조각이 없는 빈 곳에 그린 점 ' + lost + '개는 들어가지 않았어요)', true);
+          } });
+      };
       const importFile = async ({ pic, n }) => {
         let src;
         try { src = await pickImageFile(); } catch (e) { alert('그림을 열 수 없어요: ' + e.message); return; }
