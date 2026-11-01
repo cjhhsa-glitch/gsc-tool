@@ -4949,15 +4949,28 @@ mixin(Rom.prototype, {
     return this._stEv.get(ev) || [];
   },
 
-  // 걷기 데이터 → [{ code, label }] (끝 $47 까지)
-  readMovement(off) {
-    const d = this.data, res = [], dirs = ['↓', '↑', '←', '→'];
+  // 걷기 데이터 바이트 (끝 $47 은 빼고)
+  movementBytes(off) {
+    const d = this.data, out = [];
+    for (let p = off, n = 0; n < 80 && this.inRom(p); n++) {
+      const c = d[p];
+      if (c === 0x47) break;
+      const two = c === 0x46 || c === 0x48 || c === 0x4F || c === 0x55;
+      out.push(c); if (two) out.push(d[p + 1]);
+      p += two ? 2 : 1;
+    }
+    return out;
+  },
+  readMovement(off) { return this.decodeMovement(this.movementBytes(off)); },
+  // 걷기 바이트 → [{ code, kind, dir, n }]
+  decodeMovement(b) {
+    const d = b.concat([0x47, 0]), res = [], dirs = ['↓', '↑', '←', '→'];
     const kinds = [[0x00, '고개'], [0x04, '돌기'], [0x08, '천천히'], [0x0C, '걷기'], [0x10, '빨리'], [0x14, '미끄러짐(느림)'], [0x18, '미끄러짐'],
       [0x1C, '미끄러짐(빠름)'], [0x20, '돌아서기'], [0x24, '돌아보기'], [0x28, '폭포'], [0x2C, '점프(느림)'], [0x30, '점프'], [0x34, '점프(빠름)']];
     const named = { 0x38: '미끄러짐 끄기', 0x39: '미끄러짐 켜기', 0x3A: '방향 고정 풀기', 0x3B: '방향 고정', 0x3C: '나타나기', 0x3D: '숨기',
       0x49: '사라지기', 0x4A: '제자리 반복', 0x4C: '순간이동(떠남)', 0x4D: '순간이동(도착)', 0x4E: '하늘에서 떨어짐', 0x50: '부딪힘',
       0x53: '감정 표시 끄기', 0x54: '감정 표시', 0x56: '나무 흔들기', 0x57: '바위 깨기', 0x58: '구멍에서 나옴' };
-    for (let p = off, n = 0; n < 80 && this.inRom(p); n++) {
+    for (let p = 0, n = 0; n < 80 && p < d.length; n++) {
       const c = d[p];
       if (c === 0x47) break;
       if (c < 0x38) { const k = kinds.find(x => c >= x[0] && c < x[0] + 4); res.push({ code: c, kind: k[1], dir: dirs[c & 3] }); p++; continue; }
@@ -5027,7 +5040,11 @@ mixin(Rom.prototype, {
       return !last || !ST_STOP.has(last.name) ? 1 : 0; };
     order.forEach((s, i) => { pos.set(s.id, n); n += s.cards.reduce((t, c) => t + c.len, 0) + tail(s, i); });
     const texts = [];
-    for (const s of order) for (const c of s.cards) for (const a of c.args) if (a.newText != null) { a._tpos = n + texts.reduce((t, x) => t + x.length, 0); texts.push(this.textBytes(a.newText)); }
+    // 새 대사 · 새 걷기 데이터는 스크립트 뒤에 붙임
+    for (const s of order) for (const c of s.cards) for (const a of c.args) {
+      if (a.newText != null) { a._tpos = n + texts.reduce((t, x) => t + x.length, 0); texts.push(this.textBytes(a.newText)); }
+      else if (a.newMove) { a._tpos = n + texts.reduce((t, x) => t + x.length, 0); texts.push(a.newMove.concat([0x47])); }
+    }
     const total = n + texts.reduce((t, x) => t + x.length, 0);
     const p = this.allocInBank(m.bank, total);
     if (p < 0) return '이 지도가 있는 곳(뱅크)에 빈 공간이 부족해요 (' + total + '바이트 필요)';
@@ -5039,7 +5056,7 @@ mixin(Rom.prototype, {
         for (const a of c.args) {
           const at = c.off >= 0 ? a.at - c.off : a.at;
           if (a.t === 'p' && a.seg != null && pos.has(a.seg)) w16(b, at, base + pos.get(a.seg));
-          if (a.newText != null) w16(b, at, base + a._tpos);
+          if (a.newText != null || a.newMove) w16(b, at, base + a._tpos);
         }
         out.push(...b);
       }
@@ -11533,7 +11550,7 @@ Object.assign(App.prototype, {
       if (t === 'tid') return num(v, 1, 99, x => setV(arg, x));
       return el('b', { text: String(v) });
     };
-    let curBank = a.scriptBank;
+    let curBank = a.scriptBank, curExt = false;
     const textOf = arg => {
       if (arg.t === 'tp') return Rom.banked(arg.v) ? rom.parseText(rom.off(curBank, arg.v), 0) : null;
       if (arg.t === 'ftp') {
@@ -11556,11 +11573,27 @@ Object.assign(App.prototype, {
       const t = textOf(arg);
       return t ? this.textEditor(t, title, o) : el('div', { class: 'hint', text: '(대사를 읽지 못했어요)' });
     };
-    const mv = arg => {
-      const steps = Rom.banked(arg.v) ? rom.readMovement(rom.off(curBank, arg.v)) : [];
+    const mvText = steps => {
       const s = []; let last = null;
       for (const x of steps) { const key = x.kind + x.dir; if (last && last.key === key) last.n++; else { last = { key, kind: x.kind, dir: x.dir, n: 1, w: x.n }; s.push(last); } }
-      return el('span', { class: 'st-mv', text: s.map(x => (x.dir ? x.dir + ' ' : '') + x.kind + (x.n > 1 ? ' ×' + x.n : '') + (x.w ? ' (' + x.w + ')' : '')).join('  ·  ') || '(움직임 없음)' });
+      return s.map(x => (x.dir ? x.dir + ' ' : '') + x.kind + (x.n > 1 ? ' ×' + x.n : '') + (x.w ? ' (' + x.w + ')' : '')).join('  ·  ') || '(움직임 없음)';
+    };
+    const mvBytes = arg => arg.newMove ? arg.newMove : Rom.banked(arg.v) ? rom.movementBytes(rom.off(curBank, arg.v)) : [];
+    // 걷기 카드: 보기 + [지도에서 길 그리기] (누가 움직이는지 = objArg)
+    const mv = (arg, objArg, ext) => {
+      const span = el('span', { class: 'st-mv', text: mvText(rom.decodeMovement(mvBytes(arg))) });
+      if (ext) return span;
+      const bytes = mvBytes(arg);
+      return el('span', null, span, el('button', { class: 'st-mini', text: '🗺 지도에서 길 그리기', onclick: () => {
+        const who = objArg ? objArg.v : 0xFE;
+        this.storyPathDialog(a, who, objName(who), startOf(who), bytes, nb => { snap(); arg.newMove = nb; touch(); });
+      } }));
+    };
+    // 움직이기 시작하는 칸: 이 NPC · 다른 NPC 는 그 자리, 주인공은 이 NPC 바로 아래 (창에서 바꿀 수 있음)
+    const startOf = who => {
+      if (who === 0xFE) return [o.x, o.y];
+      if (who >= 2) { const x = rom.ownerAt(a, false, who - 2); if (x) return [x.x, x.y]; }
+      return [o.x, o.y + 1];
     };
 
     // 카드 그림 → [요소, 차지하는 카드 수]
@@ -11614,8 +11647,8 @@ Object.assign(App.prototype, {
           const s1 = ed(A[0], c), s2 = ed(A[1], c); s1.addEventListener('change', upd); s2.addEventListener('change', upd);
           return [row('⚔', w(S('트레이너 배틀 준비: '), s1, S(' 팀 '), s2), lab), 1]; }
         case 'startbattle': return [row('⚔', w(B('배틀 시작!'))), 1];
-        case 'applymovement': return [row('🚶', w(ed(A[0], c), S(' 움직이기: '), mv(A[1]))), 1];
-        case 'applymovementlasttalked': return [row('🚶', w(B(o.name), S(' 움직이기: '), mv(A[0]))), 1];
+        case 'applymovement': return [row('🚶', w(ed(A[0], c), S(' 움직이기: '), mv(A[1], A[0], curExt))), 1];
+        case 'applymovementlasttalked': return [row('🚶', w(B(o.name), S(' 움직이기: '), mv(A[0], null, curExt))), 1];
         case 'turnobject': return [row('↻', w(ed(A[0], c), S(' 방향 바꾸기 '), ed(A[1], c))), 1];
         case 'faceobject': return [row('👀', w(ed(A[0], c), S(' 이(가) '), ed(A[1], c), S(' 쪽을 봐요'))), 1];
         case 'disappear': return [row('👻', w(ed(A[0], c), S(' 사라지기'))), 1];
@@ -11681,6 +11714,10 @@ Object.assign(App.prototype, {
       ['기록', [
         ['✅ 이벤트 표시 켜기 (했다고 기록)', () => [NC('setevent', [rom.allocFlag()])]],
         ['⬜ 이벤트 표시 끄기', () => [NC('clearevent', [rom.allocFlag()])]]]],
+      ['움직이기·장면', [
+        ['🚶 이 NPC 걷기 (지도에서 길 그리기)', () => { const c = NC('applymovement', [0xFE, 0]); c.args[1].newMove = []; return [c]; }],
+        ['🚶 주인공 걷기 (지도에서 길 그리기)', () => { const c = NC('applymovement', [0, 0]); c.args[1].newMove = []; return [c]; }],
+        ['🎬 이 지도의 장면 번호 바꾸기', () => [NC('setscene', [1])]]]],
       ['사람·화면', [
         ['👻 사라지기', () => [NC('disappear', [0xFE])]],
         ['✨ 나타나기', () => [NC('appear', [0xFE])]],
@@ -11730,7 +11767,7 @@ Object.assign(App.prototype, {
           s.ext ? el('span', { class: 'hint', text: '  다른 곳에 있는 공통 부분 — 값만 고칠 수 있어요 (고치면 같이 쓰는 곳도 바뀜)' }) : null,
           !R.has(s.id) ? el('span', { class: 'hint', text: '  아무 데서도 안 와요 — 적용하면 없어져요' }) : null));
         for (let i = 0; i < s.cards.length;) {
-          curBank = s.ext ? s.cards[i].bank : a.scriptBank;
+          curBank = s.ext ? s.cards[i].bank : a.scriptBank; curExt = s.ext;
           if (s.cards[i].off >= 0) curBank = s.cards[i].bank;
           const [elx, used] = card(s.cards[i], s.cards[i + 1]);
           if (!s.ext) {
@@ -11783,6 +11820,102 @@ Object.assign(App.prototype, {
       el('div', { class: 'hint', text: '말을 걸었을 때 게임이 하는 일을 순서대로 보여줘요. 📍 갈래 버튼을 누르면 그 부분으로 가요.\n파란 칸(아이템·포켓몬·레벨·음악·대사 등)은 바로 고쳐져요.\n카드에 마우스를 올리면 ↑↓(순서) ＋(아래에 넣기) ✕(빼기)가 나와요. 넣고 뺀 것은 [적용하기]를 눌러야 들어가요 (원래 스크립트는 지우지 않고 그대로 둬요).\n🔒 카드는 아직 풀어서 보여주지 못하는 동작이에요 (그대로 동작해요).' }),
       el('div', { class: 'bar st-bar' }, applyBtn, undoBtn, revert, origBtn, pend),
       body), () => { closeMenu(); if (!done && structDirty) this.say('적용하지 않은 카드 변경은 버렸어요.'); this.setTab(this.tab); }, false, true);
+  },
+
+  // 지도에서 걷는 길 그리기 → onDone(걷기 바이트)
+  // 칸을 누르면 지금 끝 칸에서 그 칸까지 (가로 먼저, 그다음 세로) 고른 걸음으로 이어 붙임
+  storyPathDialog(area, who, whoName, start, bytes0, onDone) {
+    const rom = this.rom, Z = 2, C = 16 * Z, W = area.width * 2, H = area.height * 2;
+    const img = rom.gfx.renderMap(area);
+    const base = document.createElement('canvas');
+    if (img) { base.width = img.width; base.height = img.height; base.getContext('2d').putImageData(img, 0, 0); }
+    const cv = el('canvas', { class: 'map' }); cv.width = W * C; cv.height = H * C;
+    let steps = bytes0.slice(), st = start.slice(), pickStart = false, hover = [-1, -1];
+    const hist = [];
+    const DX = [0, 0, -1, 1], DY = [1, -1, 0, 0], ARROW = ['↓', '↑', '←', '→'];
+    const KINDS = [['걷기', 0x0C, 1], ['천천히 걷기', 0x08, 1], ['빨리 걷기', 0x10, 1], ['미끄러지기', 0x18, 1], ['점프 (2칸)', 0x30, 2]];
+    const kindSel = sel(KINDS.map((k, i) => [i, k[0]]), 0);
+    // 바이트 → 지나가는 칸들 [{x,y,dir,turn}]
+    const trace = () => {
+      const pts = [{ x: st[0], y: st[1] }]; let x = st[0], y = st[1], face = -1;
+      for (let i = 0; i < steps.length; i++) {
+        const c = steps[i];
+        if (c === 0x46 || c === 0x48 || c === 0x4F || c === 0x55) { i++; continue; }
+        if (c >= 0x38) continue;
+        const dir = c & 3, k = c & 0xFC;
+        const dist = k >= 0x2C && k <= 0x34 ? 2 : (k === 0x00 || k === 0x04 || k === 0x20 || k === 0x24 || k === 0x28) ? 0 : 1;
+        face = dir;
+        if (!dist) { pts.push({ x, y, dir, turn: true }); continue; }
+        x += DX[dir] * dist; y += DY[dir] * dist;
+        pts.push({ x, y, dir });
+      }
+      return pts;
+    };
+    const info = el('div', { class: 'st-mv', style: 'display:block;margin-top:6px;white-space:normal' }), warn = el('div', { class: 'err' });
+    const draw = () => {
+      const g = cv.getContext('2d'); g.imageSmoothingEnabled = false;
+      g.fillStyle = '#282828'; g.fillRect(0, 0, cv.width, cv.height);
+      if (img) g.drawImage(base, 0, 0, cv.width, cv.height);
+      g.strokeStyle = 'rgba(0,0,0,.15)'; g.lineWidth = 1;
+      for (let x = 0; x <= W; x++) { g.beginPath(); g.moveTo(x * C + .5, 0); g.lineTo(x * C + .5, cv.height); g.stroke(); }
+      for (let y = 0; y <= H; y++) { g.beginPath(); g.moveTo(0, y * C + .5); g.lineTo(cv.width, y * C + .5); g.stroke(); }
+      g.strokeStyle = 'rgba(255,60,60,.8)'; g.lineWidth = 2;
+      for (const x of area.owners) if (x.x >= 0 && !x.isSign && x.eventOff >= 0) g.strokeRect(x.x * C + 2, x.y * C + 2, C - 4, C - 4);
+      const pts = trace();
+      // 길
+      g.strokeStyle = '#ffd43b'; g.lineWidth = 6; g.lineCap = 'round'; g.lineJoin = 'round';
+      g.beginPath(); pts.forEach((p, i) => { const px = p.x * C + C / 2, py = p.y * C + C / 2; if (i) g.lineTo(px, py); else g.moveTo(px, py); }); g.stroke();
+      g.font = 'bold ' + (C * 0.6) + 'px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      let bad = 0;
+      for (let i = 1; i < pts.length; i++) {
+        const p = pts[i], k = collKind(rom.collisionAt(area, p.x, p.y)), wall = !p.turn && (k === '벽' || k === '물' || p.x < 0 || p.y < 0 || p.x >= W || p.y >= H);
+        if (wall) bad++;
+        g.fillStyle = wall ? 'rgba(255,0,0,.75)' : p.turn ? 'rgba(80,140,255,.85)' : 'rgba(0,0,0,.55)';
+        g.fillRect(p.x * C + 4, p.y * C + 4, C - 8, C - 8);
+        g.fillStyle = '#fff'; g.fillText(ARROW[p.dir], p.x * C + C / 2, p.y * C + C / 2 + 1);
+      }
+      g.strokeStyle = '#4dabf7'; g.lineWidth = 4; g.strokeRect(st[0] * C + 2, st[1] * C + 2, C - 4, C - 4);
+      const e = pts[pts.length - 1]; g.strokeStyle = '#51cf66'; g.strokeRect(e.x * C + 4, e.y * C + 4, C - 8, C - 8);
+      if (hover[0] >= 0) { g.strokeStyle = pickStart ? '#4dabf7' : '#fff'; g.lineWidth = 2; g.strokeRect(hover[0] * C, hover[1] * C, C, C); }
+      info.textContent = '움직임: ' + (steps.length ? stepText() : '(아직 없음 — 지도에서 갈 칸을 누르세요)');
+      warn.textContent = bad ? '⚠ 빨간 칸 ' + bad + '개는 벽·물이에요. 게임에서는 거기서 멈추거나 이상하게 움직일 수 있어요' : '';
+      undoB.disabled = !hist.length;
+    };
+    const stepText = () => {
+      const s = []; let last = null;
+      for (const x of rom.decodeMovement(steps)) { const key = x.kind + x.dir; if (last && last.key === key) last.n++; else { last = { key, kind: x.kind, dir: x.dir, n: 1 }; s.push(last); } }
+      return s.map(x => (x.dir ? x.dir + ' ' : '') + x.kind + (x.n > 1 ? ' ×' + x.n : '')).join('  ·  ');
+    };
+    const push = arr => { hist.push(steps.slice()); steps = steps.concat(arr); draw(); };
+    const goTo = (tx, ty) => {
+      const pts = trace(), e = pts[pts.length - 1], [, code, dist] = KINDS[+kindSel.value], add = [];
+      let x = e.x, y = e.y;
+      const run = (dir, n) => { for (let i = 0; i + dist <= n; i += dist) add.push(code + dir); };
+      if (tx !== x) run(tx > x ? 3 : 2, Math.abs(tx - x));
+      if (ty !== y) run(ty > y ? 0 : 1, Math.abs(ty - y));
+      if (add.length) push(add);
+    };
+    const cell = ev => { const r = cv.getBoundingClientRect(), k = r.width / cv.width; const x = Math.floor((ev.clientX - r.left) / k / C), y = Math.floor((ev.clientY - r.top) / k / C); return x >= 0 && y >= 0 && x < W && y < H ? [x, y] : [-1, -1]; };
+    cv.addEventListener('mousemove', ev => { const c = cell(ev); if (c[0] !== hover[0] || c[1] !== hover[1]) { hover = c; draw(); } });
+    cv.addEventListener('click', ev => {
+      const c = cell(ev); if (c[0] < 0) return;
+      if (pickStart) { st = c; pickStart = false; startB.classList.remove('on'); draw(); return; }
+      goTo(c[0], c[1]);
+    });
+    const undoB = el('button', { text: '↶ 마지막 지우기', onclick: () => { const h = hist.pop(); if (h) { steps = h; draw(); } } });
+    const startB = el('button', { text: '🔵 시작 칸 고르기', title: '움직이기 시작하는 칸 (지도에서 누르기)', onclick: () => { pickStart = !pickStart; startB.classList.toggle('on', pickStart); } });
+    const turnBtns = [0, 1, 2, 3].map(d => el('button', { text: ARROW[d], title: '그 방향 보기 (안 움직임)', onclick: () => push([0x00 + d]) }));
+    const wrap = el('div', { class: 'mapwrap', style: 'max-height:56vh' }, cv);
+    let close;
+    close = this.dialog('🚶 걷는 길 그리기 — ' + whoName, () => el('div', null,
+      el('div', { class: 'hint', text: '갈 칸을 차례로 누르세요. 지금 끝(초록) 칸에서 그 칸까지 가로 → 세로 순서로 걸어요. 파랑 = 시작 칸, 빨강 테두리 = NPC.\n' + (who === 0 ? '주인공은 시작 칸을 모르니 [🔵 시작 칸 고르기]로 말 거는 자리를 골라 주세요.' : '') }),
+      el('div', { class: 'bar' }, el('span', { text: '걸음' }), kindSel, el('span', { text: '  방향만 보기' }), ...turnBtns,
+        el('button', { text: '⏸ 쉬기', onclick: () => push([0x45]) }), undoB, el('button', { text: '모두 지우기', onclick: () => { hist.push(steps.slice()); steps = []; draw(); } }), startB),
+      wrap, info, warn,
+      el('div', { class: 'bar', style: 'margin-top:8px;justify-content:flex-end' }, el('button', { text: '취소', onclick: () => close() }),
+        el('button', { class: 'apply', text: '이 길로 정하기', onclick: () => { close(); onDone(steps); } }))), null, false, true);
+    draw();
+    setTimeout(() => { wrap.scrollLeft = st[0] * C - wrap.clientWidth / 2; wrap.scrollTop = st[1] * C - wrap.clientHeight / 2; }, 0);
   },
 
   // 이벤트 표시 이름 붙이기 (롬 안에 같이 저장)
