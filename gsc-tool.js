@@ -3713,10 +3713,15 @@ mixin(Rom.prototype, {
   textsMentioning(mon) {
     const res = [];
     if (mon < 1 || mon >= this.pokemonNames.length) return res;
-    const name = this.pokemonNames[mon], where = new Map();
+    return this.textsWithWord(this.pokemonNames[mon]);
+  },
+  // 이 낱말이 나오는 대사 → [[대사, 어디서 나오는지], …]
+  textsWithWord(word) {
+    const res = [], where = new Map();
+    if (!word) return res;
     for (const a of this.allAreas) for (const o of a.owners.concat(a.extras)) for (const t of o.texts) if (!where.has(t)) where.set(t, a.regionName + ' › ' + a.name + ' › ' + o.name);
     for (const t of [...this.texts.values()].sort((x, y) => x.addr - y.addr))
-      if (t.current.includes(name)) res.push([t, where.get(t) || '기타 대사 (' + t.addr.toString(16).toUpperCase() + ')']);
+      if (t.current.includes(word)) res.push([t, where.get(t) || '기타 대사 (' + t.addr.toString(16).toUpperCase() + ')']);
     return res;
   }
 });
@@ -10455,11 +10460,12 @@ Object.assign(App.prototype, {
     const apply = () => {
       const nn = nameIn.value.trim();
       if (nn === rom.landmarkNames[id]) { close(); return; }
-      const e = rom.setLandmarkName(id, nn);
+      const old = rom.landmarkNames[id], e = rom.setLandmarkName(id, nn);
       if (e) { this.okMsg(msg, e, true); return; }
       close();
       this.buildTree(); this.setTab(this.tab);
       this.say('지역 이름을 "' + nn + '"(으)로 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.');
+      this.regionTextDialog(old, nn);
     };
     nameIn.addEventListener('keydown', e => { if (e.key === 'Enter') apply(); });
     close = this.dialog('✏ 지역 이름 바꾸기', () => el('div', null,
@@ -10469,6 +10475,42 @@ Object.assign(App.prototype, {
       el('div', { class: 'bar', style: 'justify-content:flex-end;margin-top:10px' }, el('button', { text: '취소', onclick: () => close() }),
         el('button', { class: 'apply', text: '바꾸기', onclick: apply }))), null, true);
     setTimeout(() => { nameIn.focus(); nameIn.select(); }, 0);
+  },
+
+  // 지역 이름을 바꾼 뒤: 옛 이름이 나오는 대사(표지판·사람 말)도 바꿀지 골라요
+  regionTextDialog(oldN, newN, after) {
+    const rom = this.rom, found = oldN && oldN !== newN ? rom.textsWithWord(oldN) : [];
+    if (!found.length) { if (after) after(); return; }
+    const conv = s => replaceWord(s, oldN, newN).split(oldN).join(newN);
+    const checks = found.map(() => { const c = el('input', { type: 'checkbox' }); c.checked = true; return c; });
+    const before = el('textarea', { readonly: '', style: 'width:100%;height:100px' }), aft = el('textarea', { readonly: '', style: 'width:100%;height:100px' });
+    const show = t => { before.value = t.current; aft.value = conv(t.current); };
+    const tbl = el('table', { class: 'grid', style: 'width:100%' }, el('tr', null, el('th', { text: '바꾸기' }), el('th', { text: '어디서 나오는 대사' }), el('th', { text: '바뀐 뒤 대사' })));
+    found.forEach(([t, where], i) => {
+      const tr = el('tr', { style: 'cursor:pointer' }, el('td', null, checks[i]), el('td', { text: where }), el('td', { text: RAW + conv(t.current).replace(/\n/g, ' / ') }));
+      tr.addEventListener('click', e => { if (e.target !== checks[i]) show(t); });
+      tbl.append(tr);
+    });
+    show(found[0][0]);
+    let close;
+    const ok = el('button', { class: 'apply', text: '✅ 체크한 대사 바꾸기', onclick: () => {
+      let n = 0;
+      found.forEach(([t], i) => {
+        if (!checks[i].checked) return;
+        const s = conv(t.current);
+        if (s !== t.current) { rom.setTextChecked(t, s); n++; }
+      });
+      close();
+      if (n) { this.buildTree(); this.setTab(this.tab); this.say('대사 ' + n + "개에서 '" + oldN + "' → '" + newN + "' 로 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요."); }
+    } });
+    close = this.dialog("대사에서도 '" + oldN + "' → '" + newN + "' 로 바꿀까요?", () => el('div', null,
+      el('div', { class: 'hint', style: 'color:#334;margin-bottom:6px', text: "게임 대사 중 '" + oldN + "' 이(가) 나오는 곳 " + found.length + '개를 찾았어요 (마을 표지판, 사람들 말 등). 바꿀 대사만 체크하세요. 뒤에 붙는 조사(은/는, 이/가…)도 새 이름에 맞춰 바꿔요.\n줄을 누르면 아래에서 바뀌기 전·후를 볼 수 있어요.' }),
+      el('div', { style: 'max-height:340px;overflow:auto' }, tbl),
+      el('div', { class: 'side', style: 'grid-template-columns:1fr 1fr;margin-top:8px' }, el('div', null, el('b', { text: '지금 대사' }), before), el('div', null, el('b', { text: '바뀐 뒤' }), aft)),
+      el('div', { class: 'bar', style: 'margin-top:8px;justify-content:flex-end' },
+        el('button', { text: '모두 체크', onclick: () => checks.forEach(c => c.checked = true) }),
+        el('button', { text: '모두 해제', onclick: () => checks.forEach(c => c.checked = false) }),
+        el('button', { text: '안 바꾸기', onclick: () => close() }), ok)), after);
   },
 
   newMapDialog() {
@@ -10499,22 +10541,24 @@ Object.assign(App.prototype, {
     const make = () => {
       const a = areas[+baseSel.value]; if (!a) return;
       const name = nameIn.value.trim() || '새 지도';
+      let renamed = null;
       if (renC.checked) {
-        const nn = renIn.value.trim();
-        if (nn && nn !== rom.landmarkNames[+lmSel.value]) { const e = rom.setLandmarkName(+lmSel.value, nn); if (e) { this.okMsg(msg, e, true); return; } }
+        const nn = renIn.value.trim(), old = rom.landmarkNames[+lmSel.value];
+        if (nn && nn !== old) { const e = rom.setLandmarkName(+lmSel.value, nn); if (e) { this.okMsg(msg, e, true); return; } renamed = [old, nn]; }
       }
       const r = rom.addMapClone(a, { name, landmark: +lmSel.value, warps: wC.checked, events: eC.checked });
       if (r.error) { this.okMsg(msg, r.error, true); return; }
       close();
       this.rereadRom(r);
       this.say('새 지도 "' + name + '"을(를) 만들었어요. [저장하기]를 눌러야 롬 파일에 기록돼요.');
-      alert('✅ 새 지도 "' + name + '"을(를) 만들었어요.\n\n' +
+      const guide = () => alert('✅ 새 지도 "' + name + '"을(를) 만들었어요.\n\n' +
         '이제 이렇게 하면 돼요:\n' +
         '1. [지도 블록] 탭에서 모양을 고쳐요\n' +
         '2. [NPC · 이벤트] 탭에서 사람·표지판을 넣어요\n' +
         '3. 원래 있던 지도의 [워프 · 트리거] 탭에서 이 새 지도로 가는 칸을 만들어야 게임에서 들어갈 수 있어요\n\n' +
         '※ 옆 지도와 이어지는 길(지도 가장자리)은 없어서, 마을 끝으로는 못 나가요. 문·트리거로 오가게 해 주세요.\n' +
         '※ 저장한 뒤 [게임으로 확인]으로 꼭 들어가 보세요.');
+      if (renamed) this.regionTextDialog(renamed[0], renamed[1], () => setTimeout(guide, 0)); else guide();
     };
     close = this.dialog('🗺 새 지도 만들기', () => el('div', null,
       el('div', { class: 'hint', text: '기존 지도를 바탕으로 복사해서 새 지도를 만들어요. 원래 지도는 그대로예요.' }),
@@ -11301,9 +11345,10 @@ Object.assign(App.prototype, {
       const msg = el('span');
       lmBox.append(el('div', { class: 'bar' }, el('b', { text: st.lm + '번 장소' })),
         el('div', { class: 'bar' }, el('span', { text: '이름' }), nameIn, el('button', { text: '이름 바꾸기', onclick: () => {
-          const e = rom.setLandmarkName(st.lm, nameIn.value.trim());
+          const old = rom.landmarkNames[st.lm], e = rom.setLandmarkName(st.lm, nameIn.value.trim());
           if (e) { this.okMsg(msg, e, true); return; }
           this.okMsg(msg, '바꿨어요'); buildLmList(); draw(); this.buildTree(); this.setTab(this.tab);
+          this.regionTextDialog(old, nameIn.value.trim());
         } }), msg),
         el('div', { class: 'bar' }, el('span', { text: '위치 X' }), nx, el('span', { text: 'Y' }), ny),
         el('div', { class: 'hint', text: '이름은 지도에 들어갈 때 뜨는 이름·포켓기어 지도 이름이에요 (그 지역의 모든 지도). 위치는 지도 위 점을 끌어서 옮겨도 돼요.' }));
