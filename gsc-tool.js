@@ -785,12 +785,13 @@ const VERSION_NAMES = { ko: '한글판', koen: '한글판', jp: '일본판', en:
 // ================================================================ 롬 분석 (Program.cs Rom 과 같음)
 // 스크립트 명령 번호는 한글판 금·은 기준 (다른 버전은 12-version.js 의 표로 바꿔 읽음)
 
+const MAP_MARKER_SIG = [0x47, 0x53, 0x43, 0x4D, 0x41, 0x50, 0x31, 0x00];   // "GSCMAP1\0" (이 툴이 지도를 더한 표시)
 const Names = {
   areas: null,
   area(group, map, counts) {
     if (!this.areas) this.areas = AREA_NAMES.split(';').map(g => g.split('|'));
-    // 개조롬에서 지도 수가 원본과 다르면 이름을 맞출 수 없으니 번호로
-    if (group >= 1 && group <= this.areas.length && counts.length === this.areas.length && counts[group - 1] === this.areas[group - 1].length && map >= 1)
+    // 개조롬에서 지도 수가 원본과 다르면 이름을 맞출 수 없으니 번호로 (끝에 지도를 더한 것이면 원래 지도 이름은 그대로)
+    if (group >= 1 && group <= this.areas.length && counts.length === this.areas.length && counts[group - 1] >= this.areas[group - 1].length && map >= 1 && map <= this.areas[group - 1].length)
       return this.areas[group - 1][map - 1];
     return '구역 ' + group + '-' + map;
   },
@@ -902,6 +903,7 @@ class Rom {
         landmarkNames.push(r.text.replace(/\n/g, ' ').trim());
       }
     }
+    this.landmarkNames = landmarkNames; this.landmarkOff = lm; this.mapTbl = tbl; this.mapBank = mapBank; this.mapGroups = groups;
 
     const groupPtrs = [];
     for (let g = 0; g < groups; g++) groupPtrs.push(this.w(tbl + g * 2));
@@ -912,6 +914,17 @@ class Rom {
       for (const p of groupPtrs) if (p > start && p < next) next = p;
       counts.push(next === Infinity ? this.countTail(mapBank, start) : (next - start) / 9);
     }
+    // 이 툴로 지도를 더했으면 롬 안 표시(GSCMAP1)에 지역 묶음별 지도 수와 툴에서 붙인 이름이 있음
+    this.customAreaNames = new Map(); this.mapMarker = -1;
+    const mk = this.findPattern(MAP_MARKER_SIG, 0x4000, d.length);
+    if (mk >= 0 && d[mk + 8] === groups) {
+      this.mapMarker = mk;
+      for (let g = 0; g < groups; g++) counts[g] = d[mk + 9 + g];
+      let p = mk + 9 + groups;
+      const nn = d[p++];
+      for (let i = 0; i < nn; i++) { const g = d[p], m = d[p + 1], len = d[p + 2]; this.customAreaNames.set(g * 256 + m, new TextDecoder().decode(d.subarray(p + 3, p + 3 + len))); p += 3 + len; }
+    }
+    this.groupCounts = counts; this.groupPtrs = groupPtrs;
 
     const regionMap = new Map();
     for (let g = 0; g < groups; g++) {
@@ -925,7 +938,7 @@ class Rom {
         const scriptBank = d[at + 6], scriptsAddr = this.w(at + 7), eventsAddr = this.w(at + 9);
         if (!Rom.banked(scriptsAddr) || !Rom.banked(eventsAddr)) continue;
         const area = {
-          group: g + 1, map: m + 1, name: Names.area(g + 1, m + 1, counts),
+          group: g + 1, map: m + 1, name: this.customAreaNames.get((g + 1) * 256 + m + 1) || Names.area(g + 1, m + 1, counts), custom: this.customAreaNames.has((g + 1) * 256 + m + 1),
           tileset: d[h + 1], env: d[h + 2],
           height: d[at + 1], width: d[at + 2], blocksBank: d[at + 3], blocksAddr: this.w(at + 4),
           headerOff: h, attrOff: at, scriptBank, scriptsAddr, eventsAddr, owners: [], extras: []
@@ -4496,6 +4509,110 @@ mixin(Rom.prototype, {
   }
 });
 
+// ===== 63-newmap.js
+// ================================================================ 새 지도 만들기 (기존 지도를 복사해서 같은 지역 묶음 끝에 더함)
+// 지도 머리말(9바이트) · 속성(12바이트, 옆 지도 연결 없음) · 블록 · 스크립트 머리말(장면 0 · 콜백 0) · 이벤트(워프·트리거·표지판·사람)
+mixin(Rom.prototype, {
+  // 이벤트 표의 바이트 크기와 각 칸 수 (0,0 · 워프 · 트리거 · 표지판 · 사람)
+  eventTableInfo(a) {
+    const d = this.data, p0 = this.off(a.scriptBank, a.eventsAddr);
+    let p = p0 + 2;
+    const nw = d[p]; p += 1 + nw * 5;
+    const nc = d[p]; p += 1 + nc * 8;
+    const nb = d[p]; p += 1 + nb * 5;
+    const no = d[p]; p += 1 + no * 13;
+    return { start: p0, size: p - p0, nw, nc, nb, no };
+  },
+  // 롬 안 표시(GSCMAP1) 다시 쓰기: 지역 묶음별 지도 수 + 툴에서 붙인 이름
+  writeMapMarker() {
+    const d = this.data, names = [...this.customAreaNames.entries()];
+    const enc = new TextEncoder(), b = [...MAP_MARKER_SIG, this.mapGroups, ...this.groupCounts.map(c => c & 0xFF), names.length];
+    for (const [k, nm] of names) { const t = Array.from(enc.encode(nm)).slice(0, 60); b.push(k >> 8, k & 0xFF, t.length, ...t); }
+    if (this.mapMarker >= 0) d[this.mapMarker] = 0;   // 예전 표시는 지움
+    const a = this.alloc(b.length + 4);
+    if (!a) return '롬에 빈 공간이 부족해요';
+    d.set(b, a.p); this.mapMarker = a.p;
+    return null;
+  },
+  // 지역 이름(랜드마크) 바꾸기 — 그 지역의 모든 지도·포켓기어에 나오는 이름
+  setLandmarkName(id, name) {
+    if (!(this.landmarkOff >= 0)) return '지역 이름표를 찾지 못했어요';
+    let b;
+    try { b = this.encodeName(name); } catch (e) { return e.message; }
+    if (!b.length || b.length > 16) return '이름은 1~8글자로 해 주세요';
+    const bank = Math.floor(this.landmarkOff / 0x4000), p = this.allocInBank(bank, b.length + 1);
+    if (p < 0) return '지역 이름을 넣을 빈 공간이 부족해요';
+    this.data.set([...b, 0x50], p);
+    const e = this.landmarkOff + id * 4 + 2, addr = 0x4000 + p % 0x4000;
+    this.data[e] = addr & 0xFF; this.data[e + 1] = addr >> 8;
+    this.landmarkNames[id] = name; this.dirty = true;
+    return null;
+  },
+  // base 지도를 복사해서 새 지도 만들기 → { group, map } 또는 { error }
+  // o = { name: 툴에서 보일 이름, landmark: 지역 번호, events: 사람·표지판·트리거도 복사, warps: 문(워프) 복사 }
+  addMapClone(base, o) {
+    const d = this.data, g = base.group, n = this.groupCounts[g - 1];
+    if (!(this.mapTbl >= 0)) return { error: '지도 표를 찾지 못했어요' };
+    if (n >= 255) return { error: '이 지역 묶음에는 더 이상 지도를 넣을 수 없어요' };
+    // 1) 블록 (아무 뱅크)
+    const size = base.width * base.height, bsrc = this.off(base.blocksBank, base.blocksAddr);
+    const ba = this.alloc(size);
+    if (!ba) return { error: '지도 블록을 넣을 빈 공간이 부족해요' };
+    d.set(d.slice(bsrc, bsrc + size), ba.p);
+    // 2) 스크립트 머리말 + 이벤트 (같은 뱅크. 사람·표지판을 복사하면 그 스크립트가 있는 원래 뱅크여야 함)
+    const ev = this.eventTableInfo(base);
+    const evBytes = [0, 0];
+    const src = ev.start + 2;
+    const warps = d.slice(src, src + 1 + ev.nw * 5);
+    evBytes.push(...(o.warps ? warps : [0]));
+    let q = src + 1 + ev.nw * 5;
+    for (const [cnt, len] of [[ev.nc, 8], [ev.nb, 5], [ev.no, 13]]) { if (o.events) evBytes.push(...d.slice(q, q + 1 + cnt * len)); else evBytes.push(0); q += 1 + cnt * len; }
+    const need = 2 + evBytes.length;
+    let sbank = base.scriptBank, sp = this.allocInBank(sbank, need);
+    if (sp < 0 && !o.events) {
+      // 다른 스크립트 뱅크 중 빈 곳이 가장 많은 곳 (나중에 사람을 넣을 자리도 생각해서)
+      const banks = [...new Set(this.allAreas.map(x => x.scriptBank))].sort((x, y) => this.free.filter(r => Math.floor(r[0] / 0x4000) === y).reduce((s, r) => s + r[1] - r[0], 0) - this.free.filter(r => Math.floor(r[0] / 0x4000) === x).reduce((s, r) => s + r[1] - r[0], 0));
+      for (const bk of banks) { sp = this.allocInBank(bk, need); if (sp >= 0) { sbank = bk; break; } }
+    }
+    if (sp < 0) return { error: '지도 이벤트를 넣을 빈 공간이 부족해요' };
+    d.set([0, 0], sp);   // 장면 스크립트 0개 · 콜백 0개
+    d.set(evBytes, sp + 2);
+    const sAddr = 0x4000 + sp % 0x4000, eAddr = sAddr + 2;
+    // 3) 속성 12바이트 (옆 지도 연결 없음 → 끝으로 못 나감)
+    const at = base.attrOff, attr = [d[at], base.height, base.width, Math.floor(ba.p / 0x4000), (0x4000 + ba.p % 0x4000) & 0xFF, (0x4000 + ba.p % 0x4000) >> 8, sbank, sAddr & 0xFF, sAddr >> 8, eAddr & 0xFF, eAddr >> 8, 0];
+    const aa = this.alloc(attr.length);
+    if (!aa) return { error: '지도 정보를 넣을 빈 공간이 부족해요' };
+    d.set(attr, aa.p);
+    // 4) 머리말 9바이트 (타일셋·환경·음악·색은 원래 지도 그대로)
+    const hdr = Array.from(d.slice(base.headerOff, base.headerOff + 9)), aAddr = 0x4000 + aa.p % 0x4000;
+    hdr[0] = Math.floor(aa.p / 0x4000); hdr[3] = aAddr & 0xFF; hdr[4] = aAddr >> 8;
+    if (o.landmark != null) hdr[5] = o.landmark;
+    // 5) 이 지역 묶음의 머리말 목록을 한 칸 늘려서 지도 표 뱅크의 빈 곳으로 옮김
+    const gp = this.mapTbl + (g - 1) * 2, oldArr = this.off(this.mapBank, this.w(gp));
+    const arr = Array.from(d.slice(oldArr, oldArr + n * 9)).concat(hdr);
+    const np = this.allocInBank(this.mapBank, arr.length);
+    if (np < 0) return { error: '지도 목록 자리가 부족해요 (지도 표가 있는 곳의 빈 공간을 다 썼어요)' };
+    d.set(arr, np);
+    const naddr = 0x4000 + np % 0x4000;
+    d[gp] = naddr & 0xFF; d[gp + 1] = naddr >> 8;
+    // 6) 표시 다시 쓰기
+    this.groupCounts[g - 1] = n + 1;
+    this.customAreaNames.set(g * 256 + n + 1, o.name || ('새 지도 ' + g + '-' + (n + 1)));
+    const me = this.writeMapMarker();
+    if (me) return { error: me };
+    this.dirty = true;
+    return { group: g, map: n + 1 };
+  },
+  // 툴에서만 보이는 지도 이름 바꾸기 (이 툴이 더한 지도)
+  renameCustomArea(a, name) {
+    this.customAreaNames.set(a.group * 256 + a.map, name);
+    a.name = name;
+    const e = this.writeMapMarker();
+    if (!e) this.dirty = true;
+    return e;
+  }
+});
+
 // ===== 64-blocks.js
 // ================================================================ 지도 블록 읽기·쓰기 (RomBlocks.cs · MapRender.cs 블록 부분과 같음)
 // 지도 블록은 압축 없이 가로×세로 바이트로 들어 있어서 그 자리에 바로 고쳐 씀 (크기 변화 없음)
@@ -6062,6 +6179,7 @@ class App {
       B('울음소리 에디터', '', () => this.cryEditor()),
       B('기술 사운드 에디터', '', () => this.sfxEditor()),
       B('🎬 기술 애니메이션', '', () => this.battleAnimEditor()),
+      B('🗺 새 지도 만들기', '', () => this.newMapDialog()),
       B('캐릭터 그림', '', () => this.owDialog()),
       B('타이틀 화면', '', () => this.titleDialog()),
       B('기술 편집', '', () => this.dialog('기술 편집', () => el('div', null, this.presetBar('moves'), this.tab_moves()))),
@@ -10196,6 +10314,81 @@ Object.assign(App.prototype, {
       fs.append(row);
     }
     return fs;
+  }
+});
+
+// ===== 99-newmap.js
+// ================================================================ 새 지도 만들기 창
+Object.assign(App.prototype, {
+  // 지금 롬 데이터를 다시 읽어서 목록·화면을 새로 (고친 대사는 먼저 롬에 넣음). 고른 지도로 이동
+  rereadRom(pick) {
+    const old = this.rom, { bytes, errors } = old.buildSave();
+    const rom = new Rom(bytes, old.fileName);
+    rom.dirty = true;
+    Player.stop();
+    this.rom = rom; this.area = null; this.owner = null; this.spriteCache.clear(); this.undo = []; this.wt = null; this.evSt = null; this.mapCache = null; this.blk = null;
+    this.buildTree();
+    const a = pick && rom.allAreas.find(x => x.group === pick.group && x.map === pick.map);
+    if (a) this.selectArea(a, null); else this.setTab(this.tab);
+    return errors;
+  },
+
+  newMapDialog() {
+    const rom = this.rom;
+    if (!(rom.mapTbl >= 0) || !rom.groupCounts) { alert('이 롬에서는 지도 표를 찾지 못해서 새 지도를 만들 수 없어요.'); return; }
+    const areas = rom.allAreas, cur = this.area || areas[0];
+    const baseSel = sel(areas.map((a, i) => [i, a.regionName + ' › ' + a.name + '  (' + a.width + '×' + a.height + ' 블록)']), areas.indexOf(cur), () => syncBase());
+    baseSel.style.maxWidth = '420px';
+    const nameIn = el('input', { class: 'txt', value: '새 지도', style: 'width:200px' });
+    const lmOpts = rom.landmarkNames.map((n, i) => [i, i === 0 ? '(특수 장소 · 이름 안 뜸)' : n || ('지역 ' + i)]);
+    const lmSel = sel(lmOpts, 0, () => { renIn.value = rom.landmarkNames[+lmSel.value] || ''; });
+    lmSel.style.maxWidth = '260px';
+    const [renC, renL] = check('이 지역 이름을 바꾸기', false);
+    const renIn = el('input', { class: 'txt', style: 'width:160px' });
+    renIn.disabled = true; renC.addEventListener('change', () => renIn.disabled = !renC.checked);
+    const [wC, wL] = check('🚪 문(워프)도 복사 — 나가는 문이 원래 지도처럼 같은 곳으로 이어져요', true);
+    const [eC, eL] = check('🧑 사람 · 표지판 · 트리거도 복사 — ⚠ 대사·스크립트는 원래 지도와 같이 써서, 대사를 고치면 원래 지도도 바뀌어요', false);
+    const info = el('div', { class: 'hint' }), msg = el('div');
+    const syncBase = () => {
+      const a = areas[+baseSel.value]; if (!a) return;
+      const lm = rom.data[a.headerOff + 5];
+      lmSel.value = lm; renIn.value = rom.landmarkNames[lm] || '';
+      const g = a.group;
+      info.textContent = '새 지도는 "' + a.regionName + '" 지역 묶음(' + g + '번)의 ' + (rom.groupCounts[g - 1] + 1) + '번째 지도로 생겨요. 크기 ' + a.width + '×' + a.height + ' 블록, 타일·음악·색은 원래 지도와 같아요.';
+    };
+    syncBase();
+    let close;
+    const make = () => {
+      const a = areas[+baseSel.value]; if (!a) return;
+      const name = nameIn.value.trim() || '새 지도';
+      if (renC.checked) {
+        const nn = renIn.value.trim();
+        if (nn && nn !== rom.landmarkNames[+lmSel.value]) { const e = rom.setLandmarkName(+lmSel.value, nn); if (e) { this.okMsg(msg, e, true); return; } }
+      }
+      const r = rom.addMapClone(a, { name, landmark: +lmSel.value, warps: wC.checked, events: eC.checked });
+      if (r.error) { this.okMsg(msg, r.error, true); return; }
+      close();
+      this.rereadRom(r);
+      this.say('새 지도 "' + name + '"을(를) 만들었어요. [저장하기]를 눌러야 롬 파일에 기록돼요.');
+      alert('✅ 새 지도 "' + name + '"을(를) 만들었어요.\n\n' +
+        '이제 이렇게 하면 돼요:\n' +
+        '1. [지도 블록] 탭에서 모양을 고쳐요\n' +
+        '2. [NPC · 이벤트] 탭에서 사람·표지판을 넣어요\n' +
+        '3. 원래 있던 지도의 [워프 · 트리거] 탭에서 이 새 지도로 가는 칸을 만들어야 게임에서 들어갈 수 있어요\n\n' +
+        '※ 옆 지도와 이어지는 길(지도 가장자리)은 없어서, 마을 끝으로는 못 나가요. 문·트리거로 오가게 해 주세요.\n' +
+        '※ 저장한 뒤 [게임으로 확인]으로 꼭 들어가 보세요.');
+    };
+    close = this.dialog('🗺 새 지도 만들기', () => el('div', null,
+      el('div', { class: 'hint', text: '기존 지도를 바탕으로 복사해서 새 지도를 만들어요. 원래 지도는 그대로예요.' }),
+      el('table', { class: 'grid', style: 'margin-top:8px' },
+        el('tr', null, el('th', { text: '바탕으로 쓸 지도' }), el('td', null, baseSel)),
+        el('tr', null, el('th', { text: '툴에서 보일 이름' }), el('td', null, nameIn, el('span', { class: 'hint', text: ' 목록에 이 이름으로 나와요' }))),
+        el('tr', null, el('th', { text: '게임 속 지역 이름' }), el('td', null, lmSel, el('div', null, renL, ' ', renIn),
+          el('div', { class: 'hint', text: '지도에 들어갈 때 뜨는 이름이에요. 게임은 지역 이름 수가 정해져 있어서 기존 지역 중에 골라요. 이름을 바꾸면 그 지역에 속한 모든 지도에서 바뀐 이름이 떠요.' }))),
+        el('tr', null, el('th', { text: '같이 복사할 것' }), el('td', null, el('div', null, el('span', { class: 'hint', text: '🗺 지형(블록)은 항상 복사해요' })), el('div', null, wL), el('div', null, eL)))),
+      info, msg,
+      el('div', { class: 'bar', style: 'justify-content:flex-end;margin-top:10px' }, el('button', { text: '취소', onclick: () => close() }),
+        el('button', { class: 'apply', text: '🗺 새 지도 만들기', onclick: make }))), null, false);
   }
 });
 
