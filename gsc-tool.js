@@ -885,13 +885,20 @@ class Rom {
 
     // 지역(랜드마크) 이름
     const landmarkNames = [];
-    const lm = this.findPattern([0x00, 0x00, -1, -1, 0x94, 0x74, -1, -1, 0x88, 0x74, -1, -1, 0x6C, 0x74], 0, d.length);
+    // GetLandmarkCoords: ld l, e / ld h, 0 / add hl, hl ×2 / ld de, Landmarks / add hl, de / ld a, [hli] / ld e, a / ld d, [hl]
+    // (이름을 바꾸면 이름 주소가 달라지니 표 내용이 아니라 코드로 찾음. 없으면 예전 방식)
+    const lc = this.findPattern([0x6B, 0x26, 0x00, 0x29, 0x29, 0x11, -1, -1, 0x19, 0x2A, 0x5F, 0x56], 0x4000, d.length);
+    let lm = lc >= 0 ? this.off(Math.floor(lc / 0x4000), this.w(lc + 6)) : -1;
+    if (lm < 0) lm = this.findPattern([0x00, 0x00, -1, -1, 0x94, 0x74, -1, -1, 0x88, 0x74, -1, -1, 0x6C, 0x74], 0, d.length);
     if (lm >= 0) {
       const lbank = Math.floor(lm / 0x4000);
+      let firstName = Infinity;   // 이름 글자는 표 바로 뒤에 있으니 거기 닿으면 표 끝
       for (let i = 0; i < 200; i++) {
+        if (lm + i * 4 + 4 > firstName) break;
         const na = this.w(lm + i * 4 + 2);
         if (!Rom.banked(na)) break;
         const at = this.off(lbank, na);
+        if (at > lm) firstName = Math.min(firstName, at);
         let r = this.cs.decode(d, at);
         if (!r) break;
         // 일본판 금·은의 이 표는 로마자 (WAKABA, 35=ROUTE)
@@ -4540,8 +4547,12 @@ mixin(Rom.prototype, {
     let b;
     try { b = this.encodeName(name); } catch (e) { return e.message; }
     if (!b.length || b.length > 16) return '이름은 1~8글자로 해 주세요';
-    const bank = Math.floor(this.landmarkOff / 0x4000), p = this.allocInBank(bank, b.length + 1);
-    if (p < 0) return '지역 이름을 넣을 빈 공간이 부족해요';
+    const bank = Math.floor(this.landmarkOff / 0x4000), e0 = this.landmarkOff + id * 4 + 2, old = this.off(bank, this.w(e0));
+    let oldLen = 0; while (oldLen < 40 && this.data[old + oldLen] !== 0x50) oldLen++;
+    const shared = this.landmarkNames.some((_, i) => i !== id && this.w(this.landmarkOff + i * 4 + 2) === this.w(e0));
+    // 원래 이름 자리에 들어가면 그 자리에 (다른 지역과 같이 쓰는 이름이면 새 자리)
+    const p = !shared && b.length <= oldLen ? old : this.allocInBank(bank, b.length + 1);
+    if (p < 0) return '지역 이름을 넣을 빈 공간이 부족해요 (원래 이름보다 짧게 하면 돼요)';
     this.data.set([...b, 0x50], p);
     const e = this.landmarkOff + id * 4 + 2, addr = 0x4000 + p % 0x4000;
     this.data[e] = addr & 0xFF; this.data[e + 1] = addr >> 8;
@@ -4715,6 +4726,99 @@ function collColor(c) {
   if (c >= 0xA0 && c <= 0xAF) return 'rgba(255,210,0,.51)';
   return null;
 }
+
+// ===== 64-townmap.js
+// ================================================================ 타운맵 (포켓기어 지도 · 타운맵 도구)
+// 성도·관동 지도 = 20×18 타일 번호 (0xFF 로 끝) · 타일 그림 48칸 (LZ 압축) · 타일마다 색 칸 번호(4비트) · 색 6묶음 · 장소 표시 위치 = 지역 이름표의 x, y
+mixin(Rom.prototype, {
+  loadTownMap() {
+    if (this._tm !== undefined) return this._tm;
+    this._tm = null;
+    const d = this.data;
+    // FillJohtoMap: ld de, JohtoMap / jr +3 / FillKantoMap: ld de, KantoMap / ld hl, wTilemap / .loop ld a, [de] / cp -1 / ret z …
+    const f = this.findPattern([0x11, -1, -1, 0x18, 0x03, 0x11, -1, -1, 0x21, -1, -1, 0x1A, 0xFE, 0xFF, 0xC8], 0x4000, d.length);
+    if (f < 0) return null;
+    const bank = Math.floor(f / 0x4000), t = { maps: [this.off(bank, this.w(f + 1)), this.off(bank, this.w(f + 6))] };
+    if (t.maps.some(o => d[o + 360] !== 0xFF)) return null;
+    // TownMapPals: cp $60 / jr nc / ld hl, .PalMap  (타일 2개당 1바이트)
+    const p = this.findPattern([0xFE, 0x60, 0x30, -1, 0x21, -1, -1], bank * 0x4000, bank * 0x4000 + 0x4000);
+    t.palMap = p >= 0 ? this.off(bank, this.w(p + 5)) : -1;
+    // TownMapGFX: ld hl, TownMapGFX / ld de, vTiles2 / (ld a, BANK  또는  lb bc, BANK, 48) — 읽는 곳이 여러 군데
+    t.gfxRefs = [];
+    for (let i = 0x4000; i < d.length - 10; i++) {
+      if (d[i] !== 0x21 || d[i + 3] !== 0x11 || d[i + 4] !== 0x00 || d[i + 5] !== 0x90) continue;
+      if (d[i + 6] === 0x01 && d[i + 7] === 0x30) t.gfxRefs.push({ hl: i + 1, bank: i + 8 });
+      else if (d[i + 6] === 0x3E) t.gfxRefs.push({ hl: i + 1, bank: i + 7 });
+    }
+    // 같은 그림을 가리키는 것끼리 (48칸 버전이 있는 쪽)
+    const lb = t.gfxRefs.find(r => d[r.bank - 2] === 0x01);
+    if (!lb) return null;
+    const ga = this.w(lb.hl), gb = d[lb.bank];
+    t.gfxRefs = t.gfxRefs.filter(r => this.w(r.hl) === ga && d[r.bank] === gb);
+    t.gfx = this.off(gb, ga);
+    t.pals = -1;   // 색: 처음 열 때 게임 코드로 찾음 (townMapFindPals)
+    this._tm = t;
+    return t;
+  },
+  // 포켓기어 색 6묶음 위치: 게임의 색 만들기 함수(SCGB_POKEGEAR_PALS)를 에뮬레이터로 돌려 나온 색을 롬에서 찾음
+  townMapFindPals() {
+    const t = this.loadTownMap();
+    if (!t || t.pals !== -1) return t && t.pals;
+    t.pals = -2;
+    try {
+      const mv = RomCry.moveAnims(this.data), A = mv && AnimRunner.locate(this.data, mv.tab);
+      if (!A) return -2;
+      const wBGPals1 = this.w(A.colorsFn + 1), emu = AnimRunner.boot(this.data);
+      emu.ime = false; emu.romBank = A.layout.bank; emu.wr(A.hROMBank, A.layout.bank); emu.b = 2; emu.push(0xFFF0); emu.pc = A.layout.addr; emu.halted = false; emu.runUntil(0xFFF0, 30);
+      const seq = []; for (let i = 0; i < 48; i++) seq.push(emu.rd(wBGPals1 + i));
+      const at = this.findPattern(seq, 0, this.data.length);
+      if (at >= 0) t.pals = at;
+    } catch (e) { }
+    return t.pals;
+  },
+  townMapRead(region) { const t = this.loadTownMap(); return this.data.slice(t.maps[region], t.maps[region] + 360); },
+  townMapWrite(region, arr) { const t = this.loadTownMap(); this.data.set(arr, t.maps[region]); this.dirty = true; },
+  townMapTiles() {
+    const t = this.loadTownMap(), raw = Array.from(this.gfx.decompress(t.gfx)).slice(0, 48 * 16);
+    while (raw.length < 48 * 16) raw.push(0);
+    return tilesToPic(raw, 16, 3, false);
+  },
+  townMapWriteTiles(pic) {
+    const t = this.loadTownMap(), comp = Lz.compress(picToTiles(pic, false).slice(0, 48 * 16));
+    const a = this.alloc(comp.length);
+    if (!a) return '롬에 빈 공간이 부족해요';
+    this.data.set(comp, a.p);
+    const bank = Math.floor(a.p / 0x4000), addr = 0x4000 + a.p % 0x4000;
+    for (const r of t.gfxRefs) { this.data[r.hl] = addr & 0xFF; this.data[r.hl + 1] = addr >> 8; this.data[r.bank] = bank; }
+    t.gfx = a.p; this.gfx.gfxCache.delete(a.p);
+    this.dirty = true;
+    return null;
+  },
+  townMapTilePal(tile) {
+    const t = this.loadTownMap();
+    if (tile >= 0x60 || t.palMap < 0) return 0;
+    const b = this.data[t.palMap + (tile >> 1)];
+    return (tile & 1 ? b >> 4 : b) & 7;
+  },
+  townMapSetTilePal(tile, pal) {
+    const t = this.loadTownMap(), o = t.palMap + (tile >> 1);
+    this.data[o] = tile & 1 ? (this.data[o] & 0x0F) | (pal << 4) : (this.data[o] & 0xF0) | pal;
+    this.dirty = true;
+  },
+  // 색 묶음 i (0~5) → [rgb×4]. 못 찾으면 회색
+  townMapPal(i) {
+    const t = this.loadTownMap(), p = t.pals;
+    if (!(p >= 0) || i > 5) return [[255, 255, 255], [170, 170, 170], [85, 85, 85], [0, 0, 0]];
+    return [0, 1, 2, 3].map(k => C555(this.w(p + i * 8 + k * 2)));
+  },
+  townMapSetPal(i, cols) {
+    const p = this.loadTownMap().pals;
+    for (let k = 0; k < 4; k++) { const v = TO555(cols[k]); this.data[p + i * 8 + k * 2] = v & 0xFF; this.data[p + i * 8 + k * 2 + 1] = v >> 8; }
+    this.dirty = true;
+  },
+  landmarkXY(id) { return [this.data[this.landmarkOff + id * 4], this.data[this.landmarkOff + id * 4 + 1]]; },
+  setLandmarkXY(id, x, y) { this.data[this.landmarkOff + id * 4] = x & 0xFF; this.data[this.landmarkOff + id * 4 + 1] = y & 0xFF; this.dirty = true; }
+});
 
 // ===== 66-sprite.js
 // ================================================================ 포켓몬 그림 쓰기 · 사진 → 2세대 4색 변환 (RomSprite.cs 와 같음)
@@ -6180,6 +6284,7 @@ class App {
       B('기술 사운드 에디터', '', () => this.sfxEditor()),
       B('🎬 기술 애니메이션', '', () => this.battleAnimEditor()),
       B('🗺 새 지도 만들기', '', () => this.newMapDialog()),
+      B('🗾 타운맵', '', () => this.townMapEditor()),
       B('캐릭터 그림', '', () => this.owDialog()),
       B('타이틀 화면', '', () => this.titleDialog()),
       B('기술 편집', '', () => this.dialog('기술 편집', () => el('div', null, this.presetBar('moves'), this.tab_moves()))),
@@ -11042,6 +11147,171 @@ Object.assign(App.prototype, {
     dirty = false;
     setTimeout(() => pc.fit(), 0);
     showColors(); pc.changed(); dirty = false;
+  }
+});
+
+// ===== 99-townmap.js
+// ================================================================ 타운맵 편집 창 (지도 칠하기 · 장소 옮기기·이름 · 타일 그림 · 색)
+Object.assign(App.prototype, {
+  townMapEditor() {
+    const rom = this.rom, T = rom.loadTownMap();
+    if (!T) { alert('이 롬에서 타운맵 데이터를 찾지 못했어요.'); return; }
+    rom.townMapFindPals();
+    const Z = 3, KANTO = 46;
+    const st = { region: 0, map: [rom.townMapRead(0), rom.townMapRead(1)], tile: 0, mode: 'paint', lm: -1, undo: [], redo: [], tiles: rom.townMapTiles() };
+    const canPal = rom.loadTownMap().pals >= 0;
+    // 타일 하나 그림 (그 타일의 색 칸으로)
+    const tileCanvasCache = new Map();
+    const tileImg = id => {
+      const key = id + ':' + rom.townMapTilePal(id);
+      if (tileCanvasCache.has(key)) return tileCanvasCache.get(key);
+      const p = newPic(8, 8);
+      if (id < 48) { const tx = (id % 16) * 8, ty = Math.floor(id / 16) * 8; for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) p.px[y * 8 + x] = st.tiles.px[(ty + y) * 128 + tx + x]; }
+      const c = picCanvas(p, rom.townMapPal(rom.townMapTilePal(id)), false);
+      tileCanvasCache.set(key, c);
+      return c;
+    };
+    const resetCache = () => tileCanvasCache.clear();
+    // ---------------------------------------------------------------- 지도 그리기
+    const cv = el('canvas', { width: 160 * Z, height: 144 * Z, style: 'display:block;image-rendering:pixelated;border:2px solid #333;border-radius:4px;cursor:crosshair' });
+    const g = cv.getContext('2d'); g.imageSmoothingEnabled = false;
+    const lmIds = () => rom.landmarkNames.map((_, i) => i).filter(i => i > 0 && (st.region === 0 ? i < KANTO : i >= KANTO) && rom.landmarkXY(i).some(v => v));
+    const draw = () => {
+      const m = st.map[st.region];
+      g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height);
+      for (let y = 0; y < 18; y++) for (let x = 0; x < 20; x++) { const t = m[y * 20 + x]; if (t < 48) g.drawImage(tileImg(t), x * 8 * Z, y * 8 * Z, 8 * Z, 8 * Z); else { g.fillStyle = '#ddd'; g.fillRect(x * 8 * Z, y * 8 * Z, 8 * Z, 8 * Z); } }
+      if (showGrid.checked) { g.fillStyle = 'rgba(0,0,0,.08)'; for (let x = 1; x < 20; x++) g.fillRect(x * 8 * Z, 0, 1, cv.height); for (let y = 1; y < 18; y++) g.fillRect(0, y * 8 * Z, cv.width, 1); }
+      if (showLm.checked) for (const i of lmIds()) {
+        const [x, y] = rom.landmarkXY(i), sx = (x - 8) * Z, sy = (y - 16) * Z, on = i === st.lm;
+        g.fillStyle = on ? '#e8590c' : 'rgba(232,89,12,.85)'; g.strokeStyle = '#fff'; g.lineWidth = 2;
+        g.beginPath(); g.arc(sx, sy, on ? 8 : 5, 0, Math.PI * 2); g.fill(); g.stroke();
+        if (on || showNames.checked) { g.font = (on ? 'bold ' : '') + '11px sans-serif'; g.lineWidth = 3; g.strokeStyle = '#fff'; g.strokeText(rom.landmarkNames[i], sx + 8, sy - 6); g.fillStyle = '#222'; g.fillText(rom.landmarkNames[i], sx + 8, sy - 6); }
+      }
+    };
+    // ---------------------------------------------------------------- 칠하기 · 장소 옮기기
+    const snap = () => { st.undo.push([st.region, st.map[st.region].slice()]); if (st.undo.length > 100) st.undo.shift(); st.redo = []; };
+    const commit = () => { rom.townMapWrite(st.region, st.map[st.region]); this.say('타운맵을 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.'); };
+    const cell = e => { const r = cv.getBoundingClientRect(); return [Math.floor((e.clientX - r.left) * cv.width / r.width / (8 * Z)), Math.floor((e.clientY - r.top) * cv.height / r.height / (8 * Z))]; };
+    const pix = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) * cv.width / r.width / Z, (e.clientY - r.top) * cv.height / r.height / Z]; };
+    const nearLm = e => { const [px, py] = pix(e); let best = -1, bd = 7; for (const i of lmIds()) { const [x, y] = rom.landmarkXY(i), dd = Math.hypot(x - 8 - px, y - 16 - py); if (dd < bd) { bd = dd; best = i; } } return best; };
+    cv.addEventListener('contextmenu', e => { e.preventDefault(); const [x, y] = cell(e); if (x >= 0 && x < 20 && y >= 0 && y < 18) { pickTile(st.map[st.region][y * 20 + x]); } });
+    cv.addEventListener('mousedown', e => {
+      if (e.button !== 0) return;
+      const lmHit = showLm.checked ? nearLm(e) : -1;
+      if (st.mode === 'place' || (lmHit >= 0 && e.altKey)) {
+        if (lmHit < 0) return;
+        selectLm(lmHit);
+        const [x0, y0] = rom.landmarkXY(lmHit), [p0x, p0y] = pix(e);
+        const mm = ev => { const [px, py] = pix(ev); rom.setLandmarkXY(lmHit, Math.max(0, Math.min(255, Math.round(x0 + px - p0x))), Math.max(0, Math.min(255, Math.round(y0 + py - p0y)))); draw(); showLm2(); };
+        const up = () => { document.removeEventListener('mousemove', mm); document.removeEventListener('mouseup', up); this.say('장소 위치를 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.'); };
+        document.addEventListener('mousemove', mm); document.addEventListener('mouseup', up);
+        return;
+      }
+      snap();
+      const paint = ev => { const [x, y] = cell(ev); if (x < 0 || x >= 20 || y < 0 || y >= 18) return; const m = st.map[st.region]; if (m[y * 20 + x] !== st.tile) { m[y * 20 + x] = st.tile; draw(); } };
+      paint(e);
+      const mm = ev => paint(ev);
+      const up = () => { document.removeEventListener('mousemove', mm); document.removeEventListener('mouseup', up); commit(); };
+      document.addEventListener('mousemove', mm); document.addEventListener('mouseup', up);
+    });
+    cv.addEventListener('mousemove', e => { if (st.mode === 'place' || e.altKey) cv.style.cursor = nearLm(e) >= 0 ? 'move' : 'default'; else cv.style.cursor = 'crosshair'; });
+    const undo = () => { const u = st.undo.pop(); if (!u) return; st.redo.push([u[0], st.map[u[0]].slice()]); st.map[u[0]] = u[1]; rom.townMapWrite(u[0], u[1]); if (u[0] !== st.region) setRegion(u[0]); draw(); };
+    const redo = () => { const u = st.redo.pop(); if (!u) return; st.undo.push([u[0], st.map[u[0]].slice()]); st.map[u[0]] = u[1]; rom.townMapWrite(u[0], u[1]); draw(); };
+
+    // ---------------------------------------------------------------- 타일 고르기 (48칸) + 그 타일의 색 칸
+    const palette = el('div', { style: 'display:grid;grid-template-columns:repeat(16,28px);gap:2px;background:#444;padding:4px;border-radius:4px;width:max-content' });
+    const tileInfo = el('div', { class: 'hint' });
+    const tilePalSel = sel([0, 1, 2, 3, 4, 5, 6, 7].map(i => [i, '색 묶음 ' + (i + 1)]), 0, v => { rom.townMapSetTilePal(st.tile, v); resetCache(); buildPalette(); draw(); });
+    const buildPalette = () => {
+      palette.replaceChildren();
+      for (let i = 0; i < 48; i++) {
+        const c = tileImg(i), b = el('canvas', { width: 24, height: 24, title: '타일 ' + i, style: 'width:28px;height:28px;image-rendering:pixelated;cursor:pointer;background:#fff;' + (i === st.tile ? 'outline:3px solid #e8590c' : '') });
+        const bg = b.getContext('2d'); bg.imageSmoothingEnabled = false; bg.drawImage(c, 0, 0, 24, 24);
+        b.addEventListener('click', () => pickTile(i));
+        palette.append(b);
+      }
+      tilePalSel.value = rom.townMapTilePal(st.tile);
+      tileInfo.textContent = '고른 타일: ' + st.tile + '번 · 지도 위 오른쪽 클릭 = 그 칸의 타일 집기';
+    };
+    const pickTile = i => { st.tile = i; buildPalette(); };
+    // 타일 그림 고치기 (48칸 한 장)
+    const editTiles = () => {
+      const pal = rom.townMapPal(rom.townMapTilePal(st.tile));
+      this.pixelEditor({ title: '타운맵 타일 그림 (48칸)', pic: clonePic(st.tiles), pal, editable: [false, false, false, false], frameW: 0,
+        note: '128×24 픽셀 = 8×8 타일 48개 (가로 16칸씩). 색은 지금 고른 타일의 색 묶음으로 보여줘요 (타일마다 색 묶음이 달라요). 숫자키 1~4 = 색 고르기',
+        onOk: p => { const e = rom.townMapWriteTiles(p); if (e) { alert(e); return; } st.tiles = p; resetCache(); buildPalette(); draw(); this.say('타운맵 타일 그림을 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.'); } });
+    };
+    // 색 묶음 6개 고치기
+    const palBox = el('div');
+    const buildPals = () => {
+      palBox.replaceChildren();
+      if (!canPal) { palBox.append(el('div', { class: 'hint', text: '이 롬에서는 타운맵 색 위치를 찾지 못해서 색은 못 바꿔요.' })); return; }
+      for (let i = 0; i < 6; i++) {
+        const cols = rom.townMapPal(i);
+        palBox.append(el('div', { class: 'bar' }, el('span', { text: '색 묶음 ' + (i + 1), style: 'min-width:64px' }), ...cols.map((c, k) => {
+          const inp = el('input', { type: 'color', value: rgbHex(c), style: 'width:36px;height:24px' });
+          inp.addEventListener('change', () => { const cc = rom.townMapPal(i).map(x => x.slice()); cc[k] = SNAP(hexRgb(inp.value)); rom.townMapSetPal(i, cc); resetCache(); buildPalette(); draw(); });
+          return inp;
+        })));
+      }
+    };
+
+    // ---------------------------------------------------------------- 장소 목록 · 이름 · 위치
+    const lmList = el('div', { style: 'max-height:260px;overflow:auto;border:1px solid var(--line);background:#fff' });
+    const lmBox = el('div');
+    const showLm2 = () => {
+      lmBox.replaceChildren();
+      if (st.lm < 0) { lmBox.append(el('div', { class: 'hint', text: '목록이나 지도에서 장소를 고르세요' })); return; }
+      const [x, y] = rom.landmarkXY(st.lm);
+      const nameIn = el('input', { class: 'txt', value: rom.landmarkNames[st.lm], style: 'width:150px' });
+      const nx = num(x, 0, 255, v => { rom.setLandmarkXY(st.lm, v, rom.landmarkXY(st.lm)[1]); draw(); }), ny = num(y, 0, 255, v => { rom.setLandmarkXY(st.lm, rom.landmarkXY(st.lm)[0], v); draw(); });
+      const msg = el('span');
+      lmBox.append(el('div', { class: 'bar' }, el('b', { text: st.lm + '번 장소' })),
+        el('div', { class: 'bar' }, el('span', { text: '이름' }), nameIn, el('button', { text: '이름 바꾸기', onclick: () => {
+          const e = rom.setLandmarkName(st.lm, nameIn.value.trim());
+          if (e) { this.okMsg(msg, e, true); return; }
+          this.okMsg(msg, '바꿨어요'); buildLmList(); draw(); this.buildTree();
+        } }), msg),
+        el('div', { class: 'bar' }, el('span', { text: '위치 X' }), nx, el('span', { text: 'Y' }), ny),
+        el('div', { class: 'hint', text: '이름은 지도에 들어갈 때 뜨는 이름·포켓기어 지도 이름이에요 (그 지역의 모든 지도). 위치는 지도 위 점을 끌어서 옮겨도 돼요.' }));
+    };
+    const selectLm = i => { st.lm = i; buildLmList(); showLm2(); draw(); };
+    const buildLmList = () => {
+      lmList.replaceChildren();
+      for (const i of lmIds()) {
+        const r = el('div', { text: String(i).padStart(2, '0') + ' ' + rom.landmarkNames[i], style: 'padding:2px 6px;cursor:pointer;' + (i === st.lm ? 'background:#ffe8d6;font-weight:bold' : '') });
+        r.addEventListener('click', () => selectLm(i));
+        lmList.append(r);
+      }
+    };
+
+    // ---------------------------------------------------------------- 화면
+    const [showGrid, gridL] = check('칸 줄', false), [showLm, lmL] = check('장소 점', true), [showNames, namesL] = check('장소 이름', false);
+    [showGrid, showLm, showNames].forEach(c => c.addEventListener('change', draw));
+    const regionBtns = [el('button', { text: '성도 지도' }), el('button', { text: '관동 지도' })];
+    const setRegion = r => { st.region = r; st.lm = -1; regionBtns.forEach((b, i) => { b.style.fontWeight = i === r ? 'bold' : ''; b.style.background = i === r ? '#dcf0ff' : ''; }); buildLmList(); showLm2(); draw(); };
+    regionBtns.forEach((b, i) => b.addEventListener('click', () => setRegion(i)));
+    const modeSel = sel([['paint', '🖌 타일 칠하기'], ['place', '📍 장소 옮기기']], 'paint', v => { st.mode = v; });
+    const onKey = e => {
+      if (!cv.isConnected) { document.removeEventListener('keydown', onKey, true); return; }
+      if (/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); }
+      else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); }
+    };
+    document.addEventListener('keydown', onKey, true);
+    this.dialog('🗾 타운맵 편집', () => el('div', { style: 'display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start' },
+      el('div', null,
+        el('div', { class: 'bar' }, ...regionBtns, modeSel, el('button', { text: '↶', title: '되돌리기 (Ctrl+Z)', onclick: undo }), el('button', { text: '↷', title: '다시하기 (Ctrl+Y)', onclick: redo })),
+        cv,
+        el('div', { class: 'bar' }, gridL, lmL, namesL),
+        el('div', { class: 'hint', text: '🖌 칠하기: 아래에서 타일을 고르고 지도를 누르거나 끌어요 · 오른쪽 클릭 = 타일 집기 · 📍 장소 옮기기: 주황 점을 끌어요 (칠하기 중에도 Alt+끌기)' })),
+      el('div', { style: 'min-width:300px;flex:1' },
+        el('fieldset', null, el('legend', { text: '타일' }), palette, tileInfo,
+          el('div', { class: 'bar' }, el('span', { text: '이 타일의 색' }), tilePalSel, el('button', { text: '🎨 타일 그림 고치기…', onclick: editTiles }))),
+        el('fieldset', null, el('legend', { text: '장소 (지역 이름 · 위치)' }), lmList, lmBox),
+        el('fieldset', null, el('legend', { text: '색 묶음' }), palBox,
+          el('div', { class: 'hint', text: '포켓기어 지도·타운맵 화면의 색이에요. 타일마다 위에서 고른 색 묶음을 써요.' })))), () => document.removeEventListener('keydown', onKey, true), false, true);
+    buildPalette(); buildPals(); setRegion(0);
   }
 });
 
