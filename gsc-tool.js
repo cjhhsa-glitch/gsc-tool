@@ -4557,6 +4557,9 @@ mixin(Rom.prototype, {
     const e = this.landmarkOff + id * 4 + 2, addr = 0x4000 + p % 0x4000;
     this.data[e] = addr & 0xFF; this.data[e + 1] = addr >> 8;
     this.landmarkNames[id] = name; this.dirty = true;
+    // 왼쪽 목록·화면 제목에 쓰는 지역 이름도 같이
+    for (const r of this.regions) if (r.landmark === id) r.name = name;
+    for (const a of this.allAreas) if (this.data[a.headerOff + 5] === id) a.regionName = name;
     return null;
   },
   // base 지도를 복사해서 새 지도 만들기 → { group, map } 또는 { error }
@@ -6055,6 +6058,9 @@ const CSS = `
 .gsc .tree .it{padding:1px 4px 1px 30px;cursor:pointer;border-radius:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gsc .tree .it:hover,.gsc .tree summary:hover{background:#e8eefc}
 .gsc .tree .it.on:hover,.gsc .tree summary.on:hover{background:var(--accent)}
+.gsc .tree summary .ren{visibility:hidden;margin-left:6px;padding:0 3px;border-radius:3px;font-size:11px}
+.gsc .tree summary:hover .ren{visibility:visible}
+.gsc .tree summary .ren:hover{background:#fff3bf}
 .gsc .right{display:grid;grid-template-rows:minmax(0,45fr) minmax(0,55fr);grid-template-columns:minmax(0,1fr);gap:6px;min-height:0;min-width:0}
 .gsc .mapbox{display:flex;flex-direction:column;min-height:0;min-width:0}
 .gsc .tabbox{min-width:0}
@@ -6397,7 +6403,10 @@ class App {
     this.areaNodes = new Map(); this.ownerNodes = new Map();
     let firstHit = null;
     for (const reg of this.rom.regions) {
-      const rd = el('details', null, el('summary', { text: reg.name }));
+      const rsum = el('summary', { text: reg.name });
+      if (reg.landmark > 0 && reg.landmark < this.rom.landmarkNames.length)
+        rsum.append(el('span', { class: 'ren', text: '✏', title: '지역 이름 바꾸기', onclick: e => { e.preventDefault(); e.stopPropagation(); this.renameRegionDialog(reg); } }));
+      const rd = el('details', null, rsum);
       let any = false;
       for (const a of reg.areas) {
         const owners = q ? a.owners.filter(o => o.texts.some(t => t.current.includes(q))) : a.owners;
@@ -10438,6 +10447,30 @@ Object.assign(App.prototype, {
     return errors;
   },
 
+  // 왼쪽 목록의 ✏ → 지역 이름 바꾸기 (게임에서 뜨는 이름 · 포켓기어 지도 이름도 같이)
+  renameRegionDialog(reg) {
+    const rom = this.rom, id = reg.landmark;
+    const nameIn = el('input', { class: 'txt', value: rom.landmarkNames[id] || '', style: 'width:200px' }), msg = el('div');
+    let close;
+    const apply = () => {
+      const nn = nameIn.value.trim();
+      if (nn === rom.landmarkNames[id]) { close(); return; }
+      const e = rom.setLandmarkName(id, nn);
+      if (e) { this.okMsg(msg, e, true); return; }
+      close();
+      this.buildTree(); this.setTab(this.tab);
+      this.say('지역 이름을 "' + nn + '"(으)로 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.');
+    };
+    nameIn.addEventListener('keydown', e => { if (e.key === 'Enter') apply(); });
+    close = this.dialog('✏ 지역 이름 바꾸기', () => el('div', null,
+      el('div', { class: 'bar' }, el('span', { text: '새 이름' }), nameIn),
+      el('div', { class: 'hint', text: '게임에서 이 지역 지도에 들어갈 때 뜨는 이름이에요. 포켓기어 지도·타운맵의 이름도 같이 바뀌어요. (' + reg.areas.length + '개 지도)' }),
+      msg,
+      el('div', { class: 'bar', style: 'justify-content:flex-end;margin-top:10px' }, el('button', { text: '취소', onclick: () => close() }),
+        el('button', { class: 'apply', text: '바꾸기', onclick: apply }))), null, true);
+    setTimeout(() => { nameIn.focus(); nameIn.select(); }, 0);
+  },
+
   newMapDialog() {
     const rom = this.rom;
     if (!(rom.mapTbl >= 0) || !rom.groupCounts) { alert('이 롬에서는 지도 표를 찾지 못해서 새 지도를 만들 수 없어요.'); return; }
@@ -11270,7 +11303,7 @@ Object.assign(App.prototype, {
         el('div', { class: 'bar' }, el('span', { text: '이름' }), nameIn, el('button', { text: '이름 바꾸기', onclick: () => {
           const e = rom.setLandmarkName(st.lm, nameIn.value.trim());
           if (e) { this.okMsg(msg, e, true); return; }
-          this.okMsg(msg, '바꿨어요'); buildLmList(); draw(); this.buildTree();
+          this.okMsg(msg, '바꿨어요'); buildLmList(); draw(); this.buildTree(); this.setTab(this.tab);
         } }), msg),
         el('div', { class: 'bar' }, el('span', { text: '위치 X' }), nx, el('span', { text: 'Y' }), ny),
         el('div', { class: 'hint', text: '이름은 지도에 들어갈 때 뜨는 이름·포켓기어 지도 이름이에요 (그 지역의 모든 지도). 위치는 지도 위 점을 끌어서 옮겨도 돼요.' }));
