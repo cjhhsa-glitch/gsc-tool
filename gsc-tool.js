@@ -4968,13 +4968,123 @@ mixin(Rom.prototype, {
     return res;
   },
 
-  // 카드 값 쓰기 (같은 길이 그대로)
+  // ------------------------------------------------ 2단계: 넣기·빼기·순서 바꾸기
+  // 고칠 수 있는 모양: 갈래마다 카드 목록. 지도 뱅크 밖(다른 곳 공통 부분)은 ext = 그대로 둠
+  // 카드 = 원래 카드(off = 롬 위치) 또는 새 카드(bytes = 자기 바이트, 인자 at = bytes 안 위치, buf = bytes)
+  // 'p' 인자의 seg = 가리키는 갈래 번호 (적용할 때 새 주소로 바꿔 씀)
+  storyModel(bank, addr) {
+    const st = this.readStory(bank, addr), idOf = new Map(st.segs.map((s, i) => [s.off, i]));
+    const segs = st.segs.map((s, i) => ({
+      id: i, label: s.label, ext: s.bank !== bank, sub: s.sub, next: s.next != null && idOf.has(s.next) ? idOf.get(s.next) : null,
+      cards: s.cards.map(c => {
+        for (const a of c.args) {
+          if (a.t === 'p') { const t = Rom.banked(a.v) ? this.off(c.bank, a.v) : -1; if (idOf.has(t)) a.seg = idOf.get(t); }
+          if (a.t === 'fp' && (c.name === 'farsjump' || c.name === 'farscall')) { const t = Rom.banked(a.v.addr) ? this.off(a.v.bank, a.v.addr) : -1; if (idOf.has(t)) a.seg = idOf.get(t); }
+        }
+        return c;
+      })
+    }));
+    return { bank, segs, letters: Math.max(0, segs.length - 1) };
+  },
+  // 새 카드 만들기: name + 인자 값 [v…] (텍스트 인자는 { text })
+  storyNewCard(name, vals) {
+    const k = ScriptSet.K.get(name), spec = name === 'givepoke' ? ['mon', 'lv', 'item', 'b'] : ST_ARGS[name] ? ST_ARGS[name].split(' ') : [];
+    const bytes = [this.opRom(k)], args = [];
+    spec.forEach((t, i) => {
+      const at = bytes.length, sz = ST_SIZE[t], v = vals && vals[i] != null ? vals[i] : 0;
+      const a = { t, at, v: typeof v === 'object' ? 0 : v };
+      if (v && typeof v === 'object' && 'text' in v) a.newText = v.text;
+      for (let j = 0; j < sz; j++) bytes.push(0);
+      args.push(a);
+    });
+    const c = { name, len: bytes.length, off: -1, bank: -1, bytes, args };
+    for (const a of c.args) { a.buf = bytes; if (!a.newText && ST_SIZE[a.t] <= 3) this.storySet(a, a.v); }
+    return c;
+  },
+  // 고친 모양 → 지도 뱅크 빈 곳에 새로 쓰고 이 NPC·표지판이 그걸 가리키게 → 오류 문자열 또는 null
+  storyApply(m, ptrOff) {
+    const d = this.data, sjump = this.opRom(ScriptSet.K.get('sjump')), end = this.opRom(ScriptSet.K.get('end'));
+    // 1) 시작에서 갈 수 있는 갈래만 (지도 뱅크 안)
+    const reach = new Set([0]), todo = [0];
+    while (todo.length) {
+      const s = m.segs[todo.pop()];
+      if (!s || s.ext) continue;
+      const go = id => { if (id != null && !reach.has(id)) { reach.add(id); todo.push(id); } };
+      for (const c of s.cards) for (const a of c.args) go(a.seg);
+      go(s.next);
+    }
+    // 그냥 이어지는 갈래(next)는 바로 뒤에 놓아서 점프를 안 넣게
+    const order = [], placed = new Set(), isNext = new Set(m.segs.filter(s => reach.has(s.id) && s.next != null).map(s => s.next));
+    for (const s0 of [...m.segs.filter(s => s.id === 0 || !isNext.has(s.id)), ...m.segs]) {
+      for (let s = s0; s && reach.has(s.id) && !s.ext && !placed.has(s.id); s = s.next != null ? m.segs[s.next] : null) { order.push(s); placed.add(s.id); }
+    }
+    // 2) 새 대사 확인
+    for (const s of order) for (const c of s.cards) for (const a of c.args) if (a.newText != null) { const e = this.checkEventText(a.newText, '대사'); if (e) return '갈래 ' + s.label + ': ' + e; }
+    // 3) 자리 계산
+    const pos = new Map(); let n = 0;
+    const tail = (s, i) => { const nx = order[i + 1]; const last = s.cards[s.cards.length - 1];
+      if (s.next != null) return nx && nx.id === s.next ? 0 : 3;
+      return !last || !ST_STOP.has(last.name) ? 1 : 0; };
+    order.forEach((s, i) => { pos.set(s.id, n); n += s.cards.reduce((t, c) => t + c.len, 0) + tail(s, i); });
+    const texts = [];
+    for (const s of order) for (const c of s.cards) for (const a of c.args) if (a.newText != null) { a._tpos = n + texts.reduce((t, x) => t + x.length, 0); texts.push(this.textBytes(a.newText)); }
+    const total = n + texts.reduce((t, x) => t + x.length, 0);
+    const p = this.allocInBank(m.bank, total);
+    if (p < 0) return '이 지도가 있는 곳(뱅크)에 빈 공간이 부족해요 (' + total + '바이트 필요)';
+    const base = 0x4000 + p % 0x4000, out = [];
+    const w16 = (arr, i, v) => { arr[i] = v & 0xFF; arr[i + 1] = v >> 8; };
+    order.forEach((s, i) => {
+      for (const c of s.cards) {
+        const b = c.off >= 0 ? Array.from(d.subarray(c.off, c.off + c.len)) : c.bytes.slice();
+        for (const a of c.args) {
+          const at = c.off >= 0 ? a.at - c.off : a.at;
+          if (a.t === 'p' && a.seg != null && pos.has(a.seg)) w16(b, at, base + pos.get(a.seg));
+          if (a.newText != null) w16(b, at, base + a._tpos);
+        }
+        out.push(...b);
+      }
+      const t = tail(s, i);
+      if (t === 3) out.push(sjump, (base + pos.get(s.next)) & 0xFF, (base + pos.get(s.next)) >> 8);
+      else if (t === 1) out.push(end);
+    });
+    for (const t of texts) out.push(...t);
+    d.set(out, p);
+    w16(d, ptrOff, base);
+    this.dirty = true; this._stEv = null;
+    return null;
+  },
+
+  // 이벤트 표시 이름 (롬 안 표시 "GSCEVN1": 개수 2바이트 + [번호 2 · 길이 1 · 이름 UTF-8]…)
+  eventNames() {
+    if (this._evn) return this._evn;
+    this._evn = new Map(); this._evnAt = -1;
+    const sig = [0x47, 0x53, 0x43, 0x45, 0x56, 0x4E, 0x31, 0x00], mk = this.findPattern(sig, 0x4000, this.data.length);
+    if (mk >= 0) {
+      const d = this.data, n = this.w(mk + 8); let p = mk + 10;
+      for (let i = 0; i < n && p < d.length; i++) { const ev = this.w(p), len = d[p + 2]; this._evn.set(ev, new TextDecoder().decode(d.subarray(p + 3, p + 3 + len))); p += 3 + len; }
+      this._evnAt = mk;
+    }
+    return this._evn;
+  },
+  setEventName(ev, name) {
+    const m = this.eventNames();
+    if (name) m.set(ev, name); else m.delete(ev);
+    const enc = new TextEncoder(), b = [0x47, 0x53, 0x43, 0x45, 0x56, 0x4E, 0x31, 0x00, m.size & 0xFF, m.size >> 8];
+    for (const [k, v] of m) { const t = Array.from(enc.encode(v)).slice(0, 60); b.push(k & 0xFF, k >> 8, t.length, ...t); }
+    const a = this.alloc(b.length + 2);
+    if (!a) return '롬에 빈 공간이 부족해요';
+    if (this._evnAt >= 0) this.data[this._evnAt] = 0;
+    this.data.set(b, a.p); this._evnAt = a.p; this.dirty = true;
+    return null;
+  },
+
+  // 카드 값 쓰기 (같은 길이 그대로). 새 카드는 자기 바이트(a.buf)에
   storySet(a, v) {
-    const d = this.data, sz = ST_SIZE[a.t];
+    const d = a.buf || this.data, sz = ST_SIZE[a.t];
     if (sz === 1) d[a.at] = v & 0xFF;
     else if (sz === 2) { d[a.at] = v & 0xFF; d[a.at + 1] = (v >> 8) & 0xFF; }
     else if (a.t === 'money') { d[a.at] = (v >> 16) & 0xFF; d[a.at + 1] = (v >> 8) & 0xFF; d[a.at + 2] = v & 0xFF; }
-    a.v = v; this.dirty = true;
+    a.v = v; if (!a.buf) this.dirty = true;
   }
 });
 
@@ -6285,6 +6395,21 @@ const CSS = `
 .gsc .st-minor{font-size:11px;color:var(--sub);padding:1px 0 1px 30px}
 .gsc .st-go{padding:0 8px;font-size:12px;background:#fff3bf}
 .gsc .st-mv{font-family:monospace;background:#f1f3f5;border-radius:4px;padding:0 6px}
+.gsc .st-card,.gsc .st-minor{position:relative}
+.gsc .st-card.new,.gsc .st-minor.new{background:#ebfbee}
+.gsc .st-seg.ext{background:#f8f9fa;border-style:dashed}
+.gsc .st-seg.dead{opacity:.55}
+.gsc .st-tools{position:absolute;right:0;top:2px;display:none;gap:2px;background:#fff;border-radius:4px;box-shadow:0 1px 4px #0003}
+.gsc .st-card:hover>.st-tools,.gsc .st-minor:hover>.st-tools{display:flex}
+.gsc .st-tools button{padding:0 6px;font-size:12px;min-width:22px}
+.gsc .st-add{margin:4px 0 2px;font-size:12px;padding:1px 10px;background:#f1f3f5}
+.gsc .st-mini{font-size:11px;padding:0 5px;margin-left:4px}
+.gsc .st-evname{color:#2b8a3e;margin-left:4px}
+.gsc .st-bar{position:sticky;top:-10px;z-index:2;background:var(--panel,#fff);padding:6px 0;margin:4px 0;flex-wrap:wrap}
+.gsc .st-menu{position:fixed;z-index:1000;background:#fff;border:1px solid #ccd;border-radius:8px;box-shadow:0 4px 16px #0003;max-height:420px;overflow:auto;width:250px;padding:4px 0;font-size:13px}
+.gsc .st-menu-g{font-size:11px;color:var(--sub);padding:4px 10px 2px;font-weight:bold}
+.gsc .st-menu-i{padding:3px 14px;cursor:pointer}
+.gsc .st-menu-i:hover{background:#e7f0ff}
 .gsc .dlg-head{display:flex;align-items:center;padding:8px 12px;border-bottom:1px solid var(--line);font-weight:bold}
 .gsc .dlg-head span{flex:1}
 .gsc .dlg-body{padding:12px;overflow:auto;flex:1}
@@ -11334,186 +11459,346 @@ Object.assign(App.prototype, {
 });
 
 // ===== 99-story.js
-// ================================================================ 스토리 동작 창 (NPC·표지판 스크립트를 카드로 보고 값 고치기)
-// 1단계: 카드 넣기·빼기 없이 그 자리 값만 고침 (아이템·포켓몬·레벨·트레이너·음악·순간이동·대사·이벤트 표시 번호…)
+// ================================================================ 스토리 동작 창 (NPC·표지판 스크립트를 카드로 보고 고치기)
+// 1단계: 카드 안 값(아이템·포켓몬·대사…)은 그 자리 바이트를 바로 고침
+// 2단계: 카드 넣기·빼기·순서 바꾸기·새 갈래 → [적용하기]를 누르면 지도 뱅크 빈 곳에 스크립트를 새로 쓰고 이 NPC가 그걸 가리킴 (원래 스크립트는 그대로 남음)
 const ST_DIRS = ['↓ 아래', '↑ 위', '← 왼쪽', '→ 오른쪽'];
 // 확인 명령 + 바로 뒤 iftrue/iffalse 를 "만약 …이면" 카드 하나로
 const ST_CHECK = { checkevent: 1, checkflag: 1, checkitem: 1, checkpoke: 1, yesorno: 1, checkscene: 1, checkmapscene: 1, checktime: 1, checkjustbattled: 1, checkcellnum: 1, checkcoins: 1, checkmoney: 1, random: 1, checkpokemail: 1, checkver: 1 };
+const ST_IFS = new Set(['iftrue', 'iffalse', 'ifequal', 'ifnotequal', 'ifgreater', 'ifless']);
 const ST_MINOR = new Set(['opentext', 'closetext', 'waitbutton', 'promptbutton', 'reloadmapafterbattle', 'waitsfx', 'closepokepic', 'reanchormap', 'refreshmap', 'reloadmap', 'itemnotify', 'closewindow', 'stopfollow', 'dontrestartmapmusic']);
+const ST_MINOR_TEXT = { opentext: '대화창 열기', closetext: '대화창 닫기', waitbutton: '⏎ 버튼 누를 때까지 기다림', promptbutton: '⏎ 다음 말풍선', reloadmapafterbattle: '배틀 끝나고 지도로 돌아옴', waitsfx: '효과음 끝날 때까지 기다림', closepokepic: '포켓몬 그림 닫기', stopfollow: '따라가기 그만', closewindow: '창 닫기' };
 
 Object.assign(App.prototype, {
   // a = 구역, o = NPC 또는 표지판
   storyDialog(a, o) {
-    const rom = this.rom, d = rom.data;
-    let bank = a.scriptBank, addr;
-    if (o.isSign) addr = rom.w(o.eventOff + 3); else addr = rom.w(o.eventOff + 9);
-    const st = rom.readStory(bank, addr);
-    const undo = new Map();   // 바이트 위치 → 처음 값
+    const rom = this.rom, d = rom.data, ptrOff = o.eventOff + (o.isSign ? 3 : 9);
+    const m = rom.storyModel(a.scriptBank, rom.w(ptrOff));
+    if (!m.segs.length) { alert('이 NPC는 말 걸었을 때 하는 동작이 없어요.'); return; }
+    this._stOrig = this._stOrig || new Map();
+    const undo = new Map();   // 1단계 값 고치기: 바이트 위치 → 처음 값
     const remember = (at, n) => { for (let i = 0; i < n; i++) if (!undo.has(at + i)) undo.set(at + i, d[at + i]); };
+    let structDirty = false;
+    const hist = [];          // 2단계: 카드 모양 되돌리기
+    const cloneCard = c => { const bytes = c.bytes ? c.bytes.slice() : null; return Object.assign({}, c, { bytes, args: c.args.map(x => Object.assign({}, x, bytes ? { buf: bytes } : {})) }); };
+    const snap = () => { hist.push({ segs: m.segs.map(s => Object.assign({}, s, { cards: s.cards.map(cloneCard) })), letters: m.letters, dirty: structDirty }); if (hist.length > 50) hist.shift(); };
+    const touch = () => { structDirty = true; render(); };
+    const objs = a.owners.filter(x => !x.isSign && x.eventOff >= 0);
     const objName = v => v === 0 ? '주인공' : v === 0xFE ? (o.name + ' (말 건 사람)') : v >= 2 ? ((rom.ownerAt(a, false, v - 2) || {}).name || ('NPC ' + (v - 2) + '번')) : ('#' + v);
     const areas = rom.allAreas;
     const segBoxes = new Map();
-    const goSeg = off => { const b = segBoxes.get(off); if (!b) return; b.scrollIntoView({ block: 'start', behavior: 'smooth' }); b.classList.remove('flash'); void b.offsetWidth; b.classList.add('flash'); };
-    const segLink = off => { const s = st.byOff.get(off); return el('button', { class: 'st-go', text: s ? '📍 ' + (s.label === '시작' ? '시작' : '갈래 ' + s.label) : '?', onclick: () => goSeg(off) }); };
-    const changed = () => { this.say('스토리 동작을 고쳤어요. [저장하기]를 눌러야 롬 파일에 기록돼요.'); };
-    const setV = (arg, v) => { remember(arg.at, ST_SIZE[arg.t]); rom.storySet(arg, v); changed(); };
+    const say = () => this.say('스토리 동작을 고쳤어요. [저장하기]를 눌러야 롬 파일에 기록돼요.');
+    const setV = (arg, v) => { if (!arg.buf) remember(arg.at, ST_SIZE[arg.t]); rom.storySet(arg, v); if (!arg.buf) say(); };
+    const evNames = rom.eventNames();
+    const evHint = v => { const l = rom.storyEventWhere(v); return l.length ? '켜지는 곳: ' + l.slice(0, 2).join(', ') + (l.length > 2 ? ' 외 ' + (l.length - 2) + '곳' : '') : rom.usedFlags.has(v) ? '지도 장면이나 게임 코드에서 켜져요' : '아직 켜는 곳이 없어요 — ✅ 이벤트 표시 켜기 카드로 켜요'; };
+    const segLabel = s => s.id === 0 ? '시작' : '갈래 ' + s.label;
+    const goSeg = id => { const b = segBoxes.get(id); if (!b) return; b.scrollIntoView({ block: 'start', behavior: 'smooth' }); b.classList.remove('flash'); void b.offsetWidth; b.classList.add('flash'); };
 
-    // 이벤트 표시가 어디서 켜지는지 (번호만으로는 뭔지 모르니까)
-    const evHint = v => { const l = rom.storyEventWhere(v); return l.length ? ' (켜지는 곳: ' + l.slice(0, 2).join(', ') + (l.length > 2 ? ' 외 ' + (l.length - 2) + '곳' : '') + ')' : ' (지도 장면이나 게임 코드에서 켜져요)'; };
+    // 갈래 고르기 (점프 대상)
+    const segPick = arg => {
+      if (arg.seg == null) return el('span', { class: 'hint', text: '(갈래 밖)' });
+      const s = sel(m.segs.filter(x => !x.ext).map(x => [x.id, '📍 ' + segLabel(x)]), arg.seg, v => { snap(); arg.seg = v; touch(); });
+      s.className = 'st-go';
+      return el('span', null, s, el('button', { class: 'st-go', text: '가기', onclick: () => goSeg(arg.seg) }));
+    };
+    const farLink = arg => arg.seg != null ? el('button', { class: 'st-go', text: '📍 ' + segLabel(m.segs[arg.seg]), onclick: () => goSeg(arg.seg) }) : el('span', { text: '(다른 곳)' });
+
+    // 이벤트 표시 번호 + 이름
+    const evEd = (arg, numEl) => {
+      const box = el('span', null, numEl);
+      const nm = evNames.get(arg.v);
+      const lab = el('b', { class: 'st-evname', text: nm ? '「' + nm + '」' : '' });
+      const hint = el('span', { class: 'hint', text: nm ? '' : ' (' + evHint(arg.v) + ')' });
+      box.append(lab, hint, el('button', { class: 'st-mini', text: '✏ 이름', title: '이 이벤트 표시에 알아보기 쉬운 이름 붙이기', onclick: () => this.storyEventNameDialog(arg.v, render) }));
+      numEl.addEventListener('change', () => { const n2 = evNames.get(arg.v); lab.textContent = n2 ? '「' + n2 + '」' : ''; hint.textContent = n2 ? '' : ' (' + evHint(arg.v) + ')'; });
+      return box;
+    };
     // 값 고치는 칸
     const ed = (arg, c) => {
       const t = arg.t, v = arg.v;
       if (c.argsOff) return el('b', { text: String(typeof v === 'object' ? '' : v) });
       if (t === 'item') return sel(rom.itemNames.map((n, i) => [i, n || ('도구 ' + i)]).slice(1).filter(x => x[1]), v, x => setV(arg, x));
-      if (t === 'mon') return sel(rom.pokemonNames.map((n, i) => [i, n]).slice(1, 252), v, x => setV(arg, x));
+      if (t === 'mon' || t === 'cry') return sel(rom.pokemonNames.map((n, i) => [i, n]).slice(1, 252), v, x => setV(arg, x));
       if (t === 'lv') return num(v, 1, 100, x => setV(arg, x));
       if (t === 'qty') return num(v, 1, 99, x => setV(arg, x));
       if (t === 'x' || t === 'y' || t === 'b') return num(v, 0, 255, x => setV(arg, x));
       if (t === 'money') return num(v, 0, 999999, x => setV(arg, x));
-      if (t === 'ev' || t === 'flag') {
-        const n = num(v, 0, 4095, x => { setV(arg, x); if (hint) hint.textContent = evHint(x); });
-        n.title = '번호를 바꾸면 다른 이벤트와 엉킬 수 있어요. 잘 모르면 그대로 두세요';
-        const hint = t === 'ev' ? el('span', { class: 'hint', text: evHint(v) }) : null;
-        return hint ? el('span', null, n, hint) : n;
-      }
+      if (t === 'ev') { const n = num(v, 0, 2047, x => setV(arg, x)); n.title = '번호를 바꾸면 다른 이벤트와 엉킬 수 있어요. 잘 모르면 그대로 두세요'; return evEd(arg, n); }
+      if (t === 'flag') { const n = num(v, 0, 4095, x => setV(arg, x)); n.title = '잘 모르면 그대로 두세요'; return n; }
       if (t === 'song') return sel(SONG_NAMES.map((n, i) => [i, i + '. ' + n]), v, x => setV(arg, x));
-      if (t === 'cry') return sel(rom.pokemonNames.map((n, i) => [i, n]).slice(1, 252), v, x => setV(arg, x));
       if (t === 'dir') return sel(ST_DIRS.map((n, i) => [i, n]), v & 3, x => setV(arg, x));
+      if (t === 'obj') return sel([[0, '주인공'], [0xFE, o.name + ' (말 건 사람)'], ...objs.map(x => [rom.eventIndex(a, x) + 2, x.name])].concat(v === 0 || v === 0xFE || objs.some(x => rom.eventIndex(a, x) + 2 === v) ? [] : [[v, objName(v)]]), v, x => setV(arg, x));
       if (t === 'map') return sel(areas.map(x => [x.group * 256 + x.map, x.regionName + ' › ' + x.name]), (v & 0xFF) * 256 + (v >> 8), x => setV(arg, (x >> 8) | (x & 0xFF) << 8));
       if (t === 'tcls') return sel(rom.trainerClasses.map(x => [x.cls, x.name]), v, x => setV(arg, x));
       if (t === 'tid') return num(v, 1, 99, x => setV(arg, x));
       return el('b', { text: String(v) });
     };
+    let curBank = a.scriptBank;
     const textOf = arg => {
-      let t = null;
-      if (arg.t === 'tp') t = Rom.banked(arg.v) ? rom.parseText(rom.off(this._stBank, arg.v), 0) : null;
-      else if (arg.t === 'ftp') {
-        t = Rom.banked(arg.v.addr) && arg.v.bank * 0x4000 < d.length ? rom.parseText(rom.off(arg.v.bank, arg.v.addr), 0) : null;
+      if (arg.t === 'tp') return Rom.banked(arg.v) ? rom.parseText(rom.off(curBank, arg.v), 0) : null;
+      if (arg.t === 'ftp') {
+        let t = Rom.banked(arg.v.addr) && arg.v.bank * 0x4000 < d.length ? rom.parseText(rom.off(arg.v.bank, arg.v.addr), 0) : null;
         if (!t) { const b2 = d[arg.at], a2 = d[arg.at + 1] | d[arg.at + 2] << 8; if (Rom.banked(a2) && b2 * 0x4000 < d.length) t = rom.parseText(rom.off(b2, a2), 0); }
+        return t;
       }
-      return t;
+      return null;
     };
-    const txt = (arg, title) => { const t = textOf(arg); return t ? this.textEditor(t, title, o) : el('div', { class: 'hint', text: '(대사를 읽지 못했어요)' }); };
+    const txt = (arg, title) => {
+      if (arg.newText != null) {   // 새 카드 대사 (적용할 때 롬에 들어감)
+        const ta = el('textarea', { spellcheck: 'false', rows: Math.min(8, arg.newText.split('\n').length + 1) }), err = el('div', { class: 'err' });
+        ta.value = arg.newText;
+        const chk = () => { err.textContent = rom.checkEventText(ta.value, title) || ''; };
+        ta.addEventListener('input', () => { arg.newText = ta.value; structDirty = true; chk(); applyBtn.disabled = false; });
+        chk();
+        return el('div', { class: 'tx mod' }, el('div', { class: 'note', text: title + ' (새로 넣은 대사 · 한 줄 18자 · 빈 줄 = 다음 말풍선)' }), ta, err);
+      }
+      if (!arg.v) return el('div', { class: 'hint', text: title + ': (없음)' });
+      const t = textOf(arg);
+      return t ? this.textEditor(t, title, o) : el('div', { class: 'hint', text: '(대사를 읽지 못했어요)' });
+    };
     const mv = arg => {
-      const steps = Rom.banked(arg.v) ? rom.readMovement(rom.off(this._stBank, arg.v)) : [];
+      const steps = Rom.banked(arg.v) ? rom.readMovement(rom.off(curBank, arg.v)) : [];
       const s = []; let last = null;
-      for (const m of steps) { const key = m.kind + m.dir; if (last && last.key === key) last.n++; else { last = { key, kind: m.kind, dir: m.dir, n: 1, w: m.n }; s.push(last); } }
+      for (const x of steps) { const key = x.kind + x.dir; if (last && last.key === key) last.n++; else { last = { key, kind: x.kind, dir: x.dir, n: 1, w: x.n }; s.push(last); } }
       return el('span', { class: 'st-mv', text: s.map(x => (x.dir ? x.dir + ' ' : '') + x.kind + (x.n > 1 ? ' ×' + x.n : '') + (x.w ? ' (' + x.w + ')' : '')).join('  ·  ') || '(움직임 없음)' });
     };
-    const item = (v, q) => rom.itemName(v) + (q > 1 ? ' ' + q + '개' : '');
 
-    // 카드 한 장 (확인+갈래는 둘을 합쳐서)
+    // 카드 그림 → [요소, 차지하는 카드 수]
     const card = (c, nx) => {
-      const A = c.args, row = (icon, ...kids) => el('div', { class: 'st-card' }, el('span', { class: 'st-ic', text: icon }), el('div', { class: 'st-body' }, ...kids));
-      const w = (...k) => el('div', { class: 'st-line' }, ...k);
+      const A = c.args, row = (icon, ...kids) => el('div', { class: 'st-card' + (c.off < 0 ? ' new' : '') }, el('span', { class: 'st-ic', text: icon }), el('div', { class: 'st-body' }, ...kids));
+      const w = (...k) => el('div', { class: 'st-line' }, ...k), S = t => el('span', { text: t }), B = t => el('b', { text: t });
       const n = c.name;
-      if (ST_CHECK[n] && nx && (nx.name === 'iftrue' || nx.name === 'iffalse' || nx.name === 'ifequal' || nx.name === 'ifnotequal' || nx.name === 'ifgreater' || nx.name === 'ifless')) {
+      if (ST_CHECK[n] && nx && ST_IFS.has(nx.name)) {
         const yes = nx.name === 'iftrue', no = nx.name === 'iffalse';
         let cond;
-        if (n === 'checkevent') cond = [el('span', { text: '이벤트 표시 #' }), ed(A[0], c), el('span', { text: yes ? ' 이(가) 켜져 있으면' : no ? ' 이(가) 꺼져 있으면' : '' })];
-        else if (n === 'checkflag') cond = [el('span', { text: '게임 기록(배지·기능 등) #' }), ed(A[0], c), el('span', { text: yes ? ' 이(가) 켜져 있으면' : ' 이(가) 꺼져 있으면' })];
-        else if (n === 'checkitem') cond = [ed(A[0], c), el('span', { text: yes ? ' 을(를) 가지고 있으면' : ' 이(가) 없으면' })];
-        else if (n === 'checkpoke') cond = [ed(A[0], c), el('span', { text: yes ? ' 을(를) 데리고 있으면' : ' 이(가) 없으면' })];
-        else if (n === 'yesorno') cond = [el('span', { text: yes ? '"예"를 고르면' : '"아니요"를 고르면' })];
-        else if (n === 'checkjustbattled') cond = [el('span', { text: yes ? '방금 배틀했으면' : '방금 배틀하지 않았으면' })];
-        else cond = [el('span', { text: '(' + n + ') 확인 결과가 ' + (yes ? '맞으면' : no ? '아니면' : '') })];
-        if (!yes && !no) cond.push(el('span', { text: ' ' + ({ ifequal: '=', ifnotequal: '≠', ifgreater: '>', ifless: '<' })[nx.name] + ' ' }), ed(nx.args[0], nx), el('span', { text: ' 이면' }));
-        const tgt = nx.args[nx.args.length - 1];
-        return [row('❓', w(el('span', { text: '만약 ' }), ...cond, el('span', { text: '  →  ' }), segLink(rom.off(c.bank, tgt.v)))), 2];
+        if (n === 'checkevent') cond = [S('이벤트 표시 #'), ed(A[0], c), S(yes ? ' 이(가) 켜져 있으면' : no ? ' 이(가) 꺼져 있으면' : '')];
+        else if (n === 'checkflag') cond = [S('게임 기록(배지·기능 등) #'), ed(A[0], c), S(yes ? ' 이(가) 켜져 있으면' : ' 이(가) 꺼져 있으면')];
+        else if (n === 'checkitem') cond = [ed(A[0], c), S(yes ? ' 을(를) 가지고 있으면' : ' 이(가) 없으면')];
+        else if (n === 'checkpoke') cond = [ed(A[0], c), S(yes ? ' 을(를) 데리고 있으면' : ' 이(가) 없으면')];
+        else if (n === 'yesorno') cond = [S(yes ? '"예/아니요"에서 "예"를 고르면' : '"예/아니요"에서 "아니요"를 고르면')];
+        else if (n === 'checkjustbattled') cond = [S(yes ? '방금 배틀했으면' : '방금 배틀하지 않았으면')];
+        else cond = [S('(' + n + ') 확인 결과가 ' + (yes ? '맞으면' : no ? '아니면' : ''))];
+        if (!yes && !no) cond.push(S(' ' + ({ ifequal: '=', ifnotequal: '≠', ifgreater: '>', ifless: '<' })[nx.name] + ' '), ed(nx.args[0], nx), S(' 이면'));
+        return [row('❓', w(S('만약 '), ...cond, S('  →  '), segPick(nx.args[nx.args.length - 1]))), 2];
       }
-      if (ST_MINOR.has(n)) return [el('div', { class: 'st-minor', text: ({ opentext: '대화창 열기', closetext: '대화창 닫기', waitbutton: '⏎ 버튼 누를 때까지 기다림', promptbutton: '⏎ 다음 말풍선', reloadmapafterbattle: '배틀 끝나고 지도로 돌아옴', waitsfx: '효과음 끝날 때까지 기다림', closepokepic: '포켓몬 그림 닫기', stopfollow: '따라가기 그만', closewindow: '창 닫기' })[n] || n }), 1];
+      if (ST_MINOR.has(n)) return [el('div', { class: 'st-minor' + (c.off < 0 ? ' new' : '') }, el('span', { text: ST_MINOR_TEXT[n] || n })), 1];
       switch (n) {
         case 'writetext': case 'farwritetext': return [row('💬', txt(A[0], '대사')), 1];
         case 'jumptext': case 'farjumptext': return [row('💬', txt(A[0], '대사 (보여주고 끝)')), 1];
         case 'jumptextfaceplayer': return [row('💬', txt(A[0], '주인공 쪽을 보고 대사 (보여주고 끝)')), 1];
         case 'winlosstext': return [row('🏆', txt(A[0], '배틀에서 이겼을 때 상대 대사'), txt(A[1], '배틀에서 졌을 때 상대 대사')), 1];
-        case 'faceplayer': return [row('🙂', w(el('span', { text: '주인공 쪽을 봐요' }))), 1];
-        case 'checkevent': case 'checkflag': case 'checkitem': return [row('❓', w(el('span', { text: n === 'checkitem' ? '가지고 있는지 확인: ' : n === 'checkevent' ? '이벤트 표시 확인 #' : '게임 기록 확인 #' }), ed(A[0], c))), 1];
-        case 'iftrue': case 'iffalse': return [row('↪', w(el('span', { text: n === 'iftrue' ? '앞의 확인이 맞으면 → ' : '앞의 확인이 아니면 → ' }), segLink(rom.off(c.bank, A[0].v)))), 1];
+        case 'faceplayer': return [row('🙂', w(S('주인공 쪽을 봐요'))), 1];
+        case 'checkevent': case 'checkflag': case 'checkitem': return [row('❓', w(S(n === 'checkitem' ? '가지고 있는지 확인: ' : n === 'checkevent' ? '이벤트 표시 확인 #' : '게임 기록 확인 #'), ed(A[0], c))), 1];
+        case 'iftrue': case 'iffalse': return [row('↪', w(S(n === 'iftrue' ? '앞의 확인이 맞으면 → ' : '앞의 확인이 아니면 → '), segPick(A[0]))), 1];
         case 'ifequal': case 'ifnotequal': case 'ifgreater': case 'ifless':
-          return [row('↪', w(el('span', { text: '앞의 값이 ' }), ed(A[0], c), el('span', { text: ({ ifequal: ' 이면', ifnotequal: ' 이(가) 아니면', ifgreater: ' 보다 크면', ifless: ' 보다 작으면' })[n] + ' → ' }), segLink(rom.off(c.bank, A[1].v)))), 1];
-        case 'setval': return [row('🔢', w(el('span', { text: '값을 ' }), ed(A[0], c), el('span', { text: ' (으)로 정하기' }))), 1];
-        case 'addval': return [row('🔢', w(el('span', { text: '값에 ' }), ed(A[0], c), el('span', { text: ' 더하기' }))), 1];
-        case 'random': return [row('🎲', w(el('span', { text: '0 ~ ' + (A[0].v - 1) + ' 중 아무 수 뽑기' }))), 1];
-        case 'readvar': return [row('🔢', w(el('span', { text: '게임 정보 읽기: ' + ({ 1: '데리고 있는 포켓몬 수', 2: '배틀 결과', 3: '박스 빈자리', 5: '주인공 X 위치', 6: '주인공 Y 위치' }[A[0].v] || ('#' + A[0].v)) }))), 1];
-        case 'checkscene': return [row('🎬', w(el('span', { text: '이 지도의 장면 번호 읽기' }))), 1];
-        case 'checktime': return [row('🕒', w(el('span', { text: '시간대 확인 (' + ({ 1: '아침', 2: '낮', 4: '밤' }[A[0].v] || '#' + A[0].v) + ')' }))), 1];
-        case 'yesorno': return [row('❔', w(el('span', { text: '"예 / 아니요" 고르기' }))), 1];
-        case 'setevent': return [row('✅', w(el('span', { text: '이벤트 표시 #' }), ed(A[0], c), el('span', { text: ' 켜기 (이 일을 했다고 기록)' }))), 1];
-        case 'clearevent': return [row('⬜', w(el('span', { text: '이벤트 표시 #' }), ed(A[0], c), el('span', { text: ' 끄기' }))), 1];
-        case 'setflag': return [row('✅', w(el('span', { text: '게임 기록 #' }), ed(A[0], c), el('span', { text: ' 켜기' }))), 1];
-        case 'clearflag': return [row('⬜', w(el('span', { text: '게임 기록 #' }), ed(A[0], c), el('span', { text: ' 끄기' }))), 1];
-        case 'giveitem': return [row('🎒', w(ed(A[0], c), el('span', { text: '  ' }), ed(A[1], c), el('span', { text: '개 주기 (메시지 없이)' }))), 1];
-        case 'verbosegiveitem': return [row('🎁', w(ed(A[0], c), el('span', { text: '  ' }), ed(A[1], c), el('span', { text: '개 주기' }))), 1];
-        case 'takeitem': return [row('🎒', w(ed(A[0], c), el('span', { text: '  ' }), ed(A[1], c), el('span', { text: '개 가져가기' }))), 1];
-        case 'givepoke': return [row('🐣', w(el('span', { text: '포켓몬 주기: ' }), ed(A[0], c), el('span', { text: ' Lv' }), ed(A[1], c), el('span', { text: '  지닌 물건 ' }), ed(A[2], c))), 1];
-        case 'giveegg': return [row('🥚', w(el('span', { text: '알 주기: ' }), ed(A[0], c), el('span', { text: ' (태어나면 Lv' }), ed(A[1], c), el('span', { text: ')' }))), 1];
-        case 'loadwildmon': return [row('⚔', w(el('span', { text: '야생 ' }), ed(A[0], c), el('span', { text: ' Lv' }), ed(A[1], c), el('span', { text: ' 와(과) 배틀 준비' }))), 1];
+          return [row('↪', w(S('앞의 값이 '), ed(A[0], c), S(({ ifequal: ' 이면', ifnotequal: ' 이(가) 아니면', ifgreater: ' 보다 크면', ifless: ' 보다 작으면' })[n] + ' → '), segPick(A[1]))), 1];
+        case 'setval': return [row('🔢', w(S('값을 '), ed(A[0], c), S(' (으)로 정하기'))), 1];
+        case 'addval': return [row('🔢', w(S('값에 '), ed(A[0], c), S(' 더하기'))), 1];
+        case 'random': return [row('🎲', w(S('0 ~ ' + (A[0].v - 1) + ' 중 아무 수 뽑기'))), 1];
+        case 'readvar': return [row('🔢', w(S('게임 정보 읽기: ' + ({ 1: '데리고 있는 포켓몬 수', 2: '배틀 결과', 3: '박스 빈자리', 5: '주인공 X 위치', 6: '주인공 Y 위치' }[A[0].v] || ('#' + A[0].v))))), 1];
+        case 'checkscene': return [row('🎬', w(S('이 지도의 장면 번호 읽기'))), 1];
+        case 'checktime': return [row('🕒', w(S('시간대 확인 (' + ({ 1: '아침', 2: '낮', 4: '밤' }[A[0].v] || '#' + A[0].v) + ')'))), 1];
+        case 'yesorno': return [row('❔', w(S('"예 / 아니요" 고르기'))), 1];
+        case 'setevent': return [row('✅', w(S('이벤트 표시 #'), ed(A[0], c), S(' 켜기 (이 일을 했다고 기록)'))), 1];
+        case 'clearevent': return [row('⬜', w(S('이벤트 표시 #'), ed(A[0], c), S(' 끄기'))), 1];
+        case 'setflag': return [row('✅', w(S('게임 기록 #'), ed(A[0], c), S(' 켜기'))), 1];
+        case 'clearflag': return [row('⬜', w(S('게임 기록 #'), ed(A[0], c), S(' 끄기'))), 1];
+        case 'giveitem': return [row('🎒', w(ed(A[0], c), S('  '), ed(A[1], c), S('개 주기 (메시지 없이)'))), 1];
+        case 'verbosegiveitem': return [row('🎁', w(ed(A[0], c), S('  '), ed(A[1], c), S('개 주기'))), 1];
+        case 'takeitem': return [row('🎒', w(ed(A[0], c), S('  '), ed(A[1], c), S('개 가져가기'))), 1];
+        case 'givepoke': return [row('🐣', w(S('포켓몬 주기: '), ed(A[0], c), S(' Lv'), ed(A[1], c), S('  지닌 물건 '), ed(A[2], c))), 1];
+        case 'giveegg': return [row('🥚', w(S('알 주기: '), ed(A[0], c), S(' (태어나면 Lv'), ed(A[1], c), S(')'))), 1];
+        case 'loadwildmon': return [row('⚔', w(S('야생 '), ed(A[0], c), S(' Lv'), ed(A[1], c), S(' 와(과) 배틀 준비'))), 1];
         case 'loadtrainer': { const lab = el('div', { class: 'hint', text: rom.trainerLabel(A[0].v, A[1].v) });
           const upd = () => lab.textContent = rom.trainerLabel(A[0].v, A[1].v);
           const s1 = ed(A[0], c), s2 = ed(A[1], c); s1.addEventListener('change', upd); s2.addEventListener('change', upd);
-          return [row('⚔', w(el('span', { text: '트레이너 배틀 준비: ' }), s1, el('span', { text: ' 팀 ' }), s2), lab), 1]; }
-        case 'startbattle': return [row('⚔', w(el('b', { text: '배틀 시작!' }))), 1];
-        case 'applymovement': return [row('🚶', w(el('b', { text: objName(A[0].v) }), el('span', { text: ' 움직이기: ' }), mv(A[1]))), 1];
-        case 'applymovementlasttalked': return [row('🚶', w(el('b', { text: o.name }), el('span', { text: ' 움직이기: ' }), mv(A[0]))), 1];
-        case 'turnobject': return [row('↻', w(el('b', { text: objName(A[0].v) }), el('span', { text: ' 방향 바꾸기 ' }), ed(A[1], c))), 1];
-        case 'faceobject': return [row('👀', w(el('b', { text: objName(A[0].v) }), el('span', { text: ' 이(가) ' }), el('b', { text: objName(A[1].v) }), el('span', { text: ' 쪽을 봐요' }))), 1];
-        case 'disappear': return [row('👻', w(el('b', { text: objName(A[0].v) }), el('span', { text: ' 사라지기' }))), 1];
-        case 'appear': return [row('✨', w(el('b', { text: objName(A[0].v) }), el('span', { text: ' 나타나기' }))), 1];
-        case 'moveobject': return [row('📍', w(el('b', { text: objName(A[0].v) }), el('span', { text: ' 자리 옮기기 → X ' }), ed(A[1], c), el('span', { text: ' Y ' }), ed(A[2], c))), 1];
-        case 'showemote': return [row('❗', w(el('b', { text: objName(A[1].v) }), el('span', { text: ' 머리 위에 감정 표시' }))), 1];
-        case 'follow': case 'follownotexact': return [row('👣', w(el('b', { text: objName(A[0].v) }), el('span', { text: ' 이(가) ' }), el('b', { text: objName(A[1].v) }), el('span', { text: ' 을(를) 따라가기' }))), 1];
-        case 'playmusic': return [row('🎵', w(el('span', { text: '음악 바꾸기: ' }), ed(A[0], c))), 1];
-        case 'musicfadeout': return [row('🎵', w(el('span', { text: '음악 줄이고 바꾸기: ' }), ed(A[0], c))), 1];
-        case 'playmapmusic': return [row('🎵', w(el('span', { text: '원래 지도 음악으로' }))), 1];
-        case 'encountermusic': return [row('🎵', w(el('span', { text: '트레이너 만남 음악' }))), 1];
-        case 'cry': return [row('🔊', w(ed(A[0], c), el('span', { text: ' 울음소리' }))), 1];
-        case 'playsound': return [row('🔊', w(el('span', { text: '효과음 #' + A[0].v }))), 1];
-        case 'pause': return [row('⏸', w(el('span', { text: '잠깐 쉬기 ' }), ed(A[0], c), el('span', { text: ' 프레임 (60 = 1초)' }))), 1];
-        case 'warp': return [row('🚪', w(el('span', { text: '순간이동: ' }), ed(A[0], c), el('span', { text: ' X ' }), ed(A[1], c), el('span', { text: ' Y ' }), ed(A[2], c))), 1];
-        case 'warpfacing': return [row('🚪', w(el('span', { text: '순간이동: ' }), ed(A[1], c), el('span', { text: ' X ' }), ed(A[2], c), el('span', { text: ' Y ' }), ed(A[3], c), el('span', { text: ' 방향 ' }), ed(A[0], c))), 1];
-        case 'setscene': return [row('🎬', w(el('span', { text: '이 지도의 장면 번호를 ' }), ed(A[0], c), el('span', { text: ' (으)로 (다음 이야기로 넘어감)' }))), 1];
-        case 'setmapscene': return [row('🎬', w(ed(A[0], c), el('span', { text: ' 지도의 장면 번호를 ' }), ed(A[1], c), el('span', { text: ' (으)로' }))), 1];
-        case 'givemoney': return [row('💰', w(el('span', { text: '돈 주기 ' }), ed(A[1], c), el('span', { text: '원' }))), 1];
-        case 'takemoney': return [row('💰', w(el('span', { text: '돈 가져가기 ' }), ed(A[1], c), el('span', { text: '원' }))), 1];
-        case 'pokepic': return [row('🖼', w(ed(A[0], c), el('span', { text: ' 그림 보여주기' }))), 1];
-        case 'pokemart': return [row('🏪', w(el('span', { text: '상점 열기 (물건 목록 ' + A[1].v + '번 · [프렌들리숍] 탭에서 고쳐요)' }))), 1];
-        case 'earthquake': return [row('🌋', w(el('span', { text: '화면 흔들기' }))), 1];
-        case 'special': return [row('⚙', w(el('span', { text: '게임 특수 동작 #' + A[0].v + ' (그대로 둬요)' }))), 1];
-        case 'callstd': case 'jumpstd': return [row('⚙', w(el('span', { text: '공통 동작 #' + A[0].v + (n === 'jumpstd' ? ' (하고 끝)' : '') }))), 1];
-        case 'callasm': return [row('⚙', w(el('span', { text: '게임 코드 실행 (그대로 둬요)' }))), 1];
-        case 'scall': return [row('📞', w(segLink(rom.off(c.bank, A[0].v)), el('span', { text: ' 을(를) 하고 돌아오기' }))), 1];
-        case 'farscall': return [row('📞', w(segLink(rom.off(A[0].v.bank, A[0].v.addr)), el('span', { text: ' 을(를) 하고 돌아오기' }))), 1];
-        case 'sjump': return [row('↪', w(segLink(rom.off(c.bank, A[0].v)), el('span', { text: ' (으)로 가기' }))), 1];
-        case 'farsjump': return [row('↪', w(segLink(rom.off(A[0].v.bank, A[0].v.addr)), el('span', { text: ' (으)로 가기' }))), 1];
-        case 'end': case 'endall': case 'endcallback': return [row('⏹', w(el('span', { text: '끝' }))), 1];
+          return [row('⚔', w(S('트레이너 배틀 준비: '), s1, S(' 팀 '), s2), lab), 1]; }
+        case 'startbattle': return [row('⚔', w(B('배틀 시작!'))), 1];
+        case 'applymovement': return [row('🚶', w(ed(A[0], c), S(' 움직이기: '), mv(A[1]))), 1];
+        case 'applymovementlasttalked': return [row('🚶', w(B(o.name), S(' 움직이기: '), mv(A[0]))), 1];
+        case 'turnobject': return [row('↻', w(ed(A[0], c), S(' 방향 바꾸기 '), ed(A[1], c))), 1];
+        case 'faceobject': return [row('👀', w(ed(A[0], c), S(' 이(가) '), ed(A[1], c), S(' 쪽을 봐요'))), 1];
+        case 'disappear': return [row('👻', w(ed(A[0], c), S(' 사라지기'))), 1];
+        case 'appear': return [row('✨', w(ed(A[0], c), S(' 나타나기'))), 1];
+        case 'moveobject': return [row('📍', w(ed(A[0], c), S(' 자리 옮기기 → X '), ed(A[1], c), S(' Y '), ed(A[2], c))), 1];
+        case 'showemote': return [row('❗', w(ed(A[1], c), S(' 머리 위에 감정 표시'))), 1];
+        case 'follow': case 'follownotexact': return [row('👣', w(ed(A[0], c), S(' 이(가) '), ed(A[1], c), S(' 을(를) 따라가기'))), 1];
+        case 'playmusic': return [row('🎵', w(S('음악 바꾸기: '), ed(A[0], c))), 1];
+        case 'musicfadeout': return [row('🎵', w(S('음악 줄이고 바꾸기: '), ed(A[0], c))), 1];
+        case 'playmapmusic': return [row('🎵', w(S('원래 지도 음악으로'))), 1];
+        case 'encountermusic': return [row('🎵', w(S('트레이너 만남 음악'))), 1];
+        case 'cry': return [row('🔊', w(ed(A[0], c), S(' 울음소리'))), 1];
+        case 'playsound': return [row('🔊', w(S('효과음 #' + A[0].v))), 1];
+        case 'pause': return [row('⏸', w(S('잠깐 쉬기 '), ed(A[0], c), S(' 프레임 (60 = 1초)'))), 1];
+        case 'warp': return [row('🚪', w(S('순간이동: '), ed(A[0], c), S(' X '), ed(A[1], c), S(' Y '), ed(A[2], c))), 1];
+        case 'warpfacing': return [row('🚪', w(S('순간이동: '), ed(A[1], c), S(' X '), ed(A[2], c), S(' Y '), ed(A[3], c), S(' 방향 '), ed(A[0], c))), 1];
+        case 'setscene': return [row('🎬', w(S('이 지도의 장면 번호를 '), ed(A[0], c), S(' (으)로 (다음 이야기로 넘어감)'))), 1];
+        case 'setmapscene': return [row('🎬', w(ed(A[0], c), S(' 지도의 장면 번호를 '), ed(A[1], c), S(' (으)로'))), 1];
+        case 'givemoney': return [row('💰', w(S('돈 주기 '), ed(A[1], c), S('원'))), 1];
+        case 'takemoney': return [row('💰', w(S('돈 가져가기 '), ed(A[1], c), S('원'))), 1];
+        case 'pokepic': return [row('🖼', w(ed(A[0], c), S(' 그림 보여주기'))), 1];
+        case 'pokemart': return [row('🏪', w(S('상점 열기 (물건 목록 ' + A[1].v + '번 · [프렌들리숍] 탭에서 고쳐요)'))), 1];
+        case 'earthquake': return [row('🌋', w(S('화면 흔들기'))), 1];
+        case 'special': return [row('⚙', w(S('게임 특수 동작 #' + A[0].v + ' (그대로 둬요)'))), 1];
+        case 'callstd': case 'jumpstd': return [row('⚙', w(S('공통 동작 #' + A[0].v + (n === 'jumpstd' ? ' (하고 끝)' : '')))), 1];
+        case 'callasm': return [row('⚙', w(S('게임 코드 실행 (그대로 둬요)'))), 1];
+        case 'scall': return [row('📞', w(segPick(A[0]), S(' 을(를) 하고 돌아오기'))), 1];
+        case 'farscall': return [row('📞', w(farLink(A[0]), S(' 을(를) 하고 돌아오기'))), 1];
+        case 'sjump': return [row('↪', w(segPick(A[0]), S(' (으)로 가기'))), 1];
+        case 'farsjump': return [row('↪', w(farLink(A[0]), S(' (으)로 가기'))), 1];
+        case 'end': case 'endall': case 'endcallback': return [row('⏹', w(S('끝'))), 1];
       }
       return [row('🔒', w(el('span', { class: 'hint', text: '원래 게임 동작 (' + n + ') — 그대로 동작해요' }))), 1];
     };
 
-    const body = el('div', { class: 'st' });
-    for (const s of st.segs) {
-      this._stBank = s.bank;
-      const box = el('div', { class: 'st-seg' + (s.label === '시작' ? ' start' : '') },
-        el('div', { class: 'st-head', text: s.label === '시작' ? '📍 시작 (말을 걸면 여기부터)' : '📍 갈래 ' + s.label + (s.sub ? '  (불러 쓰는 부분 · 끝나면 돌아감)' : '') }));
-      for (let i = 0; i < s.cards.length;) {
-        this._stBank = s.cards[i].bank;
-        const [elx, used] = card(s.cards[i], s.cards[i + 1]);
-        box.append(elx); i += used;
+    // ---------------------------------------------------------------- 넣을 카드 목록
+    const NC = (n, v) => rom.storyNewCard(n, v);
+    const firstItem = rom.itemNames.findIndex((x, i) => i > 0 && x);
+    const here = (a.group) | (a.map << 8);
+    const newSeg = () => { const s = { id: m.segs.length, label: String.fromCharCode(65 + (m.letters % 26)) + (m.letters >= 26 ? Math.floor(m.letters / 26) : ''), ext: false, sub: false, next: null, cards: [NC('end')] }; m.letters++; m.segs.push(s); return s; };
+    const ifCards = (check, val, ifName) => { const s = newSeg(); const cs = [check === 'yesorno' ? NC('yesorno') : NC(check, [val]), NC(ifName, [0])]; cs[1].args[cs[1].args.length - 1].seg = s.id; return cs; };
+    const PALETTE = [
+      ['말하기', [
+        ['💬 대사', () => [NC('opentext'), NC('writetext', [{ text: '새 대사' }]), NC('waitbutton'), NC('closetext')]],
+        ['🙂 주인공 쪽 보기', () => [NC('faceplayer')]]]],
+      ['주고받기', [
+        ['🎁 아이템 주기', () => [NC('verbosegiveitem', [firstItem, 1])]],
+        ['🎒 아이템 가져가기', () => [NC('takeitem', [firstItem, 1])]],
+        ['🐣 포켓몬 주기', () => [NC('givepoke', [1, 5, 0, 0])]],
+        ['💰 돈 주기', () => [NC('givemoney', [0, 1000])]],
+        ['💰 돈 가져가기', () => [NC('takemoney', [0, 1000])]]]],
+      ['배틀', [
+        ['⚔ 야생 포켓몬 배틀', () => [NC('closetext'), NC('loadwildmon', [1, 5]), NC('startbattle'), NC('reloadmapafterbattle')]],
+        ['⚔ 트레이너 배틀', () => { const t = rom.trainerClasses[0]; return [NC('closetext'), NC('winlosstext', [{ text: '졌다…' }, 0]), NC('loadtrainer', [t ? t.cls : 1, 1]), NC('startbattle'), NC('reloadmapafterbattle')]; }]]],
+      ['만약 (갈래 나누기)', [
+        ['❓ 만약 이벤트 표시가 켜져 있으면', () => ifCards('checkevent', rom.allocFlag(), 'iftrue')],
+        ['❓ 만약 이벤트 표시가 꺼져 있으면', () => ifCards('checkevent', rom.allocFlag(), 'iffalse')],
+        ['❓ 만약 아이템을 가지고 있으면', () => ifCards('checkitem', firstItem, 'iftrue')],
+        ['❓ 만약 포켓몬을 데리고 있으면', () => ifCards('checkpoke', 1, 'iftrue')],
+        ['❓ 예/아니요 묻고 "아니요"면', () => ifCards('yesorno', 0, 'iffalse')],
+        ['↪ 다른 갈래로 가기', () => { const c = NC('sjump', [0]); c.args[0].seg = 0; return [c]; }],
+        ['📞 다른 갈래 하고 돌아오기', () => { const s = newSeg(); const c = NC('scall', [0]); c.args[0].seg = s.id; return [c]; }]]],
+      ['기록', [
+        ['✅ 이벤트 표시 켜기 (했다고 기록)', () => [NC('setevent', [rom.allocFlag()])]],
+        ['⬜ 이벤트 표시 끄기', () => [NC('clearevent', [rom.allocFlag()])]]]],
+      ['사람·화면', [
+        ['👻 사라지기', () => [NC('disappear', [0xFE])]],
+        ['✨ 나타나기', () => [NC('appear', [0xFE])]],
+        ['↻ 방향 바꾸기', () => [NC('turnobject', [0xFE, 0])]],
+        ['❗ 감정 표시', () => [NC('showemote', [0, 0xFE, 15])]],
+        ['🚪 순간이동', () => [NC('warp', [here, o.x || 0, o.y || 0])]],
+        ['⏸ 잠깐 쉬기', () => [NC('pause', [30])]]]],
+      ['소리', [
+        ['🎵 음악 바꾸기', () => [NC('playmusic', [1])]],
+        ['🎵 원래 지도 음악으로', () => [NC('playmapmusic')]],
+        ['🔊 포켓몬 울음소리', () => [NC('cry', [1])]]]],
+      ['끝내기', [['⏹ 끝', () => [NC('end')]]]]
+    ];
+    let menu = null;
+    const closeMenu = () => { if (menu) { menu.remove(); menu = null; } };
+    const openMenu = (btn, seg, at) => {
+      closeMenu();
+      menu = el('div', { class: 'st-menu' });
+      for (const [g, items] of PALETTE) {
+        menu.append(el('div', { class: 'st-menu-g', text: g }));
+        for (const [label, make] of items) menu.append(el('div', { class: 'st-menu-i', text: label, onclick: () => {
+          closeMenu(); snap();
+          let cs; try { cs = make(); } catch (e) { alert(e.message); return; }
+          seg.cards.splice(at, 0, ...cs); touch();
+        } }));
       }
-      if (s.next != null) box.append(el('div', { class: 'st-card' }, el('span', { class: 'st-ic', text: '↓' }), el('div', { class: 'st-body' }, el('span', { text: '이어서 ' }), segLink(s.next))));
-      segBoxes.set(s.off, box);
-      body.append(box);
-    }
-    const revert = el('button', { text: '↶ 이 창에서 고친 값 모두 되돌리기', onclick: () => {
+      const r = btn.getBoundingClientRect();
+      menu.style.left = Math.max(4, Math.min(r.left, innerWidth - 260)) + 'px';
+      menu.style.top = Math.max(4, Math.min(r.bottom + 2, innerHeight - 420)) + 'px';
+      this.host.append(menu);
+      setTimeout(() => document.addEventListener('mousedown', function f(e) { if (menu && !e.composedPath().includes(menu)) { closeMenu(); document.removeEventListener('mousedown', f); } }), 0);
+    };
+
+    // ---------------------------------------------------------------- 그리기
+    const body = el('div', { class: 'st' });
+    const applyBtn = el('button', { class: 'apply', text: '✔ 카드 변경 적용하기', disabled: '' });
+    const undoBtn = el('button', { text: '↶ 카드 되돌리기', disabled: '' });
+    const pend = el('span', { class: 'hint' });
+    const reach = () => { const r = new Set([0]), q = [0]; while (q.length) { const s = m.segs[q.pop()]; if (!s) continue; const go = id => { if (id != null && !r.has(id)) { r.add(id); q.push(id); } }; for (const c of s.cards) for (const x of c.args) go(x.seg); go(s.next); } return r; };
+    const render = () => {
+      const sc = body.closest('.dlg-body'), top = sc ? sc.scrollTop : 0;
+      body.replaceChildren(); segBoxes.clear();
+      const R = reach();
+      for (const s of m.segs) {
+        const box = el('div', { class: 'st-seg' + (s.id === 0 ? ' start' : '') + (s.ext ? ' ext' : '') + (R.has(s.id) ? '' : ' dead') });
+        box.append(el('div', { class: 'st-head' }, el('span', { text: s.id === 0 ? '📍 시작 (말을 걸면 여기부터)' : '📍 갈래 ' + s.label + (s.sub ? '  (불러 쓰는 부분 · 끝나면 돌아감)' : '') }),
+          s.ext ? el('span', { class: 'hint', text: '  다른 곳에 있는 공통 부분 — 값만 고칠 수 있어요 (고치면 같이 쓰는 곳도 바뀜)' }) : null,
+          !R.has(s.id) ? el('span', { class: 'hint', text: '  아무 데서도 안 와요 — 적용하면 없어져요' }) : null));
+        for (let i = 0; i < s.cards.length;) {
+          curBank = s.ext ? s.cards[i].bank : a.scriptBank;
+          if (s.cards[i].off >= 0) curBank = s.cards[i].bank;
+          const [elx, used] = card(s.cards[i], s.cards[i + 1]);
+          if (!s.ext) {
+            const i0 = i;
+            const tools = el('span', { class: 'st-tools' },
+              el('button', { text: '↑', title: '위로', onclick: () => { if (i0 === 0) return; snap(); const g = s.cards.splice(i0, used); s.cards.splice(i0 - 1, 0, ...g); touch(); } }),
+              el('button', { text: '↓', title: '아래로', onclick: () => { if (i0 + used >= s.cards.length) return; snap(); const nx = s.cards.splice(i0 + used, 1); s.cards.splice(i0, 0, ...nx); touch(); } }),
+              el('button', { text: '＋', title: '아래에 카드 넣기', onclick: e => openMenu(e.currentTarget, s, i0 + used) }),
+              el('button', { text: '✕', title: '이 카드 빼기', onclick: () => { snap(); s.cards.splice(i0, used); touch(); } }));
+            elx.append(tools);
+          }
+          box.append(elx); i += used;
+        }
+        if (s.next != null) box.append(el('div', { class: 'st-card' }, el('span', { class: 'st-ic', text: '↓' }), el('div', { class: 'st-body' }, el('span', { text: '이어서 ' }), el('button', { class: 'st-go', text: '📍 ' + segLabel(m.segs[s.next]), onclick: () => goSeg(s.next) }))));
+        if (!s.ext) {
+          // 끝내는 카드(끝·대사하고 끝 등) 바로 앞에 넣음
+          const stop = s.cards.findIndex(c => ST_STOP.has(c.name));
+          if (stop >= 0 && stop < s.cards.length - 1) box.append(el('div', { class: 'err', text: '⚠ "끝" 카드 다음에 있는 카드는 실행되지 않아요. ↑로 끝 앞으로 옮기세요' }));
+          box.append(el('button', { class: 'st-add', text: '＋ 이 갈래에 카드 넣기 (끝 앞에)', onclick: e => openMenu(e.currentTarget, s, stop >= 0 ? stop : s.cards.length) }));
+        }
+        segBoxes.set(s.id, box);
+        body.append(box);
+      }
+      body.append(el('button', { class: 'st-add', text: '＋ 새 갈래 만들기 (만약·다른 갈래로 가기에서 고를 수 있어요)', onclick: () => { snap(); newSeg(); touch(); } }));
+      applyBtn.disabled = !structDirty; undoBtn.disabled = !hist.length;
+      pend.textContent = structDirty ? '⚠ 카드를 넣거나 뺀 것은 [적용하기]를 눌러야 롬에 들어가요' : '';
+      if (sc) sc.scrollTop = top;
+    };
+    undoBtn.addEventListener('click', () => { const h = hist.pop(); if (!h) return; m.segs = h.segs; m.letters = h.letters; structDirty = h.dirty; render(); });
+    applyBtn.addEventListener('click', () => {
+      if (!this._stOrig.has(ptrOff)) this._stOrig.set(ptrOff, rom.w(ptrOff));
+      const e = rom.storyApply(m, ptrOff);
+      if (e) { alert(e); return; }
+      structDirty = false; done = true; close();
+      this.say('스토리 동작을 새로 썼어요. [저장하기]를 눌러야 롬 파일에 기록돼요.');
+      this.storyDialog(a, o);
+    });
+    const revert = el('button', { text: '↶ 값 고친 것 모두 되돌리기', onclick: () => {
       if (!undo.size) return;
       for (const [at, v] of undo) d[at] = v;
-      undo.clear(); close(); this.storyDialog(a, o);
+      undo.clear(); done = true; close(); this.storyDialog(a, o);
     } });
+    const origBtn = this._stOrig.has(ptrOff) ? el('button', { text: '⟲ 처음 스크립트로 되돌리기', title: '이번에 툴을 연 뒤 [적용하기] 전의 원래 스크립트로', onclick: () => {
+      const v = this._stOrig.get(ptrOff); d[ptrOff] = v & 0xFF; d[ptrOff + 1] = v >> 8; this._stOrig.delete(ptrOff); rom.dirty = true; rom._stEv = null;
+      done = true; close(); this.storyDialog(a, o);
+    } }) : null;
+    let done = false;
+    render();
     const close = this.dialog('📜 스토리 동작 — ' + a.regionName + ' › ' + a.name + ' › ' + o.name, () => el('div', null,
-      el('div', { class: 'hint', text: '말을 걸었을 때 게임이 하는 일을 순서대로 보여줘요. 📍 갈래 버튼을 누르면 그 부분으로 가요.\n파란 칸(아이템·포켓몬·레벨·음악·대사 등)은 바로 고칠 수 있어요. 순서·흐름은 그대로라 스토리가 깨지지 않아요.\n🔒 카드는 아직 풀어서 보여주지 못하는 동작이에요 (그대로 동작해요). 카드 넣기·빼기는 다음 단계에서 만들 거예요.' }),
-      el('div', { class: 'bar', style: 'margin:6px 0' }, revert, el('span', { class: 'hint', text: '대사는 각 칸의 [원래대로]로 되돌려요' })),
-      body), () => { this.setTab(this.tab); }, false, true);
+      el('div', { class: 'hint', text: '말을 걸었을 때 게임이 하는 일을 순서대로 보여줘요. 📍 갈래 버튼을 누르면 그 부분으로 가요.\n파란 칸(아이템·포켓몬·레벨·음악·대사 등)은 바로 고쳐져요.\n카드에 마우스를 올리면 ↑↓(순서) ＋(아래에 넣기) ✕(빼기)가 나와요. 넣고 뺀 것은 [적용하기]를 눌러야 들어가요 (원래 스크립트는 지우지 않고 그대로 둬요).\n🔒 카드는 아직 풀어서 보여주지 못하는 동작이에요 (그대로 동작해요).' }),
+      el('div', { class: 'bar st-bar' }, applyBtn, undoBtn, revert, origBtn, pend),
+      body), () => { closeMenu(); if (!done && structDirty) this.say('적용하지 않은 카드 변경은 버렸어요.'); this.setTab(this.tab); }, false, true);
+  },
+
+  // 이벤트 표시 이름 붙이기 (롬 안에 같이 저장)
+  storyEventNameDialog(ev, after) {
+    const rom = this.rom, cur = rom.eventNames().get(ev) || '';
+    const inp = el('input', { class: 'txt', value: cur, style: 'width:220px', placeholder: '예: 공박사한테 알 받음' }), msg = el('div');
+    const where = rom.storyEventWhere(ev);
+    let close;
+    const ok = () => { const e = rom.setEventName(ev, inp.value.trim()); if (e) { this.okMsg(msg, e, true); return; } close(); if (after) after(); };
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') ok(); });
+    close = this.dialog('✏ 이벤트 표시 #' + ev + ' 이름', () => el('div', null,
+      el('div', { class: 'bar' }, el('span', { text: '이름' }), inp),
+      el('div', { class: 'hint', text: (where.length ? '켜지는 곳: ' + where.join(', ') : '이 번호를 켜는 NPC·표지판이 없어요 (지도 장면이나 게임 코드에서 켜져요)') + '\n이름은 이 툴에서만 보여요 (게임에는 영향 없음). 비우면 이름을 지워요.' }),
+      msg,
+      el('div', { class: 'bar', style: 'justify-content:flex-end;margin-top:8px' }, el('button', { text: '취소', onclick: () => close() }), el('button', { class: 'apply', text: '저장', onclick: ok }))), null, true);
+    setTimeout(() => { inp.focus(); inp.select(); }, 0);
   }
 });
 
