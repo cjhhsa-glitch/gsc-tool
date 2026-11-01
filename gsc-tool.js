@@ -4831,6 +4831,153 @@ mixin(Rom.prototype, {
   setLandmarkXY(id, x, y) { this.data[this.landmarkOff + id * 4] = x & 0xFF; this.data[this.landmarkOff + id * 4 + 1] = y & 0xFF; this.dirty = true; }
 });
 
+// ===== 65-story.js
+// ================================================================ 스토리 동작 읽기 (NPC·표지판 스크립트를 카드로 풀기)
+// 스크립트를 "갈래"로 나눔: 시작 + 점프해서 오는 곳마다 새 갈래. 갈래 안 명령 하나 = 카드 하나
+// 카드의 값(아이템·포켓몬·대사 등)은 그 자리 바이트만 바꿔서 고침 → 명령 길이·순서·점프는 그대로라 흐름이 안 깨짐
+// 명령 인자 출처: pret/pokegold macros/scripts/events.asm
+
+// 인자 종류 → 바이트 수
+const ST_SIZE = { b: 1, item: 1, qty: 1, mon: 1, lv: 1, obj: 1, dir: 1, tcls: 1, tid: 1, x: 1, y: 1,
+  w: 2, p: 2, tp: 2, ev: 2, flag: 2, song: 2, sfx: 2, cry: 2, std: 2, special: 2, mvp: 2, map: 2, fp: 3, ftp: 3, money: 3 };
+const ST_ARGS = {
+  scall: 'p', farscall: 'fp', memcall: 'w', sjump: 'p', farsjump: 'fp', memjump: 'w',
+  ifequal: 'b p', ifnotequal: 'b p', iffalse: 'p', iftrue: 'p', ifgreater: 'b p', ifless: 'b p',
+  jumpstd: 'std', callstd: 'std', callasm: 'fp', special: 'special', memcallasm: 'w',
+  checkmapscene: 'map', setmapscene: 'map b', setscene: 'b', setval: 'b', addval: 'b', random: 'b',
+  readmem: 'w', writemem: 'w', loadmem: 'w b', readvar: 'b', writevar: 'b', loadvar: 'b b',
+  giveitem: 'item qty', takeitem: 'item qty', checkitem: 'item',
+  givemoney: 'b money', takemoney: 'b money', checkmoney: 'b money', givecoins: 'w', takecoins: 'w', checkcoins: 'w',
+  addcellnum: 'b', delcellnum: 'b', checkcellnum: 'b', checktime: 'b', checkpoke: 'mon',
+  giveegg: 'mon lv', givepokemail: 'w', checkpokemail: 'w',
+  checkevent: 'ev', clearevent: 'ev', setevent: 'ev', checkflag: 'flag', clearflag: 'flag', setflag: 'flag',
+  xycompare: 'w', warpmod: 'b map', blackoutmod: 'map', warp: 'map x y', warpfacing: 'dir map x y',
+  getmoney: 'b b', getcoins: 'b', getnum: 'b', getmonname: 'mon b', getitemname: 'item b', getcurlandmarkname: 'b',
+  gettrainername: 'tcls tid b', getstring: 'w b', reanchormap: 'b', writeunusedbyte: 'b',
+  farwritetext: 'ftp', writetext: 'tp', repeattext: 'b b', loadmenu: 'w', jumptextfaceplayer: 'tp', jumptext: 'tp', farjumptext: 'ftp',
+  pokepic: 'mon', loadwildmon: 'mon lv', loadtrainer: 'tcls tid', catchtutorial: 'b', trainertext: 'b', trainerflagaction: 'b',
+  winlosstext: 'tp tp', setlasttalked: 'obj', applymovement: 'obj mvp', applymovementlasttalked: 'mvp',
+  faceobject: 'obj obj', variablesprite: 'b b', disappear: 'obj', appear: 'obj', follow: 'obj obj', moveobject: 'obj x y',
+  writeobjectxy: 'obj', loademote: 'b', showemote: 'b obj b', turnobject: 'obj dir', follownotexact: 'obj obj', earthquake: 'b',
+  changemapblocks: 'fp', changeblock: 'x y b', writecmdqueue: 'w', delcmdqueue: 'b',
+  playmusic: 'song', musicfadeout: 'song b', cry: 'cry', playsound: 'sfx', autoinput: 'fp', newloadmap: 'b', pause: 'b',
+  deactivatefacing: 'b', sdefer: 'p', stopandsjump: 'p', reloadend: 'b', pokemart: 'b w', elevator: 'p', trade: 'b',
+  askforphonenumber: 'b', phonecall: 'tp', describedecoration: 'b', fruittree: 'b', specialphonecall: 'w',
+  verbosegiveitem: 'item qty', verbosegiveitemvar: 'item b', wait: 'b'
+};
+// 여기서 갈래가 끝나는 명령 (다음 명령으로 안 넘어감)
+const ST_STOP = new Set(['end', 'endall', 'endcallback', 'reloadend', 'sjump', 'farsjump', 'memjump', 'jumptext', 'jumptextfaceplayer',
+  'farjumptext', 'jumpstd', 'stopandsjump', 'pokemart', 'halloffame', 'credits', 'warpcheck']);
+const ST_K_NAME = (() => { const r = []; for (const [n, k] of ScriptSet.K) r[k] = n; return r; })();
+
+mixin(Rom.prototype, {
+  // 스크립트 → { segs: [{ off, bank, label, cards, next }], byOff: Map(off → 갈래) }
+  // 카드 = { off, bank, name, len, args: [{ t, at, v }] }
+  readStory(bank, addr) {
+    const d = this.data, ops = new Map(), starts = [], seen = new Set();
+    const addStart = (off, bk, why) => { if (!this.inRom(off)) return; if (!starts.some(s => s.off === off)) starts.push({ off, bank: bk, why }); };
+    const tgt = (bk, a) => Rom.banked(a) ? this.off(bk, a) : -1;
+    if (!Rom.banked(addr)) return { segs: [], byOff: new Map() };   // 스크립트가 없는 NPC (장면 스크립트가 움직이는 사람 등)
+    addStart(this.off(bank, addr), bank, 'start');
+    // 1) 갈 수 있는 명령을 모두 읽음
+    for (let si = 0; si < starts.length && ops.size < 600; si++) {
+      let pc = starts[si].off; const bk = starts[si].bank;
+      for (let n = 0; n < 200 && this.inRom(pc + 8) && !seen.has(pc); n++) {
+        seen.add(pc);
+        const k = this.opK(d[pc]), len = this.opLen(pc), name = ST_K_NAME[k];
+        if (len <= 0 || name == null) { ops.set(pc, { off: pc, bank: bk, name: '?', len: 1, args: [], bad: true }); break; }
+        const card = { off: pc, bank: bk, name, len, args: [] };
+        const spec = ST_ARGS[name] ? ST_ARGS[name].split(' ') : [];
+        let at = pc + 1;
+        for (const t of spec) {
+          const sz = ST_SIZE[t];
+          if (at + sz > pc + len) break;
+          const v = sz === 1 ? d[at] : sz === 2 ? this.w(at) : t === 'money' ? (d[at] << 16 | d[at + 1] << 8 | d[at + 2]) : t === 'ftp' ? { addr: this.w(at), bank: d[at + 2] } : { bank: d[at], addr: this.w(at + 1) };
+          card.args.push({ t, at, v });
+          at += sz;
+        }
+        if (name === 'givepoke') {   // 포켓몬 · 레벨 · 지닌 물건 · (이름·어버이 이름을 줄 때 +4바이트)
+          card.args = [{ t: 'mon', at: pc + 1, v: d[pc + 1] }, { t: 'lv', at: pc + 2, v: d[pc + 2] }, { t: 'item', at: pc + 3, v: d[pc + 3] }];
+        }
+        if (at !== pc + len && name !== 'givepoke') card.argsOff = true;   // 인자 표와 길이가 안 맞음 (모르는 버전) → 값은 못 고침
+        ops.set(pc, card);
+        // 갈래 끝 · 점프 대상
+        for (const a of card.args) {
+          if (a.t === 'p' && !['elevator'].includes(name)) addStart(tgt(bk, a.v), bk, name);
+          if (a.t === 'fp' && (name === 'farsjump' || name === 'farscall') && a.v.bank > 0 && a.v.bank * 0x4000 < d.length) addStart(tgt(a.v.bank, a.v.addr), a.v.bank, name);
+        }
+        if (ST_STOP.has(name)) break;
+        pc += len;
+      }
+    }
+    // 2) 갈래로 나눔: 시작점마다 다음 시작점 전까지
+    const startSet = new Map(starts.map(s => [s.off, s]));
+    const segs = [], byOff = new Map();
+    let letter = 0;
+    for (const s of starts) {
+      const seg = { off: s.off, bank: s.bank, label: s.why === 'start' ? '시작' : String.fromCharCode(65 + (letter++ % 26)) + (letter > 26 ? Math.floor((letter - 1) / 26) : ''), cards: [], next: null, sub: s.why === 'scall' || s.why === 'farscall' };
+      let pc = s.off;
+      for (let n = 0; n < 200; n++) {
+        const c = ops.get(pc);
+        if (!c) break;
+        seg.cards.push(c);
+        if (c.bad || ST_STOP.has(c.name)) break;
+        pc += c.len;
+        if (startSet.has(pc)) { seg.next = pc; break; }   // 다음 갈래로 그냥 이어짐
+      }
+      segs.push(seg); byOff.set(s.off, seg);
+    }
+    return { segs, byOff };
+  },
+
+  // 이벤트 표시 번호 → 켜는 곳 목록 ["지역 › 구역 › NPC", …] (NPC·표지판 스크립트에서 setevent 찾기, 한 번만 만듦)
+  storyEventWhere(ev) {
+    if (!this._stEv) {
+      this._stEv = new Map();
+      for (const a of this.allAreas) for (const o of a.owners) {
+        if (o.eventOff < 0) continue;
+        const t = o.isSign ? this.data[o.eventOff + 2] : this.data[o.eventOff + 7] & 15;
+        if (o.isSign ? t > 4 : t !== 0) continue;
+        let st; try { st = this.readStory(a.scriptBank, this.w(o.eventOff + (o.isSign ? 3 : 9))); } catch (e) { continue; }
+        for (const s of st.segs) for (const c of s.cards) if (c.name === 'setevent') {
+          const w = a.regionName + ' › ' + a.name + ' › ' + o.name, l = this._stEv.get(c.args[0].v) || [];
+          if (!l.includes(w)) l.push(w);
+          this._stEv.set(c.args[0].v, l);
+        }
+      }
+    }
+    return this._stEv.get(ev) || [];
+  },
+
+  // 걷기 데이터 → [{ code, label }] (끝 $47 까지)
+  readMovement(off) {
+    const d = this.data, res = [], dirs = ['↓', '↑', '←', '→'];
+    const kinds = [[0x00, '고개'], [0x04, '돌기'], [0x08, '천천히'], [0x0C, '걷기'], [0x10, '빨리'], [0x14, '미끄러짐(느림)'], [0x18, '미끄러짐'],
+      [0x1C, '미끄러짐(빠름)'], [0x20, '돌아서기'], [0x24, '돌아보기'], [0x28, '폭포'], [0x2C, '점프(느림)'], [0x30, '점프'], [0x34, '점프(빠름)']];
+    const named = { 0x38: '미끄러짐 끄기', 0x39: '미끄러짐 켜기', 0x3A: '방향 고정 풀기', 0x3B: '방향 고정', 0x3C: '나타나기', 0x3D: '숨기',
+      0x49: '사라지기', 0x4A: '제자리 반복', 0x4C: '순간이동(떠남)', 0x4D: '순간이동(도착)', 0x4E: '하늘에서 떨어짐', 0x50: '부딪힘',
+      0x53: '감정 표시 끄기', 0x54: '감정 표시', 0x56: '나무 흔들기', 0x57: '바위 깨기', 0x58: '구멍에서 나옴' };
+    for (let p = off, n = 0; n < 80 && this.inRom(p); n++) {
+      const c = d[p];
+      if (c === 0x47) break;
+      if (c < 0x38) { const k = kinds.find(x => c >= x[0] && c < x[0] + 4); res.push({ code: c, kind: k[1], dir: dirs[c & 3] }); p++; continue; }
+      if (c >= 0x3E && c <= 0x45) { res.push({ code: c, kind: '쉬기', dir: '', n: c - 0x3D }); p++; continue; }
+      if (c === 0x46 || c === 0x48 || c === 0x4F || c === 0x55) { res.push({ code: c, kind: c === 0x46 ? '쉬기' : c === 0x55 ? '흔들기' : '기타', dir: '', n: d[p + 1] }); p += 2; continue; }
+      res.push({ code: c, kind: named[c] || ('?' + c.toString(16)), dir: '' }); p++;
+    }
+    return res;
+  },
+
+  // 카드 값 쓰기 (같은 길이 그대로)
+  storySet(a, v) {
+    const d = this.data, sz = ST_SIZE[a.t];
+    if (sz === 1) d[a.at] = v & 0xFF;
+    else if (sz === 2) { d[a.at] = v & 0xFF; d[a.at + 1] = (v >> 8) & 0xFF; }
+    else if (a.t === 'money') { d[a.at] = (v >> 16) & 0xFF; d[a.at + 1] = (v >> 8) & 0xFF; d[a.at + 2] = v & 0xFF; }
+    a.v = v; this.dirty = true;
+  }
+});
+
 // ===== 66-sprite.js
 // ================================================================ 포켓몬 그림 쓰기 · 사진 → 2세대 4색 변환 (RomSprite.cs 와 같음)
 // 그림 = { w, h, px: Uint8Array(w*h) 색 번호 0~3 (가로줄 순서) }, 색 = [r, g, b]
@@ -6124,6 +6271,20 @@ const CSS = `
 .gsc .dlg.wide{width:100%;height:100%;max-height:none;border-radius:0}
 .gsc .gsc-rollbox{max-height:400px}
 .gsc .dlg.wide .gsc-rollbox{max-height:62vh}
+.gsc .st-seg{border:1px solid var(--line,#d0d4dc);border-radius:8px;padding:6px 8px 4px;margin:8px 0;background:#fafbfd;scroll-margin-top:8px}
+.gsc .st-seg.start{border-color:#4c6ef5;background:#f3f6ff}
+.gsc .st-seg.flash{animation:stflash 1.2s}
+@keyframes stflash{0%{box-shadow:0 0 0 4px #ffd43b}100%{box-shadow:0 0 0 0 transparent}}
+.gsc .st-head{font-weight:bold;margin-bottom:4px}
+.gsc .st-card{display:flex;gap:6px;align-items:flex-start;padding:3px 2px;border-top:1px dashed #e3e6ec}
+.gsc .st-ic{width:22px;text-align:center;flex:none;font-size:15px;line-height:26px}
+.gsc .st-body{flex:1;min-width:0}
+.gsc .st-line{display:flex;flex-wrap:wrap;align-items:center;gap:4px;line-height:26px}
+.gsc .st-line select,.gsc .st-line input{background:#e7f0ff}
+.gsc .st-body .tx{margin-bottom:2px}
+.gsc .st-minor{font-size:11px;color:var(--sub);padding:1px 0 1px 30px}
+.gsc .st-go{padding:0 8px;font-size:12px;background:#fff3bf}
+.gsc .st-mv{font-family:monospace;background:#f1f3f5;border-radius:4px;padding:0 6px}
 .gsc .dlg-head{display:flex;align-items:center;padding:8px 12px;border-bottom:1px solid var(--line);font-weight:bold}
 .gsc .dlg-head span{flex:1}
 .gsc .dlg-body{padding:12px;overflow:auto;flex:1}
@@ -7423,7 +7584,11 @@ Object.assign(App.prototype, {
           + (evInfo.lines.length ? '\n· ' + evInfo.lines.join('\n· ') : '') }));
       const loadBtn = el('button', { class: 'play', text: '이 이벤트 불러와서 고치기', onclick: () => this.evLoad(evInfo, o) });
       loadBtn.disabled = !evInfo.ev || !o.isObject;
-      info.append(el('div', { class: 'bar' }, loadBtn,
+      // 말 걸면 스크립트가 도는 NPC · 조사하면 스크립트가 도는 표지판 → 스토리 동작 창
+      const sType = o.isSign ? rom.data[o.eventOff + 2] : rom.data[o.eventOff + 7] & 0x0F;
+      const storyBtn = el('button', { text: '📜 스토리 동작 보기·고치기', onclick: () => this.storyDialog(a, o) });
+      storyBtn.disabled = (o.isSign ? sType > 4 : sType !== 0) || !Rom.banked(rom.w(o.eventOff + (o.isSign ? 3 : 9)));
+      info.append(el('div', { class: 'bar' }, loadBtn, storyBtn,
         el('button', { text: '지도에서 위치 옮기기', onclick: () => {
           this.evMsg('옮길 자리를 지도에서 클릭하세요 (Esc = 취소)'); rerender();
           this.startPick('지도에서 자리를 클릭하세요', (x, y) => {
@@ -11165,6 +11330,190 @@ Object.assign(App.prototype, {
       msg,
       el('div', { class: 'bar', style: 'justify-content:flex-end;margin-top:8px' }, el('button', { text: '취소', onclick: () => close() }),
         el('button', { class: 'apply', text: '📥 고른 것 넣기', onclick: apply }))), null, false);
+  }
+});
+
+// ===== 99-story.js
+// ================================================================ 스토리 동작 창 (NPC·표지판 스크립트를 카드로 보고 값 고치기)
+// 1단계: 카드 넣기·빼기 없이 그 자리 값만 고침 (아이템·포켓몬·레벨·트레이너·음악·순간이동·대사·이벤트 표시 번호…)
+const ST_DIRS = ['↓ 아래', '↑ 위', '← 왼쪽', '→ 오른쪽'];
+// 확인 명령 + 바로 뒤 iftrue/iffalse 를 "만약 …이면" 카드 하나로
+const ST_CHECK = { checkevent: 1, checkflag: 1, checkitem: 1, checkpoke: 1, yesorno: 1, checkscene: 1, checkmapscene: 1, checktime: 1, checkjustbattled: 1, checkcellnum: 1, checkcoins: 1, checkmoney: 1, random: 1, checkpokemail: 1, checkver: 1 };
+const ST_MINOR = new Set(['opentext', 'closetext', 'waitbutton', 'promptbutton', 'reloadmapafterbattle', 'waitsfx', 'closepokepic', 'reanchormap', 'refreshmap', 'reloadmap', 'itemnotify', 'closewindow', 'stopfollow', 'dontrestartmapmusic']);
+
+Object.assign(App.prototype, {
+  // a = 구역, o = NPC 또는 표지판
+  storyDialog(a, o) {
+    const rom = this.rom, d = rom.data;
+    let bank = a.scriptBank, addr;
+    if (o.isSign) addr = rom.w(o.eventOff + 3); else addr = rom.w(o.eventOff + 9);
+    const st = rom.readStory(bank, addr);
+    const undo = new Map();   // 바이트 위치 → 처음 값
+    const remember = (at, n) => { for (let i = 0; i < n; i++) if (!undo.has(at + i)) undo.set(at + i, d[at + i]); };
+    const objName = v => v === 0 ? '주인공' : v === 0xFE ? (o.name + ' (말 건 사람)') : v >= 2 ? ((rom.ownerAt(a, false, v - 2) || {}).name || ('NPC ' + (v - 2) + '번')) : ('#' + v);
+    const areas = rom.allAreas;
+    const segBoxes = new Map();
+    const goSeg = off => { const b = segBoxes.get(off); if (!b) return; b.scrollIntoView({ block: 'start', behavior: 'smooth' }); b.classList.remove('flash'); void b.offsetWidth; b.classList.add('flash'); };
+    const segLink = off => { const s = st.byOff.get(off); return el('button', { class: 'st-go', text: s ? '📍 ' + (s.label === '시작' ? '시작' : '갈래 ' + s.label) : '?', onclick: () => goSeg(off) }); };
+    const changed = () => { this.say('스토리 동작을 고쳤어요. [저장하기]를 눌러야 롬 파일에 기록돼요.'); };
+    const setV = (arg, v) => { remember(arg.at, ST_SIZE[arg.t]); rom.storySet(arg, v); changed(); };
+
+    // 이벤트 표시가 어디서 켜지는지 (번호만으로는 뭔지 모르니까)
+    const evHint = v => { const l = rom.storyEventWhere(v); return l.length ? ' (켜지는 곳: ' + l.slice(0, 2).join(', ') + (l.length > 2 ? ' 외 ' + (l.length - 2) + '곳' : '') + ')' : ' (지도 장면이나 게임 코드에서 켜져요)'; };
+    // 값 고치는 칸
+    const ed = (arg, c) => {
+      const t = arg.t, v = arg.v;
+      if (c.argsOff) return el('b', { text: String(typeof v === 'object' ? '' : v) });
+      if (t === 'item') return sel(rom.itemNames.map((n, i) => [i, n || ('도구 ' + i)]).slice(1).filter(x => x[1]), v, x => setV(arg, x));
+      if (t === 'mon') return sel(rom.pokemonNames.map((n, i) => [i, n]).slice(1, 252), v, x => setV(arg, x));
+      if (t === 'lv') return num(v, 1, 100, x => setV(arg, x));
+      if (t === 'qty') return num(v, 1, 99, x => setV(arg, x));
+      if (t === 'x' || t === 'y' || t === 'b') return num(v, 0, 255, x => setV(arg, x));
+      if (t === 'money') return num(v, 0, 999999, x => setV(arg, x));
+      if (t === 'ev' || t === 'flag') {
+        const n = num(v, 0, 4095, x => { setV(arg, x); if (hint) hint.textContent = evHint(x); });
+        n.title = '번호를 바꾸면 다른 이벤트와 엉킬 수 있어요. 잘 모르면 그대로 두세요';
+        const hint = t === 'ev' ? el('span', { class: 'hint', text: evHint(v) }) : null;
+        return hint ? el('span', null, n, hint) : n;
+      }
+      if (t === 'song') return sel(SONG_NAMES.map((n, i) => [i, i + '. ' + n]), v, x => setV(arg, x));
+      if (t === 'cry') return sel(rom.pokemonNames.map((n, i) => [i, n]).slice(1, 252), v, x => setV(arg, x));
+      if (t === 'dir') return sel(ST_DIRS.map((n, i) => [i, n]), v & 3, x => setV(arg, x));
+      if (t === 'map') return sel(areas.map(x => [x.group * 256 + x.map, x.regionName + ' › ' + x.name]), (v & 0xFF) * 256 + (v >> 8), x => setV(arg, (x >> 8) | (x & 0xFF) << 8));
+      if (t === 'tcls') return sel(rom.trainerClasses.map(x => [x.cls, x.name]), v, x => setV(arg, x));
+      if (t === 'tid') return num(v, 1, 99, x => setV(arg, x));
+      return el('b', { text: String(v) });
+    };
+    const textOf = arg => {
+      let t = null;
+      if (arg.t === 'tp') t = Rom.banked(arg.v) ? rom.parseText(rom.off(this._stBank, arg.v), 0) : null;
+      else if (arg.t === 'ftp') {
+        t = Rom.banked(arg.v.addr) && arg.v.bank * 0x4000 < d.length ? rom.parseText(rom.off(arg.v.bank, arg.v.addr), 0) : null;
+        if (!t) { const b2 = d[arg.at], a2 = d[arg.at + 1] | d[arg.at + 2] << 8; if (Rom.banked(a2) && b2 * 0x4000 < d.length) t = rom.parseText(rom.off(b2, a2), 0); }
+      }
+      return t;
+    };
+    const txt = (arg, title) => { const t = textOf(arg); return t ? this.textEditor(t, title, o) : el('div', { class: 'hint', text: '(대사를 읽지 못했어요)' }); };
+    const mv = arg => {
+      const steps = Rom.banked(arg.v) ? rom.readMovement(rom.off(this._stBank, arg.v)) : [];
+      const s = []; let last = null;
+      for (const m of steps) { const key = m.kind + m.dir; if (last && last.key === key) last.n++; else { last = { key, kind: m.kind, dir: m.dir, n: 1, w: m.n }; s.push(last); } }
+      return el('span', { class: 'st-mv', text: s.map(x => (x.dir ? x.dir + ' ' : '') + x.kind + (x.n > 1 ? ' ×' + x.n : '') + (x.w ? ' (' + x.w + ')' : '')).join('  ·  ') || '(움직임 없음)' });
+    };
+    const item = (v, q) => rom.itemName(v) + (q > 1 ? ' ' + q + '개' : '');
+
+    // 카드 한 장 (확인+갈래는 둘을 합쳐서)
+    const card = (c, nx) => {
+      const A = c.args, row = (icon, ...kids) => el('div', { class: 'st-card' }, el('span', { class: 'st-ic', text: icon }), el('div', { class: 'st-body' }, ...kids));
+      const w = (...k) => el('div', { class: 'st-line' }, ...k);
+      const n = c.name;
+      if (ST_CHECK[n] && nx && (nx.name === 'iftrue' || nx.name === 'iffalse' || nx.name === 'ifequal' || nx.name === 'ifnotequal' || nx.name === 'ifgreater' || nx.name === 'ifless')) {
+        const yes = nx.name === 'iftrue', no = nx.name === 'iffalse';
+        let cond;
+        if (n === 'checkevent') cond = [el('span', { text: '이벤트 표시 #' }), ed(A[0], c), el('span', { text: yes ? ' 이(가) 켜져 있으면' : no ? ' 이(가) 꺼져 있으면' : '' })];
+        else if (n === 'checkflag') cond = [el('span', { text: '게임 기록(배지·기능 등) #' }), ed(A[0], c), el('span', { text: yes ? ' 이(가) 켜져 있으면' : ' 이(가) 꺼져 있으면' })];
+        else if (n === 'checkitem') cond = [ed(A[0], c), el('span', { text: yes ? ' 을(를) 가지고 있으면' : ' 이(가) 없으면' })];
+        else if (n === 'checkpoke') cond = [ed(A[0], c), el('span', { text: yes ? ' 을(를) 데리고 있으면' : ' 이(가) 없으면' })];
+        else if (n === 'yesorno') cond = [el('span', { text: yes ? '"예"를 고르면' : '"아니요"를 고르면' })];
+        else if (n === 'checkjustbattled') cond = [el('span', { text: yes ? '방금 배틀했으면' : '방금 배틀하지 않았으면' })];
+        else cond = [el('span', { text: '(' + n + ') 확인 결과가 ' + (yes ? '맞으면' : no ? '아니면' : '') })];
+        if (!yes && !no) cond.push(el('span', { text: ' ' + ({ ifequal: '=', ifnotequal: '≠', ifgreater: '>', ifless: '<' })[nx.name] + ' ' }), ed(nx.args[0], nx), el('span', { text: ' 이면' }));
+        const tgt = nx.args[nx.args.length - 1];
+        return [row('❓', w(el('span', { text: '만약 ' }), ...cond, el('span', { text: '  →  ' }), segLink(rom.off(c.bank, tgt.v)))), 2];
+      }
+      if (ST_MINOR.has(n)) return [el('div', { class: 'st-minor', text: ({ opentext: '대화창 열기', closetext: '대화창 닫기', waitbutton: '⏎ 버튼 누를 때까지 기다림', promptbutton: '⏎ 다음 말풍선', reloadmapafterbattle: '배틀 끝나고 지도로 돌아옴', waitsfx: '효과음 끝날 때까지 기다림', closepokepic: '포켓몬 그림 닫기', stopfollow: '따라가기 그만', closewindow: '창 닫기' })[n] || n }), 1];
+      switch (n) {
+        case 'writetext': case 'farwritetext': return [row('💬', txt(A[0], '대사')), 1];
+        case 'jumptext': case 'farjumptext': return [row('💬', txt(A[0], '대사 (보여주고 끝)')), 1];
+        case 'jumptextfaceplayer': return [row('💬', txt(A[0], '주인공 쪽을 보고 대사 (보여주고 끝)')), 1];
+        case 'winlosstext': return [row('🏆', txt(A[0], '배틀에서 이겼을 때 상대 대사'), txt(A[1], '배틀에서 졌을 때 상대 대사')), 1];
+        case 'faceplayer': return [row('🙂', w(el('span', { text: '주인공 쪽을 봐요' }))), 1];
+        case 'checkevent': case 'checkflag': case 'checkitem': return [row('❓', w(el('span', { text: n === 'checkitem' ? '가지고 있는지 확인: ' : n === 'checkevent' ? '이벤트 표시 확인 #' : '게임 기록 확인 #' }), ed(A[0], c))), 1];
+        case 'iftrue': case 'iffalse': return [row('↪', w(el('span', { text: n === 'iftrue' ? '앞의 확인이 맞으면 → ' : '앞의 확인이 아니면 → ' }), segLink(rom.off(c.bank, A[0].v)))), 1];
+        case 'ifequal': case 'ifnotequal': case 'ifgreater': case 'ifless':
+          return [row('↪', w(el('span', { text: '앞의 값이 ' }), ed(A[0], c), el('span', { text: ({ ifequal: ' 이면', ifnotequal: ' 이(가) 아니면', ifgreater: ' 보다 크면', ifless: ' 보다 작으면' })[n] + ' → ' }), segLink(rom.off(c.bank, A[1].v)))), 1];
+        case 'setval': return [row('🔢', w(el('span', { text: '값을 ' }), ed(A[0], c), el('span', { text: ' (으)로 정하기' }))), 1];
+        case 'addval': return [row('🔢', w(el('span', { text: '값에 ' }), ed(A[0], c), el('span', { text: ' 더하기' }))), 1];
+        case 'random': return [row('🎲', w(el('span', { text: '0 ~ ' + (A[0].v - 1) + ' 중 아무 수 뽑기' }))), 1];
+        case 'readvar': return [row('🔢', w(el('span', { text: '게임 정보 읽기: ' + ({ 1: '데리고 있는 포켓몬 수', 2: '배틀 결과', 3: '박스 빈자리', 5: '주인공 X 위치', 6: '주인공 Y 위치' }[A[0].v] || ('#' + A[0].v)) }))), 1];
+        case 'checkscene': return [row('🎬', w(el('span', { text: '이 지도의 장면 번호 읽기' }))), 1];
+        case 'checktime': return [row('🕒', w(el('span', { text: '시간대 확인 (' + ({ 1: '아침', 2: '낮', 4: '밤' }[A[0].v] || '#' + A[0].v) + ')' }))), 1];
+        case 'yesorno': return [row('❔', w(el('span', { text: '"예 / 아니요" 고르기' }))), 1];
+        case 'setevent': return [row('✅', w(el('span', { text: '이벤트 표시 #' }), ed(A[0], c), el('span', { text: ' 켜기 (이 일을 했다고 기록)' }))), 1];
+        case 'clearevent': return [row('⬜', w(el('span', { text: '이벤트 표시 #' }), ed(A[0], c), el('span', { text: ' 끄기' }))), 1];
+        case 'setflag': return [row('✅', w(el('span', { text: '게임 기록 #' }), ed(A[0], c), el('span', { text: ' 켜기' }))), 1];
+        case 'clearflag': return [row('⬜', w(el('span', { text: '게임 기록 #' }), ed(A[0], c), el('span', { text: ' 끄기' }))), 1];
+        case 'giveitem': return [row('🎒', w(ed(A[0], c), el('span', { text: '  ' }), ed(A[1], c), el('span', { text: '개 주기 (메시지 없이)' }))), 1];
+        case 'verbosegiveitem': return [row('🎁', w(ed(A[0], c), el('span', { text: '  ' }), ed(A[1], c), el('span', { text: '개 주기' }))), 1];
+        case 'takeitem': return [row('🎒', w(ed(A[0], c), el('span', { text: '  ' }), ed(A[1], c), el('span', { text: '개 가져가기' }))), 1];
+        case 'givepoke': return [row('🐣', w(el('span', { text: '포켓몬 주기: ' }), ed(A[0], c), el('span', { text: ' Lv' }), ed(A[1], c), el('span', { text: '  지닌 물건 ' }), ed(A[2], c))), 1];
+        case 'giveegg': return [row('🥚', w(el('span', { text: '알 주기: ' }), ed(A[0], c), el('span', { text: ' (태어나면 Lv' }), ed(A[1], c), el('span', { text: ')' }))), 1];
+        case 'loadwildmon': return [row('⚔', w(el('span', { text: '야생 ' }), ed(A[0], c), el('span', { text: ' Lv' }), ed(A[1], c), el('span', { text: ' 와(과) 배틀 준비' }))), 1];
+        case 'loadtrainer': { const lab = el('div', { class: 'hint', text: rom.trainerLabel(A[0].v, A[1].v) });
+          const upd = () => lab.textContent = rom.trainerLabel(A[0].v, A[1].v);
+          const s1 = ed(A[0], c), s2 = ed(A[1], c); s1.addEventListener('change', upd); s2.addEventListener('change', upd);
+          return [row('⚔', w(el('span', { text: '트레이너 배틀 준비: ' }), s1, el('span', { text: ' 팀 ' }), s2), lab), 1]; }
+        case 'startbattle': return [row('⚔', w(el('b', { text: '배틀 시작!' }))), 1];
+        case 'applymovement': return [row('🚶', w(el('b', { text: objName(A[0].v) }), el('span', { text: ' 움직이기: ' }), mv(A[1]))), 1];
+        case 'applymovementlasttalked': return [row('🚶', w(el('b', { text: o.name }), el('span', { text: ' 움직이기: ' }), mv(A[0]))), 1];
+        case 'turnobject': return [row('↻', w(el('b', { text: objName(A[0].v) }), el('span', { text: ' 방향 바꾸기 ' }), ed(A[1], c))), 1];
+        case 'faceobject': return [row('👀', w(el('b', { text: objName(A[0].v) }), el('span', { text: ' 이(가) ' }), el('b', { text: objName(A[1].v) }), el('span', { text: ' 쪽을 봐요' }))), 1];
+        case 'disappear': return [row('👻', w(el('b', { text: objName(A[0].v) }), el('span', { text: ' 사라지기' }))), 1];
+        case 'appear': return [row('✨', w(el('b', { text: objName(A[0].v) }), el('span', { text: ' 나타나기' }))), 1];
+        case 'moveobject': return [row('📍', w(el('b', { text: objName(A[0].v) }), el('span', { text: ' 자리 옮기기 → X ' }), ed(A[1], c), el('span', { text: ' Y ' }), ed(A[2], c))), 1];
+        case 'showemote': return [row('❗', w(el('b', { text: objName(A[1].v) }), el('span', { text: ' 머리 위에 감정 표시' }))), 1];
+        case 'follow': case 'follownotexact': return [row('👣', w(el('b', { text: objName(A[0].v) }), el('span', { text: ' 이(가) ' }), el('b', { text: objName(A[1].v) }), el('span', { text: ' 을(를) 따라가기' }))), 1];
+        case 'playmusic': return [row('🎵', w(el('span', { text: '음악 바꾸기: ' }), ed(A[0], c))), 1];
+        case 'musicfadeout': return [row('🎵', w(el('span', { text: '음악 줄이고 바꾸기: ' }), ed(A[0], c))), 1];
+        case 'playmapmusic': return [row('🎵', w(el('span', { text: '원래 지도 음악으로' }))), 1];
+        case 'encountermusic': return [row('🎵', w(el('span', { text: '트레이너 만남 음악' }))), 1];
+        case 'cry': return [row('🔊', w(ed(A[0], c), el('span', { text: ' 울음소리' }))), 1];
+        case 'playsound': return [row('🔊', w(el('span', { text: '효과음 #' + A[0].v }))), 1];
+        case 'pause': return [row('⏸', w(el('span', { text: '잠깐 쉬기 ' }), ed(A[0], c), el('span', { text: ' 프레임 (60 = 1초)' }))), 1];
+        case 'warp': return [row('🚪', w(el('span', { text: '순간이동: ' }), ed(A[0], c), el('span', { text: ' X ' }), ed(A[1], c), el('span', { text: ' Y ' }), ed(A[2], c))), 1];
+        case 'warpfacing': return [row('🚪', w(el('span', { text: '순간이동: ' }), ed(A[1], c), el('span', { text: ' X ' }), ed(A[2], c), el('span', { text: ' Y ' }), ed(A[3], c), el('span', { text: ' 방향 ' }), ed(A[0], c))), 1];
+        case 'setscene': return [row('🎬', w(el('span', { text: '이 지도의 장면 번호를 ' }), ed(A[0], c), el('span', { text: ' (으)로 (다음 이야기로 넘어감)' }))), 1];
+        case 'setmapscene': return [row('🎬', w(ed(A[0], c), el('span', { text: ' 지도의 장면 번호를 ' }), ed(A[1], c), el('span', { text: ' (으)로' }))), 1];
+        case 'givemoney': return [row('💰', w(el('span', { text: '돈 주기 ' }), ed(A[1], c), el('span', { text: '원' }))), 1];
+        case 'takemoney': return [row('💰', w(el('span', { text: '돈 가져가기 ' }), ed(A[1], c), el('span', { text: '원' }))), 1];
+        case 'pokepic': return [row('🖼', w(ed(A[0], c), el('span', { text: ' 그림 보여주기' }))), 1];
+        case 'pokemart': return [row('🏪', w(el('span', { text: '상점 열기 (물건 목록 ' + A[1].v + '번 · [프렌들리숍] 탭에서 고쳐요)' }))), 1];
+        case 'earthquake': return [row('🌋', w(el('span', { text: '화면 흔들기' }))), 1];
+        case 'special': return [row('⚙', w(el('span', { text: '게임 특수 동작 #' + A[0].v + ' (그대로 둬요)' }))), 1];
+        case 'callstd': case 'jumpstd': return [row('⚙', w(el('span', { text: '공통 동작 #' + A[0].v + (n === 'jumpstd' ? ' (하고 끝)' : '') }))), 1];
+        case 'callasm': return [row('⚙', w(el('span', { text: '게임 코드 실행 (그대로 둬요)' }))), 1];
+        case 'scall': return [row('📞', w(segLink(rom.off(c.bank, A[0].v)), el('span', { text: ' 을(를) 하고 돌아오기' }))), 1];
+        case 'farscall': return [row('📞', w(segLink(rom.off(A[0].v.bank, A[0].v.addr)), el('span', { text: ' 을(를) 하고 돌아오기' }))), 1];
+        case 'sjump': return [row('↪', w(segLink(rom.off(c.bank, A[0].v)), el('span', { text: ' (으)로 가기' }))), 1];
+        case 'farsjump': return [row('↪', w(segLink(rom.off(A[0].v.bank, A[0].v.addr)), el('span', { text: ' (으)로 가기' }))), 1];
+        case 'end': case 'endall': case 'endcallback': return [row('⏹', w(el('span', { text: '끝' }))), 1];
+      }
+      return [row('🔒', w(el('span', { class: 'hint', text: '원래 게임 동작 (' + n + ') — 그대로 동작해요' }))), 1];
+    };
+
+    const body = el('div', { class: 'st' });
+    for (const s of st.segs) {
+      this._stBank = s.bank;
+      const box = el('div', { class: 'st-seg' + (s.label === '시작' ? ' start' : '') },
+        el('div', { class: 'st-head', text: s.label === '시작' ? '📍 시작 (말을 걸면 여기부터)' : '📍 갈래 ' + s.label + (s.sub ? '  (불러 쓰는 부분 · 끝나면 돌아감)' : '') }));
+      for (let i = 0; i < s.cards.length;) {
+        this._stBank = s.cards[i].bank;
+        const [elx, used] = card(s.cards[i], s.cards[i + 1]);
+        box.append(elx); i += used;
+      }
+      if (s.next != null) box.append(el('div', { class: 'st-card' }, el('span', { class: 'st-ic', text: '↓' }), el('div', { class: 'st-body' }, el('span', { text: '이어서 ' }), segLink(s.next))));
+      segBoxes.set(s.off, box);
+      body.append(box);
+    }
+    const revert = el('button', { text: '↶ 이 창에서 고친 값 모두 되돌리기', onclick: () => {
+      if (!undo.size) return;
+      for (const [at, v] of undo) d[at] = v;
+      undo.clear(); close(); this.storyDialog(a, o);
+    } });
+    const close = this.dialog('📜 스토리 동작 — ' + a.regionName + ' › ' + a.name + ' › ' + o.name, () => el('div', null,
+      el('div', { class: 'hint', text: '말을 걸었을 때 게임이 하는 일을 순서대로 보여줘요. 📍 갈래 버튼을 누르면 그 부분으로 가요.\n파란 칸(아이템·포켓몬·레벨·음악·대사 등)은 바로 고칠 수 있어요. 순서·흐름은 그대로라 스토리가 깨지지 않아요.\n🔒 카드는 아직 풀어서 보여주지 못하는 동작이에요 (그대로 동작해요). 카드 넣기·빼기는 다음 단계에서 만들 거예요.' }),
+      el('div', { class: 'bar', style: 'margin:6px 0' }, revert, el('span', { class: 'hint', text: '대사는 각 칸의 [원래대로]로 되돌려요' })),
+      body), () => { this.setTab(this.tab); }, false, true);
   }
 });
 
