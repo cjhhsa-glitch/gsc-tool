@@ -103,6 +103,21 @@ const EN_EXTRA = {
   '\n이름은 이 툴에서만 보여요 (게임에는 영향 없음). 비우면 이름을 지워요.': '\nThe name shows only in this tool (no effect on the game). Leave empty to remove it.', '저장': 'Save',
   '✏ 이름': '✏ Name', '✔': '✔',
 
+  // ---- 물리/특수 분화 (72-split · 99-split)
+  '이 롬에서는 데미지 계산 코드를 찾지 못했어요': 'The damage calculation code was not found in this ROM', '다른 도구가 데미지 계산 코드를 이미 고친 롬이에요': 'Another tool has already changed the damage code in this ROM',
+  '배틀 코드가 있는 곳에 빈 공간이 부족해요 (': 'Not enough free space near the battle code (', '바이트 필요)': ' bytes needed)', '분류': 'Category', '물리': 'Physical', '특수': 'Special', '변화': 'Status',
+  '(타입으로 정해져요) ': '(decided by type) ', '⚙ 분화 설정…': '⚙ Split settings…', '⚔ 물리/특수 분화 켜기…': '⚔ Enable physical/special split…', '(위력 0 · 데미지 없음) ': '(power 0 · no damage) ',
+  '물리 (공격 · 방어)': 'Physical (Attack · Defense)', '특수 (특수공격 · 특수방어)': 'Special (Sp. Atk · Sp. Def)', '기술 분류를 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.': 'Move category changed. Press [Save] to write it to the ROM file.',
+  '⚠ 같이 바뀌는 기술: ': '⚠ Also changes: ', ' [저장하기]를 눌러야 롬 파일에 기록돼요.': ' Press [Save] to write it to the ROM file.', '⚔ 물리/특수 분화': '⚔ Physical/Special Split',
+  '지금 분화가 켜져 있어요. 기술마다 [기술 편집] 탭의 분류 칸에서 물리·특수를 고를 수 있어요.': 'The split is on. Pick physical or special per move in the Category field of the [Move Editor] tab.',
+  '📋 모든 기술을 4세대 분류로 채우기': '📋 Fill all moves with Gen 4 categories', '모든 기술을 4세대 분류로 채웠어요.': 'All moves filled with Gen 4 categories.', '↩ 모든 기술을 타입 규칙대로 되돌리기': '↩ Set all moves back to the type rule',
+  '모든 기술을 타입 규칙대로 되돌렸어요.': 'All moves set back to the type rule.', '끄기 (원래 게임 코드로)': 'Turn off (original game code)', '분화를 껐어요.': 'Split turned off.',
+  '2세대는 타입으로 물리·특수가 정해져요 (불꽃 기술은 전부 특수). 켜면 4세대처럼 기술마다 정할 수 있어요.': 'In Gen 2 the type decides physical or special (all Fire moves are special). Turn this on to choose per move, like Gen 4.',
+  '데미지 계산·카운터·미러코트·상대 AI의 판단을 함께 바꿔요. 게임 코드를 고치는 기능이라, 켠 뒤에는 [▶ 게임으로 확인]으로 배틀을 꼭 해 보세요.\n⚠ 4세대 분류로 채우면 밸런스가 달라져요 (예: 갸라도스의 폭포오르기는 공격으로 계산). 기술 번호 기준이라, 기술을 바꾼 개조롬은 직접 확인해 주세요.':
+    "Changes damage calculation, Counter, Mirror Coat and the opponent AI's decisions. This edits game code, so test a battle with [▶ Test Play] after turning it on.\n⚠ Gen 4 categories change the balance (e.g. Gyarados's Waterfall uses Attack). They go by move number, so check them yourself in hacks that changed moves.",
+  '📋 켜고 4세대 분류로 채우기': '📋 Turn on with Gen 4 categories', '물리/특수 분화를 켰어요 (4세대 분류).': 'Physical/special split on (Gen 4 categories).', '켜기 (지금 타입 규칙 그대로 시작)': 'Turn on (start with the current type rule)', '물리/특수 분화를 켰어요 (타입 규칙 그대로).': 'Physical/special split on (type rule kept).',
+  ' 분류: 이 롬은 물리/특수 분화가 꺼져 있어서 넣지 않았어요': ' category: not imported because the split is off in this ROM',
+
   // ---- 타운맵 (99-townmap)
   '이 롬에서 타운맵 데이터를 찾지 못했어요.': 'Could not find the town map data in this ROM.', '타운맵을 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.': 'Town map changed. Press [Save] to write it to the ROM file.',
   '장소 위치를 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.': 'Place position changed. Press [Save] to write it to the ROM file.', '타일 ': 'Tile ', '고른 타일: ': 'Selected tile: ',
@@ -6513,6 +6528,145 @@ mixin(Rom.prototype, {
   }
 });
 
+// ===== 72-split.js
+// ================================================================ 물리/특수 분화 (4세대처럼 타입이 아니라 기술마다 정함)
+// 원래: 데미지 계산이 "cp SPECIAL" 로 타입 번호를 봄. 그 자리를 표를 보는 작은 코드 호출로 바꿈 (같은 길이, 끄면 원래 바이트로 되돌림)
+// 고치는 곳: PlayerAttackDamage · EnemyAttackDamage (배틀 뱅크) · 카운터 · 미러코트 · AI 의 카운터·미러코트 판단
+// 표는 기술 번호(애니메이션 칸)당 1비트: 1 = 특수. 위력 0 인 기술은 데미지 계산에 안 오니 "변화"로 보여주기만 함
+const SPLIT_SPECIAL_GEN4 = [13, 16, 49, 51, 52, 53, 55, 56, 57, 58, 59, 60, 61, 62, 63, 71, 72, 76, 80, 82, 83, 84, 85, 87, 93, 94, 101, 123, 124, 126, 129, 138, 145, 149,
+  161, 173, 177, 181, 188, 189, 190, 192, 196, 202, 225, 237, 239, 243, 246, 247, 248, 250];
+const SPLIT_SIG = [0xE5, 0x2B, 0x2B, 0x2B, 0x7E, 0xE1, 0xE5, 0xC5, 0x47];
+const SPLIT_SIZE = 74;   // 코드 36 + 표 32 + 카운터용 입구 6
+
+mixin(Rom.prototype, {
+  // 코드 묶음: base = 뱅크 안 주소
+  // +0  hl = 기술 정보의 타입 칸 → 그 세 칸 앞(애니메이션 칸 = 기술 번호)을 읽어 +6 으로
+  // +6  a = 기술 번호 → 표의 비트를 봄. 물리면 carry, 특수면 no carry (cp SPECIAL 과 같은 뜻)
+  // +68 ld a, [idAddr] / jp +6 (카운터·미러코트·AI 입구)
+  splitBlock(base, idAddr, table) {
+    const tb = base + 36, a6 = base + 6;
+    return [0xE5, 0x2B, 0x2B, 0x2B, 0x7E, 0xE1,
+      0xE5, 0xC5, 0x47, 0xE6, 0x07, 0x4F, 0x78, 0x0F, 0x0F, 0x0F, 0xE6, 0x1F, 0x21, tb & 0xFF, tb >> 8, 0x85, 0x6F, 0x30, 0x01, 0x24, 0x7E,
+      0x0C, 0x0F, 0x0D, 0x20, 0xFC, 0xC1, 0xE1, 0x3F, 0xC9,
+      ...table,
+      0xFA, idAddr & 0xFF, idAddr >> 8, 0xC3, a6 & 0xFF, a6 >> 8];
+  },
+  // 고칠 자리 찾기 (원래 상태 · 켠 상태 둘 다) → { ok, why, on, … } 자리는 안 바뀌니 한 번만 찾음
+  splitSites() {
+    if (this._split !== undefined) return this._split;
+    const d = this.data, L = d.length;
+    const find = (head) => {
+      for (let p = this.findPattern(head, 0x4000, L); p >= 0; p = this.findPattern(head, p + 1, L)) {
+        const q = p + head.length, plain = d[q] === 0x7E && d[q + 1] === 0xFE && d[q + 2] === 0x14 && d[q + 3] === 0x30;
+        if (plain || (d[q] === 0xCD && d[q + 3] === 0x30)) return { at: q, power: this.w(p + 1) };
+      }
+      return null;
+    };
+    const pl = find([0x21, -1, -1, 0x2A, 0xA7, 0x57, 0xC8]), en = find([0x21, -1, -1, 0x2A, 0x57, 0xA7, 0xC8]);
+    if (!pl || !en || Math.floor(pl.at / 0x4000) !== Math.floor(en.at / 0x4000)) return (this._split = { ok: false, why: '이 롬에서는 데미지 계산 코드를 찾지 못했어요' });
+    const bank = Math.floor(pl.at / 0x4000), lo = bank * 0x4000, hi = lo + 0x4000;
+    // 카운터·미러코트: ld de, 버퍼 / call GetMoveData / ld a, [위력] / and a / ret z / ld a, [타입] / cp SPECIAL / ret nc(또는 c)
+    const coat = last => {
+      for (const form of [[0xFA, -1, -1, 0xFE, 0x14, last], [0xCD, -1, -1, 0x00, 0x00, last]]) {
+        const pat = [0x11, -1, -1, 0xCD, -1, -1, 0xFA, -1, -1, 0xA7, 0xC8, ...form], p = this.findPattern(pat, lo, hi);
+        if (p >= 0) return { at: p + 11, power: this.w(p + 7) };
+      }
+      return null;
+    };
+    const counter = coat(0xD0), mirror = coat(0xD8);
+    // AI: ld a, [wEnemyMoveStruct 타입] / cp SPECIAL / jr
+    const ty = en.power + 1, aiPlain = [], aiPat = [0xFA, ty & 0xFF, ty >> 8, 0xFE, 0x14];
+    for (let p = this.findPattern(aiPat, 0x4000, L); p >= 0; p = this.findPattern(aiPat, p + 1, L)) if (d[p + 5] === 0x30 || d[p + 5] === 0x38) aiPlain.push(p);
+    const s = { ok: true, bank, pl: pl.at, en: en.at, counter, mirror, aiType: ty, aiId: en.power - 2, ai: aiPlain, aiBank: aiPlain.length ? Math.floor(aiPlain[0] / 0x4000) : -1 };
+    if (d[pl.at] === 0xCD) {
+      const b = this.off(bank, this.w(pl.at + 1));
+      if (SPLIT_SIG.some((v, i) => d[b + i] !== v)) return (this._split = { ok: false, why: '다른 도구가 데미지 계산 코드를 이미 고친 롬이에요' });
+      // 이미 켠 롬이면 AI 자리는 AI 쪽 코드 묶음의 입구를 부르는 곳으로 찾음
+      for (let p = this.findPattern(SPLIT_SIG, 0x4000, L); p >= 0 && !s.ai.length; p = this.findPattern(SPLIT_SIG, p + 1, L)) {
+        const bk = Math.floor(p / 0x4000);
+        if (bk === bank) continue;
+        const t = 0x4000 + p % 0x4000 + 68, pat = [0xCD, t & 0xFF, t >> 8, 0, 0];
+        for (let q = this.findPattern(pat, bk * 0x4000, bk * 0x4000 + 0x4000); q >= 0; q = this.findPattern(pat, q + 1, bk * 0x4000 + 0x4000)) s.ai.push(q);
+        if (s.ai.length) s.aiBank = bk;
+      }
+    }
+    return (this._split = s);
+  },
+  splitInfo() {
+    const s = this.splitSites();
+    if (!s.ok) return s;
+    const d = this.data;
+    s.on = d[s.pl] === 0xCD;
+    s.block = s.on ? this.off(s.bank, this.w(s.pl + 1)) : -1;
+    return s;
+  },
+  splitOn() { return !!this.splitInfo().on; },
+  splitFindBlock(bank) { return this.findPattern(SPLIT_SIG, bank * 0x4000, bank * 0x4000 + 0x4000); },
+  // 위력 > 0 인 기술의 분류: true = 특수
+  splitIsSpecial(mv) {
+    const s = this.splitInfo(), d = this.data;
+    if (!s.on) return d[this.moveOff(mv) + 3] >= 0x14;
+    const id = d[this.moveOff(mv)];
+    return !!(d[s.block + 36 + (id >> 3)] >> (id & 7) & 1);
+  },
+  splitTables() {
+    const s = this.splitInfo(), t = [s.block + 36];
+    if (s.aiBank >= 0) { const b = this.splitFindBlock(s.aiBank); if (b >= 0) t.push(b + 36); }
+    return t;
+  },
+  splitSet(mv, special) {
+    const id = this.data[this.moveOff(mv)];
+    for (const t of this.splitTables()) { const o = t + (id >> 3); this.data[o] = special ? this.data[o] | 1 << (id & 7) : this.data[o] & ~(1 << (id & 7)); }
+    this.dirty = true;
+  },
+  // 같은 애니메이션 번호를 쓰는 기술끼리는 분류를 같이 씀 → 그 기술 목록
+  splitSharing(mv) {
+    const d = this.data, id = d[this.moveOff(mv)], r = [];
+    for (let m = 1; m <= 251; m++) if (m !== mv && d[this.moveOff(m)] === id) r.push(m);
+    return r;
+  },
+  splitFill(gen4) {
+    const set = gen4 ? new Set(SPLIT_SPECIAL_GEN4) : null;
+    for (let m = 1; m <= 251; m++) this.splitSet(m, gen4 ? set.has(m) : this.data[this.moveOff(m) + 3] >= 0x14);
+  },
+  // 켜기 → 오류 또는 null. gen4 = 4세대 분류로 채움 (아니면 지금 타입 규칙 그대로)
+  splitEnable(gen4) {
+    const s = this.splitInfo(), d = this.data;
+    if (!s.ok) return s.why;
+    if (s.on) return null;
+    if (!this.free) this.findFree();
+    const place = (bank, idAddr) => {
+      let p = this.splitFindBlock(bank);
+      if (p < 0) p = this.allocSmallInBank(bank, SPLIT_SIZE);
+      if (p < 0) p = this.allocInBank(bank, SPLIT_SIZE);
+      if (p < 0) return -1;
+      const base = 0x4000 + p % 0x4000;
+      d.set(this.splitBlock(base, idAddr, new Array(32).fill(0)), p);
+      return base;
+    };
+    const main = place(s.bank, s.counter ? s.counter.power - 2 : s.aiId);
+    if (main < 0) return '배틀 코드가 있는 곳에 빈 공간이 부족해요 (' + SPLIT_SIZE + '바이트 필요)';
+    let ai = -1;
+    if (s.ai.length) ai = place(s.aiBank, s.aiId);
+    for (const q of [s.pl, s.en]) { d[q] = 0xCD; d[q + 1] = main & 0xFF; d[q + 2] = main >> 8; }
+    const thunk = main + 68;
+    for (const c of [s.counter, s.mirror]) if (c) d.set([0xCD, thunk & 0xFF, thunk >> 8, 0, 0], c.at);
+    if (ai >= 0) { const t = ai + 68; for (const q of s.ai) d.set([0xCD, t & 0xFF, t >> 8, 0, 0], q); }
+    this.splitFill(gen4);
+    this.dirty = true;
+    return null;
+  },
+  // 끄기: 고친 자리를 원래 바이트로 (표·코드는 빈 곳에 남겨 뒀다가 다시 켤 때 씀)
+  splitDisable() {
+    const s = this.splitInfo(), d = this.data;
+    if (!s.on) return;
+    for (const q of [s.pl, s.en]) d.set([0x7E, 0xFE, 0x14], q);
+    for (const c of [s.counter, s.mirror]) if (c) { const t = c.power + 1; d.set([0xFA, t & 0xFF, t >> 8, 0xFE, 0x14], c.at); }
+    for (const q of s.ai) d.set([0xFA, s.aiType & 0xFF, s.aiType >> 8, 0xFE, 0x14], q);
+    this.dirty = true;
+  }
+});
+
 // ===== 90-ui.js
 // ================================================================ 화면 (데스크톱 툴과 같은 배치: 위 버튼줄 · 왼쪽 목록 · 오른쪽 위 지도 · 아래 탭)
 const CSS = `
@@ -7454,6 +7608,7 @@ Object.assign(App.prototype, {
         el('tr', null, el('th', { text: '효과' }), el('td', null, eff)),
         el('tr', null, el('th', { text: '위력' }), el('td', null, power)),
         el('tr', null, el('th', { text: '타입' }), el('td', null, type)),
+        el('tr', null, el('th', { text: '분류' }), el('td', null, this.moveSplitCell(mv, () => show(mv)))),
         el('tr', null, el('th', { text: '명중률' }), el('td', null, acc, ' %')),
         el('tr', null, el('th', { text: 'PP' }), el('td', null, pp)),
         el('tr', null, el('th', { text: '추가 효과 확률' }), el('td', null, chance, ' %'))),
@@ -11530,6 +11685,8 @@ mixin(Rom.prototype, {
   presetMove(mv, o) {
     const d = this.data, m = this.moveOff(mv), r = { effect: d[m + 1], power: d[m + 2], type: d[m + 3], accuracy: d[m + 4], pp: d[m + 5], chance: d[m + 6] };
     if (o.names) r.name = this.moveNames[mv];
+    // 물리/특수 분화가 켜져 있고 타입 규칙과 다른 기술만 분류를 적음 (1 = 특수, 0 = 물리)
+    if (d[m + 2] && this.splitOn()) { const sp = this.splitIsSpecial(mv); if (sp !== (d[m + 3] >= 0x14)) r.split = sp ? 1 : 0; }
     return r;
   },
   // 프리셋 값 넣기 → 문제 있으면 이유 (부분만 들어갈 수 있음)
@@ -11564,6 +11721,7 @@ mixin(Rom.prototype, {
     if (b(p.accuracy, 0, 255)) d[m + 4] = p.accuracy;
     if (b(p.pp, 1, 40)) d[m + 5] = p.pp;
     if (b(p.chance, 0, 255)) d[m + 6] = p.chance;
+    if (p.split === 0 || p.split === 1) { if (this.splitOn()) this.splitSet(mv, p.split === 1); else errs.push(pad3(mv) + ' 분류: 이 롬은 물리/특수 분화가 꺼져 있어서 넣지 않았어요'); }
     if (o.names && typeof p.name === 'string' && p.name && p.name !== this.moveNames[mv]) { try { this.setMoveName(mv, p.name); } catch (e) { errs.push(pad3(mv) + ' 이름: ' + e.message); } }
     this.dirty = true;
     return errs;
@@ -11652,7 +11810,7 @@ Object.assign(App.prototype, {
     const TYPE = new Map(TYPES);
     const diffText = (a, b) => { const out = []; for (const k of Object.keys(a)) if (k !== 'name' && JSON.stringify(a[k]) !== JSON.stringify(b[k])) out.push(k); return out; };
     const LABEL = { types: '타입', stats: '능력치', catchRate: '잡히는 정도', baseExp: '경험치', items: '도구', gender: '성별', eggSteps: '알', growth: '성장', eggGroups: '알 그룹', tmhm: '기술머신', evos: '진화', learnset: '레벨업 기술',
-      effect: '효과', power: '위력', type: '타입', accuracy: '명중', pp: 'PP', chance: '추가 효과' };
+      effect: '효과', power: '위력', type: '타입', accuracy: '명중', pp: 'PP', chance: '추가 효과', split: '분류' };
     if (monIds.length) box.append(el('div', { class: 'grp', text: '🐾 포켓몬 ' + monIds.length + '마리' }));
     for (const m of monIds) {
       const v = p.pokemon[m], cur = rom.presetMon(m, { names: true, evos: true });
@@ -11690,6 +11848,51 @@ Object.assign(App.prototype, {
       msg,
       el('div', { class: 'bar', style: 'justify-content:flex-end;margin-top:8px' }, el('button', { text: '취소', onclick: () => close() }),
         el('button', { class: 'apply', text: '📥 고른 것 넣기', onclick: apply }))), null, false);
+  }
+});
+
+// ===== 99-split.js
+// ================================================================ 물리/특수 분화 — [기술 편집] 탭의 분류 칸 · 켜기 창
+Object.assign(App.prototype, {
+  // 기술 편집 표의 "분류" 칸. refresh = 켜고 끈 뒤 화면 다시 그리기
+  moveSplitCell(mv, refresh) {
+    const rom = this.rom, s = rom.splitInfo(), d = rom.data, power = d[rom.moveOff(mv) + 2];
+    if (!s.ok) return el('span', { class: 'hint', text: s.why });
+    const set = el('button', { text: s.on ? '⚙ 분화 설정…' : '⚔ 물리/특수 분화 켜기…', onclick: () => this.splitDialog(refresh) });
+    if (!s.on) return el('span', null, el('span', { text: (power ? (rom.splitIsSpecial(mv) ? '특수' : '물리') : '변화') + ' ' }), el('span', { class: 'hint', text: '(타입으로 정해져요) ' }), set);
+    if (!power) return el('span', null, el('span', { text: '변화 ' }), el('span', { class: 'hint', text: '(위력 0 · 데미지 없음) ' }), set);
+    const share = rom.splitSharing(mv);
+    const pick = sel([[0, '물리 (공격 · 방어)'], [1, '특수 (특수공격 · 특수방어)']], rom.splitIsSpecial(mv) ? 1 : 0, v => {
+      rom.splitSet(mv, !!v);
+      this.say('기술 분류를 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.');
+    });
+    return el('span', null, pick, ' ', set,
+      share.length ? el('div', { class: 'hint', text: '⚠ 같이 바뀌는 기술: ' + RAW + share.map(m => rom.moveName(m)).join(', ') }) : null);
+  },
+
+  splitDialog(refresh) {
+    const rom = this.rom, s = rom.splitInfo();
+    let close;
+    const done = (msg, e) => {
+      if (e) { alert(e); return; }
+      close(); this.say(msg + ' [저장하기]를 눌러야 롬 파일에 기록돼요.');
+      if (refresh) refresh();
+    };
+    const body = s.on ? [
+      el('div', { text: '지금 분화가 켜져 있어요. 기술마다 [기술 편집] 탭의 분류 칸에서 물리·특수를 고를 수 있어요.' }),
+      el('div', { class: 'bar', style: 'margin-top:10px;flex-wrap:wrap' },
+        el('button', { text: '📋 모든 기술을 4세대 분류로 채우기', onclick: () => { rom.splitFill(true); done('모든 기술을 4세대 분류로 채웠어요.'); } }),
+        el('button', { text: '↩ 모든 기술을 타입 규칙대로 되돌리기', onclick: () => { rom.splitFill(false); done('모든 기술을 타입 규칙대로 되돌렸어요.'); } }),
+        el('button', { text: '끄기 (원래 게임 코드로)', onclick: () => { rom.splitDisable(); done('분화를 껐어요.'); } }))
+    ] : [
+      el('div', { text: '2세대는 타입으로 물리·특수가 정해져요 (불꽃 기술은 전부 특수). 켜면 4세대처럼 기술마다 정할 수 있어요.' }),
+      el('div', { class: 'hint', style: 'margin-top:6px', text: '데미지 계산·카운터·미러코트·상대 AI의 판단을 함께 바꿔요. 게임 코드를 고치는 기능이라, 켠 뒤에는 [▶ 게임으로 확인]으로 배틀을 꼭 해 보세요.\n⚠ 4세대 분류로 채우면 밸런스가 달라져요 (예: 갸라도스의 폭포오르기는 공격으로 계산). 기술 번호 기준이라, 기술을 바꾼 개조롬은 직접 확인해 주세요.' }),
+      el('div', { class: 'bar', style: 'margin-top:10px;flex-wrap:wrap' },
+        el('button', { class: 'apply', text: '📋 켜고 4세대 분류로 채우기', onclick: () => done('물리/특수 분화를 켰어요 (4세대 분류).', rom.splitEnable(true)) }),
+        el('button', { text: '켜기 (지금 타입 규칙 그대로 시작)', onclick: () => done('물리/특수 분화를 켰어요 (타입 규칙 그대로).', rom.splitEnable(false)) }))
+    ];
+    close = this.dialog('⚔ 물리/특수 분화', () => el('div', null, ...body,
+      el('div', { class: 'bar', style: 'justify-content:flex-end;margin-top:10px' }, el('button', { text: '닫기', onclick: () => close() }))), null, true);
   }
 });
 
