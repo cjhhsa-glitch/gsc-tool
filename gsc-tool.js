@@ -108,6 +108,9 @@ const EN_EXTRA = {
   '배틀 코드가 있는 곳에 빈 공간이 부족해요 (': 'Not enough free space near the battle code (', '바이트 필요)': ' bytes needed)', '분류': 'Category', '물리': 'Physical', '특수': 'Special', '변화': 'Status',
   '(타입으로 정해져요) ': '(decided by type) ', '⚙ 분화 설정…': '⚙ Split settings…', '⚔ 물리/특수 분화 켜기…': '⚔ Enable physical/special split…', '(위력 0 · 데미지 없음) ': '(power 0 · no damage) ',
   '물리 (공격 · 방어)': 'Physical (Attack · Defense)', '특수 (특수공격 · 특수방어)': 'Special (Sp. Atk · Sp. Def)', '기술 분류를 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.': 'Move category changed. Press [Save] to write it to the ROM file.',
+  '변화 (데미지 없음 · 위력 0)': 'Status (no damage · power 0)', '효과를 일반 공격으로': 'Set effect to normal attack',
+  '⚠ 지금 효과는 데미지가 없는 효과예요. 위력이 있어도 데미지가 안 들어가요. ': '⚠ This effect deals no damage, even with power set. ',
+  '⚠ 지금 효과는 공격 기술용이에요. 효과 칸에서 변화 효과(잠들기·능력 내리기 등)를 골라 주세요.': '⚠ This effect is for attacking moves. Pick a status effect (sleep, stat drop…) in the Effect field.',
   '⚠ 같이 바뀌는 기술: ': '⚠ Also changes: ', ' [저장하기]를 눌러야 롬 파일에 기록돼요.': ' Press [Save] to write it to the ROM file.', '⚔ 물리/특수 분화': '⚔ Physical/Special Split',
   '지금 분화가 켜져 있어요. 기술마다 [기술 편집] 탭의 분류 칸에서 물리·특수를 고를 수 있어요.': 'The split is on. Pick physical or special per move in the Category field of the [Move Editor] tab.',
   '📋 모든 기술을 4세대 분류로 채우기': '📋 Fill all moves with Gen 4 categories', '모든 기술을 4세대 분류로 채웠어요.': 'All moves filled with Gen 4 categories.', '↩ 모든 기술을 타입 규칙대로 되돌리기': '↩ Set all moves back to the type rule',
@@ -6619,6 +6622,14 @@ mixin(Rom.prototype, {
     for (const t of this.splitTables()) { const o = t + (id >> 3); this.data[o] = special ? this.data[o] | 1 << (id & 7) : this.data[o] & ~(1 << (id & 7)); }
     this.dirty = true;
   },
+  // 이 효과가 데미지를 주는 효과인지: 처음 읽었을 때 그 효과를 쓰는 기술 중 위력 있는 게 있으면 (효과 0 = 일반 공격)
+  effectDoesDamage(eff) {
+    if (!this._dmgEff) {
+      this._dmgEff = new Set([0]);
+      for (let m = 1; m <= 251; m++) { const o = this.moveOff(m); if (this.data[o + 2]) this._dmgEff.add(this.data[o + 1]); }
+    }
+    return this._dmgEff.has(eff);
+  },
   // 같은 애니메이션 번호를 쓰는 기술끼리는 분류를 같이 씀 → 그 기술 목록
   splitSharing(mv) {
     const d = this.data, id = d[this.moveOff(mv)], r = [];
@@ -7592,6 +7603,7 @@ Object.assign(App.prototype, {
       const power = num(d[o + 2], 0, 255), type = sel(this.typeOptions().concat(TYPE_NAME.has(d[o + 3]) && !TYPES.some(t => t[0] === d[o + 3]) ? [[d[o + 3], TYPE_NAME.get(d[o + 3])]] : []), d[o + 3]);
       const acc = num(Math.min(100, Math.round(d[o + 4] * 100 / 255)), 0, 100), pp = num(Math.max(1, Math.min(40, d[o + 5])), 1, 40);
       const chance = num(Math.min(100, Math.round(d[o + 6] * 100 / 255)), 0, 100);
+      const cat = this.moveSplitCell(mv, () => show(mv), power, eff);
       const apply = el('button', { class: 'pri', text: '적용', onclick: () => {
         try {
           const nm = nameIn.value.trim();
@@ -7599,6 +7611,7 @@ Object.assign(App.prototype, {
           d[o + 1] = +eff.value; d[o + 2] = Math.min(255, +power.value || 0); d[o + 3] = +type.value;
           d[o + 4] = Math.min(255, Math.round((+acc.value || 0) * 255 / 100)); d[o + 5] = Math.max(1, Math.min(40, +pp.value || 1));
           d[o + 6] = Math.min(255, Math.round((+chance.value || 0) * 255 / 100));
+          if (cat.apply) cat.apply();
           rom.dirty = true;
           this.okMsg(msg, '적용했어요');
         } catch (e) { this.okMsg(msg, e.message, true); }
@@ -7608,7 +7621,7 @@ Object.assign(App.prototype, {
         el('tr', null, el('th', { text: '효과' }), el('td', null, eff)),
         el('tr', null, el('th', { text: '위력' }), el('td', null, power)),
         el('tr', null, el('th', { text: '타입' }), el('td', null, type)),
-        el('tr', null, el('th', { text: '분류' }), el('td', null, this.moveSplitCell(mv, () => show(mv)))),
+        el('tr', null, el('th', { text: '분류' }), el('td', null, cat)),
         el('tr', null, el('th', { text: '명중률' }), el('td', null, acc, ' %')),
         el('tr', null, el('th', { text: 'PP' }), el('td', null, pp)),
         el('tr', null, el('th', { text: '추가 효과 확률' }), el('td', null, chance, ' %'))),
@@ -11854,20 +11867,40 @@ Object.assign(App.prototype, {
 // ===== 99-split.js
 // ================================================================ 물리/특수 분화 — [기술 편집] 탭의 분류 칸 · 켜기 창
 Object.assign(App.prototype, {
-  // 기술 편집 표의 "분류" 칸. refresh = 켜고 끈 뒤 화면 다시 그리기
-  moveSplitCell(mv, refresh) {
-    const rom = this.rom, s = rom.splitInfo(), d = rom.data, power = d[rom.moveOff(mv) + 2];
+  // 기술 편집 표의 "분류" 칸. refresh = 켜고 끈 뒤 화면 다시 그리기. powerIn·effSel = 같은 표의 위력·효과 칸
+  // 물리·특수·변화를 고르면 위력 칸도 맞춰 바꾸고, [적용]을 누를 때 함께 들어감 (반환한 칸의 .apply())
+  // 게임에서 변화 기술 = 위력 0. 물리·특수는 위력이 있어야 하고, 효과도 데미지를 주는 효과여야 실제로 맞음
+  moveSplitCell(mv, refresh, powerIn, effSel) {
+    const rom = this.rom, s = rom.splitInfo(), power = rom.data[rom.moveOff(mv) + 2];
     if (!s.ok) return el('span', { class: 'hint', text: s.why });
     const set = el('button', { text: s.on ? '⚙ 분화 설정…' : '⚔ 물리/특수 분화 켜기…', onclick: () => this.splitDialog(refresh) });
     if (!s.on) return el('span', null, el('span', { text: (power ? (rom.splitIsSpecial(mv) ? '특수' : '물리') : '변화') + ' ' }), el('span', { class: 'hint', text: '(타입으로 정해져요) ' }), set);
-    if (!power) return el('span', null, el('span', { text: '변화 ' }), el('span', { class: 'hint', text: '(위력 0 · 데미지 없음) ' }), set);
-    const share = rom.splitSharing(mv);
-    const pick = sel([[0, '물리 (공격 · 방어)'], [1, '특수 (특수공격 · 특수방어)']], rom.splitIsSpecial(mv) ? 1 : 0, v => {
-      rom.splitSet(mv, !!v);
-      this.say('기술 분류를 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.');
+    const share = rom.splitSharing(mv), bit = rom.splitIsSpecial(mv) ? 1 : 0;
+    let lastPower = power || 40;
+    const note = el('div', { class: 'hint' });
+    const check = () => {
+      const v = +pick.value, dmg = rom.effectDoesDamage(+effSel.value);
+      note.replaceChildren();
+      if (v < 2 && !dmg) note.append(el('span', { text: '⚠ 지금 효과는 데미지가 없는 효과예요. 위력이 있어도 데미지가 안 들어가요. ' }),
+        el('button', { class: 'st-mini', text: '효과를 일반 공격으로', onclick: () => { effSel.value = 0; check(); } }));
+      else if (v === 2 && dmg) note.append(el('span', { text: '⚠ 지금 효과는 공격 기술용이에요. 효과 칸에서 변화 효과(잠들기·능력 내리기 등)를 골라 주세요.' }));
+    };
+    const pick = sel([[0, '물리 (공격 · 방어)'], [1, '특수 (특수공격 · 특수방어)'], [2, '변화 (데미지 없음 · 위력 0)']], power ? bit : 2, v => {
+      if (v === 2) { if (+powerIn.value) lastPower = +powerIn.value; powerIn.value = 0; }
+      else if (!+powerIn.value) powerIn.value = lastPower;
+      check();
     });
-    return el('span', null, pick, ' ', set,
+    powerIn.addEventListener('input', () => {
+      if (!+powerIn.value) pick.value = 2;
+      else if (+pick.value === 2) pick.value = rom.splitIsSpecial(mv) ? 1 : 0;
+      check();
+    });
+    effSel.addEventListener('change', check);
+    check();
+    const box = el('span', null, pick, ' ', set, note,
       share.length ? el('div', { class: 'hint', text: '⚠ 같이 바뀌는 기술: ' + RAW + share.map(m => rom.moveName(m)).join(', ') }) : null);
+    box.apply = () => { if (+pick.value < 2) rom.splitSet(mv, +pick.value === 1); };
+    return box;
   },
 
   splitDialog(refresh) {
