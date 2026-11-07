@@ -121,6 +121,24 @@ const EN_EXTRA = {
   '📋 켜고 4세대 분류로 채우기': '📋 Turn on with Gen 4 categories', '물리/특수 분화를 켰어요 (4세대 분류).': 'Physical/special split on (Gen 4 categories).', '켜기 (지금 타입 규칙 그대로 시작)': 'Turn on (start with the current type rule)', '물리/특수 분화를 켰어요 (타입 규칙 그대로).': 'Physical/special split on (type rule kept).',
   ' 분류: 이 롬은 물리/특수 분화가 꺼져 있어서 넣지 않았어요': ' category: not imported because the split is off in this ROM',
 
+  // ---- 기술 설명 · 타입별 랜덤 기술 (73-movedesc · 99-randmoves)
+  '이 롬에서 기술 설명을 찾지 못했어요': 'Move descriptions were not found in this ROM', '설명은 2줄까지 쓸 수 있어요': 'Descriptions can have up to 2 lines', '한 줄은 ': 'One line can have up to ',
+  '글자까지예요: "': ' characters: "', '설명을 넣을 빈 공간이 부족해요 (원래 설명보다 짧게 하면 돼요)': 'Not enough free space for the description (one no longer than the original fits)',
+  '설명': 'Description', '2줄까지예요': 'Up to 2 lines', '글자까지예요': ' characters max', '설명: ': 'Description: ', '기술 화면에 나오는 두 줄 설명 · 한 줄 ': 'The 2-line text shown on the move screen · up to ', '글자까지': ' characters per line',
+  '변화 기술도 섞기': 'Include status moves', '노말 기술도 섞기': 'Include Normal moves', '🎲 레벨업 기술을 이 타입 안에서 랜덤으로': '🎲 Randomize level-up moves within these types',
+  '타입을 하나 이상 고르세요': 'Pick at least one type', '레벨업 기술이 없어요. [+ 기술 추가]로 칸을 먼저 만드세요': 'No level-up moves. Add slots with [+ Add move] first',
+  '고를 수 있는 기술 ': 'Picked from ', '개 중에서 바꿨어요 · [적용]을 눌러야 들어가요': ' possible moves · press [Apply] to keep them', '🎲 타입별 랜덤': '🎲 Random by type',
+  '모두 한 번에…': 'All at once…', '모든 포켓몬·트레이너를 자기 타입으로 한 번에': 'Every Pokémon and trainer, by their own types, at once',
+  '고른 타입의 기술만 뽑아서, 위력이 약한 기술이 낮은 레벨에 오게 넣어요. 레벨은 그대로예요. 공격 기술이 모자라면 같은 타입의 변화 기술로 채우고, 그래도 모자라면 칸이 줄어요.': 'Picks only moves of the chosen types, with weaker moves at lower levels. Levels stay the same. If there are too few attacking moves, status moves of those types fill in; if still short, the list gets shorter.',
+  '🎲 이 팀 기술을 각자 타입 안에서 랜덤으로': "🎲 Randomize this team's moves within each Pokémon's types",
+  '포켓몬마다 그 포켓몬의 타입(포켓몬 편집의 타입) 기술 중에서 4개를 골라요. 포켓몬 줄의 🎲 로 한 마리만 바꿀 수도 있어요. [적용]을 눌러야 들어가요.': "Picks 4 moves of each Pokémon's own types (from the Pokémon Editor). Use 🎲 on a Pokémon row to change just one. Press [Apply] to keep them.",
+  '이 포켓몬 타입의 기술 중에서 랜덤 4개': "4 random moves of this Pokémon's types", '🐾 모든 포켓몬의 레벨업 기술': "🐾 Every Pokémon's level-up moves",
+  '⚔ 트레이너 포켓몬 중 기술이 정해진 팀의 기술': '⚔ Moves of trainer teams that have custom moves', '⚔ 기술이 안 정해진 팀도 기술을 정해서 바꾸기 (공간이 모자라 일부 직업은 안 될 수 있어요)': '⚔ Also give custom moves to teams without them (some classes may not fit)',
+  '💡 기술이 안 정해진 트레이너 포켓몬은 게임이 레벨업 기술로 기술을 채워요. 그래서 레벨업 기술만 바꿔도 그 트레이너들은 자기 타입 기술을 써요.': "💡 Trainer Pokémon without custom moves get their moves from the level-up list, so randomizing level-up moves already gives those trainers moves of their own types.", '타입별 랜덤 기술을 넣었어요. [저장하기]를 눌러야 롬 파일에 기록돼요.': 'Random moves by type added. Press [Save] to write them to the ROM file.',
+  '✅ 바꿨어요: 포켓몬 ': '✅ Changed: Pokémon ', '마리 · 트레이너 팀 ': ' · trainer teams ', '\n\n못 바꾼 것:\n': '\n\nCould not change:\n', '\n\n열려 있는 편집 창은 닫았다 다시 열면 바뀐 기술이 보여요.': '\n\nReopen any open editor window to see the new moves.',
+  '🎲 타입별 랜덤 기술 — 한 번에': '🎲 Random moves by type — all at once', '포켓몬마다 자기 타입(포켓몬 편집의 타입)의 기술 중에서 무작위로 바꿔요. 예: 레어코일을 전기·강철로 해 두면 전기·강철 기술만 나와요.': "Replaces moves at random with moves of each Pokémon's own types (from the Pokémon Editor). E.g. with Magneton set to Electric/Steel, only Electric and Steel moves appear.",
+  '⚠ 되돌리기가 없어요. 바꾸기 전에 [저장하기]로 따로 저장해 두거나, 마음에 안 들면 롬을 다시 여세요.': "⚠ There is no undo. Save a copy with [Save] first, or reopen the ROM if you don't like the result.", '🎲 바꾸기': '🎲 Randomize',
+
   // ---- 타운맵 (99-townmap)
   '이 롬에서 타운맵 데이터를 찾지 못했어요.': 'Could not find the town map data in this ROM.', '타운맵을 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.': 'Town map changed. Press [Save] to write it to the ROM file.',
   '장소 위치를 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.': 'Place position changed. Press [Save] to write it to the ROM file.', '타일 ': 'Tile ', '고른 타일: ': 'Selected tile: ',
@@ -6678,6 +6696,114 @@ mixin(Rom.prototype, {
   }
 });
 
+// ===== 73-movedesc.js
+// ================================================================ 기술 설명 (가방·기술 화면에 나오는 두 줄 설명) · 타입별 랜덤 기술 고르기
+// 설명 표: 기술 251개의 뱅크 안 주소(2바이트)가 이어진 표. 글은 같은 뱅크에 있고 줄바꿈 $4E(한글판 $59) · 끝 $50
+// 화면 칸 수: {POKé} 같은 이름 칸은 2칸으로 셈
+const descLen = l => l.replace(/\{[^}]*\}/g, 'xx').length;
+mixin(Rom.prototype, {
+  // 표 찾기: 주소 251개가 모두 같은 뱅크 안을 가리키고 앞쪽 글이 짧게 끝나는 곳 (금·은은 뱅크 6D 맨 앞)
+  loadMoveDesc() {
+    if (this._md !== undefined) return this._md;
+    const d = this.data, ok = t => {
+      const bank = Math.floor(t / 0x4000);
+      let inc = 0, prev = 0;
+      for (let i = 0; i < 251; i++) {
+        const w = d[t + i * 2] | d[t + i * 2 + 1] << 8;
+        if (w < 0x4000 || w >= 0x8000) return false;
+        if (w > prev) inc++; prev = w;
+        if (i < 8) { const o = this.off(bank, w); let k = 0; while (k < 70 && d[o + k] !== 0x50) k++; if (k >= 70 || k < 2) return false; }
+      }
+      return inc > 200;
+    };
+    let tab = ok(0x6D * 0x4000) ? 0x6D * 0x4000 : -1;
+    for (let bank = 1; tab < 0 && bank < d.length / 0x4000; bank++)
+      for (let t = bank * 0x4000; t < bank * 0x4000 + 0x4000 - 502; t++) if (ok(t)) { tab = t; break; }
+    if (tab < 0) return (this._md = null);
+    const bank = Math.floor(tab / 0x4000);
+    // 한 줄 최대 글자 수: 원래 설명 중 가장 긴 줄 (적어도 18)
+    let maxLine = 18;
+    for (let m = 1; m <= 251; m++) for (const l of this.moveDesc(m, { tab, bank }).split('\n')) maxLine = Math.max(maxLine, descLen(l));
+    // 줄바꿈 글자: 영문판 $4E, 한글판 $59 → 이 롬의 글자표로 읽어서 줄바꿈이 되는 쪽
+    let next = 0x4E;
+    try {
+      const a = this.encodeName('A');
+      for (const c of [0x4E, 0x59]) { const t = this.cs.decode(Uint8Array.from([...a, c, ...a, 0x50]), 0); if (t && t.text.includes('\n')) { next = c; break; } }
+    } catch (e) { }
+    return (this._md = { tab, bank, maxLine, next });
+  },
+  moveDesc(mv, md) {
+    md = md || this.loadMoveDesc();
+    if (!md) return '';
+    try { return this.cs.decode(this.data, this.off(md.bank, this.w(md.tab + (mv - 1) * 2))).text; } catch (e) { return ''; }
+  },
+  // 설명 쓰기 → 오류 또는 null. 원래 자리에 들어가고 다른 기술과 같이 쓰지 않으면 그 자리에, 아니면 같은 뱅크 빈 곳에
+  setMoveDesc(mv, text) {
+    const md = this.loadMoveDesc();
+    if (!md) return '이 롬에서 기술 설명을 찾지 못했어요';
+    const lines = text.replace(/\r/g, '').replace(/\n+$/, '').split('\n');
+    if (lines.length > 2) return '설명은 2줄까지 쓸 수 있어요';
+    const long = lines.find(l => descLen(l) > md.maxLine);
+    if (long != null) return '한 줄은 ' + md.maxLine + '글자까지예요: "' + long + '"';
+    let b = [];
+    try { lines.forEach((l, i) => { if (i) b.push(md.next); b.push(...this.encodeName(l)); }); } catch (e) { return e.message; }
+    b.push(0x50);
+    const d = this.data, at = md.tab + (mv - 1) * 2, addr = this.w(at), old = this.off(md.bank, addr);
+    let oldLen = 0; while (oldLen < 80 && d[old + oldLen] !== 0x50) oldLen++;
+    let shared = false;
+    for (let m = 1; m <= 251; m++) if (m !== mv && this.w(md.tab + (m - 1) * 2) === addr) shared = true;
+    let p = !shared && b.length <= oldLen + 1 ? old : -1;
+    if (p < 0) { if (!this.free) this.findFree(); p = this.allocInBank(md.bank, b.length); }
+    if (p < 0) p = this.allocSmallInBank(md.bank, b.length);
+    if (p < 0) return '설명을 넣을 빈 공간이 부족해요 (원래 설명보다 짧게 하면 돼요)';
+    d.set(b, p);
+    const na = 0x4000 + p % 0x4000; d[at] = na & 0xFF; d[at + 1] = na >> 8;
+    this.dirty = true;
+    return null;
+  },
+
+  // ------------------------------------------------ 타입별 랜덤 기술
+  // types = 타입 번호 모음, o = { status: 변화 기술도, exclude: 뺄 기술 Set } → 고를 수 있는 기술 목록
+  movePool(types, o) {
+    const d = this.data, pool = [];
+    o = o || {};
+    for (let m = 1; m <= 251 && m < this.moveNames.length; m++) {
+      if (m === 165) continue;   // 발버둥
+      const off = this.moveOff(m);
+      if (!types.has(d[off + 3])) continue;
+      if (!o.status && !d[off + 2]) continue;
+      if (o.exclude && o.exclude.has(m)) continue;
+      pool.push(m);
+    }
+    return pool;
+  },
+  // 겹치지 않게 n개 → 위력 낮은 것부터 (레벨업 순서에 맞추려고). 변화 기술은 위력 0 이라 섞어 넣음
+  pickMoves(pool, n) {
+    const a = pool.slice();
+    for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+    const pick = a.slice(0, n), d = this.data, pw = m => d[this.moveOff(m) + 2];
+    const dmg = pick.filter(m => pw(m)).sort((x, y) => pw(x) - pw(y)), st = pick.filter(m => !pw(m));
+    // 변화 기술은 사이사이 아무 자리에
+    for (const s of st) dmg.splice(Math.floor(Math.random() * (dmg.length + 1)), 0, s);
+    return dmg;
+  },
+  monTypes(mon) { const o = this.statOff(mon); return new Set([this.data[o + 7], this.data[o + 8]]); },
+  // 레벨업 기술을 타입별 랜덤으로 (레벨은 그대로) → 새 목록
+  // 위력 있는 기술이 모자라면 같은 타입의 변화 기술로 채움 (그래도 모자라면 칸이 줄어듦)
+  fullPool(types, o, n) {
+    const pool = this.movePool(types, o);
+    if (pool.length < n && !(o && o.status)) for (const m of this.movePool(types, Object.assign({}, o, { status: true }))) if (!pool.includes(m)) pool.push(m);
+    return pool;
+  },
+  randomLearnset(learn, types, o) {
+    const picks = this.pickMoves(this.fullPool(types, o, learn.length), learn.length);
+    const lv = learn.map(m => m.level).sort((a, b) => a - b);
+    return picks.map((m, i) => ({ level: lv[i], move: m }));
+  },
+  // 트레이너 포켓몬 기술 4개
+  randomFour(types, o) { const r = this.pickMoves(this.fullPool(types, o, 4), 4); while (r.length < 4) r.push(0); return r; }
+});
+
 // ===== 90-ui.js
 // ================================================================ 화면 (데스크톱 툴과 같은 배치: 위 버튼줄 · 왼쪽 목록 · 오른쪽 위 지도 · 아래 탭)
 const CSS = `
@@ -6754,6 +6880,10 @@ const CSS = `
 .gsc .list .it.on{background:var(--accent);color:var(--accent-ink)}
 .gsc .list .grp2{font-weight:bold;font-size:12px;color:var(--sub);padding:6px 4px 2px}
 .gsc .grp{margin:10px 0 4px;font-weight:bold}
+.gsc .randbar{margin-top:8px;padding:6px 8px;border:1px dashed var(--line);border-radius:6px;background:#fafbfd}
+.gsc .chips{display:inline-flex;flex-wrap:wrap;gap:3px}
+.gsc .chip{padding:1px 8px;font-size:12px;border-radius:10px;background:#f1f3f5;color:#666}
+.gsc .chip.on{background:var(--accent);color:var(--accent-ink);font-weight:bold}
 .gsc table.grid{border-collapse:collapse;font-size:13px}
 .gsc table.grid td,.gsc table.grid th{border:1px solid var(--line);padding:3px 5px;text-align:left}
 .gsc table.grid th{background:var(--bg);font-weight:normal;color:var(--sub)}
@@ -7465,7 +7595,8 @@ Object.assign(App.prototype, {
           if (ed.type & 1) {
             const mr = el('div', { class: 'bar' });
             for (let k = 0; k < 4; k++) mr.append(sel(moveOpts, m.moves[k], v => m.moves[k] = v));
-            mr.append(el('button', { text: '기본 기술', title: '그 레벨까지 배운 기술로 채우기', onclick: () => { m.moves = rom.defaultMoves(m.species, m.level); drawMons(); } }));
+            mr.append(el('button', { text: '기본 기술', title: '그 레벨까지 배운 기술로 채우기', onclick: () => { m.moves = rom.defaultMoves(m.species, m.level); drawMons(); } }),
+              el('button', { text: '🎲', title: '이 포켓몬 타입의 기술 중에서 랜덤 4개', onclick: () => { m.moves = rom.randomFour(rom.monTypes(m.species), {}); drawMons(); } }));
             box.append(mr);
           }
           monsBox.append(box);
@@ -7483,7 +7614,8 @@ Object.assign(App.prototype, {
       right.append(el('div', { class: 'bar' }, el('b', { text: tc.name }), el('span', { class: 'hint', text: (key & 255) + '번' })),
         el('div', { class: 'bar' }, el('span', { text: '이름' }), nameIn,
           el('label', null, cbMoves, ' 기술 직접 정하기'), el('label', null, cbItem, ' 도구 지니게 하기')),
-        monsBox, el('div', { class: 'bar', style: 'margin-top:8px' }, apply, msg));
+        monsBox, this.randTeamBar(ed, () => { if (!cbMoves.checked) { cbMoves.checked = true; ed.type |= 1; } }, drawMons),
+        el('div', { class: 'bar', style: 'margin-top:8px' }, apply, msg));
       const where = [];
       for (const a of rom.allAreas) for (const o of a.owners.concat(a.extras)) if (o.trainer && o.trainer.cls === tc.cls && o.trainer.id === (key & 255)) where.push([a, o]);
       if (where.length) right.append(el('div', { class: 'bar' }, el('span', { class: 'hint', text: '나오는 곳:' }),
@@ -7546,6 +7678,7 @@ Object.assign(App.prototype, {
         learnBox.append(el('button', { text: '+ 기술 추가', onclick: () => { const l = learn[learn.length - 1]; learn.push({ level: l ? Math.min(100, l.level + 1) : 1, move: 1 }); drawLearn(); } }));
       };
       drawEvos(); drawLearn();
+      const randBar = this.randLearnBar(() => new Set([+t1.value, +t2.value]), learn, drawLearn, t1, t2);
 
       const apply = el('button', { class: 'pri', text: '적용', onclick: () => {
         try {
@@ -7580,7 +7713,7 @@ Object.assign(App.prototype, {
       right.append(el('div', { class: 'bar' }, el('b', { text: pad3(mon) }), el('span', { text: '이름' }), nameIn, el('span', { text: '타입' }), t1, t2),
         el('div', { class: 'bar', style: 'align-items:flex-start' }, grid, etc),
         el('div', { class: 'grp', text: '진화' }), evoBox,
-        el('div', { class: 'grp', text: '레벨업으로 배우는 기술' }), learnBox);
+        el('div', { class: 'grp', text: '레벨업으로 배우는 기술' }), learnBox, randBar);
       if (tms.length) right.append(el('div', { class: 'grp', text: '기술머신 · 비전머신으로 배울 수 있는 기술' }), el('div', { class: 'tm' }, ...tmBoxes.map(x => x[1])));
       right.append(el('div', { class: 'bar', style: 'margin-top:8px' }, apply, msg));
     };
@@ -7604,10 +7737,18 @@ Object.assign(App.prototype, {
       const acc = num(Math.min(100, Math.round(d[o + 4] * 100 / 255)), 0, 100), pp = num(Math.max(1, Math.min(40, d[o + 5])), 1, 40);
       const chance = num(Math.min(100, Math.round(d[o + 6] * 100 / 255)), 0, 100);
       const cat = this.moveSplitCell(mv, () => show(mv), power, eff);
+      // 설명 (두 줄)
+      const md = rom.loadMoveDesc(), oldDesc = md ? rom.moveDesc(mv) : '';
+      const descIn = el('textarea', { spellcheck: 'false', rows: 2, style: 'width:100%;max-width:' + (md ? md.maxLine + 4 : 22) + 'em;font-size:15px' });
+      descIn.value = oldDesc;
+      const descErr = el('div', { class: 'err' });
+      const descCheck = () => { const l = descIn.value.split('\n'); descErr.textContent = l.length > 2 ? '2줄까지예요' : (l.find(x => md && descLen(x) > md.maxLine) != null ? '한 줄은 ' + md.maxLine + '글자까지예요' : ''); };
+      descIn.addEventListener('input', descCheck);
       const apply = el('button', { class: 'pri', text: '적용', onclick: () => {
         try {
           const nm = nameIn.value.trim();
           if (nm !== rom.moveNames[mv]) rom.setMoveName(mv, nm);
+          if (md && descIn.value !== oldDesc) { const e = rom.setMoveDesc(mv, descIn.value); if (e) throw new Error('설명: ' + e); }
           d[o + 1] = +eff.value; d[o + 2] = Math.min(255, +power.value || 0); d[o + 3] = +type.value;
           d[o + 4] = Math.min(255, Math.round((+acc.value || 0) * 255 / 100)); d[o + 5] = Math.max(1, Math.min(40, +pp.value || 1));
           d[o + 6] = Math.min(255, Math.round((+chance.value || 0) * 255 / 100));
@@ -7618,6 +7759,8 @@ Object.assign(App.prototype, {
       } });
       right.append(el('table', { class: 'grid' },
         el('tr', null, el('th', { text: '이름' }), el('td', null, nameIn)),
+        el('tr', null, el('th', { text: '설명' }), el('td', null, md ? descIn : el('span', { class: 'hint', text: '이 롬에서는 기술 설명을 찾지 못했어요' }), descErr,
+          md ? el('div', { class: 'hint', text: '기술 화면에 나오는 두 줄 설명 · 한 줄 ' + md.maxLine + '글자까지' }) : null)),
         el('tr', null, el('th', { text: '효과' }), el('td', null, eff)),
         el('tr', null, el('th', { text: '위력' }), el('td', null, power)),
         el('tr', null, el('th', { text: '타입' }), el('td', null, type)),
@@ -11861,6 +12004,101 @@ Object.assign(App.prototype, {
       msg,
       el('div', { class: 'bar', style: 'justify-content:flex-end;margin-top:8px' }, el('button', { text: '취소', onclick: () => close() }),
         el('button', { class: 'apply', text: '📥 고른 것 넣기', onclick: apply }))), null, false);
+  }
+});
+
+// ===== 99-randmoves.js
+// ================================================================ 타입별 랜덤 기술 (포켓몬 레벨업 기술 · 트레이너 포켓몬 기술) · 한 번에 바꾸는 창
+Object.assign(App.prototype, {
+  // 타입 고르기 칸 (누르면 켜지고 꺼짐) → 요소. el.types = 고른 타입 Set, el.set(Set) = 바깥에서 바꾸기
+  typeChips(initial, onChange) {
+    const box = el('span', { class: 'chips' });
+    box.types = new Set(initial);
+    const draw = () => {
+      box.replaceChildren();
+      for (const [v, n] of TYPES) {
+        if (/\?/.test(n)) continue;
+        box.append(el('button', { class: 'chip' + (box.types.has(v) ? ' on' : ''), text: n, onclick: () => { if (box.types.has(v)) box.types.delete(v); else box.types.add(v); draw(); if (onChange) onChange(); } }));
+      }
+    };
+    box.set = s => { box.types = new Set(s); draw(); };
+    draw();
+    return box;
+  },
+
+  // 포켓몬 편집: 레벨업 기술 아래 랜덤 줄. getTypes = 지금 타입 칸 값, learn = 편집 중인 목록, redraw = 다시 그리기
+  randLearnBar(getTypes, learn, redraw, t1, t2) {
+    const rom = this.rom, chips = this.typeChips(getTypes());
+    for (const s of [t1, t2]) s.addEventListener('change', () => chips.set(getTypes()));
+    const [cSt, lSt] = check('변화 기술도 섞기', false), msg = el('span', { class: 'hint' });
+    const go = el('button', { text: '🎲 레벨업 기술을 이 타입 안에서 랜덤으로', onclick: () => {
+      if (!chips.types.size) { msg.textContent = '타입을 하나 이상 고르세요'; return; }
+      if (!learn.length) { msg.textContent = '레벨업 기술이 없어요. [+ 기술 추가]로 칸을 먼저 만드세요'; return; }
+      const pool = rom.fullPool(chips.types, { status: cSt.checked }, learn.length);
+      const nl = rom.randomLearnset(learn, chips.types, { status: cSt.checked });
+      learn.splice(0, learn.length, ...nl);
+      redraw();
+      msg.textContent = '고를 수 있는 기술 ' + pool.length + '개 중에서 바꿨어요 · [적용]을 눌러야 들어가요';
+    } });
+    return el('div', { class: 'randbar' }, el('div', { class: 'bar' }, el('b', { text: '🎲 타입별 랜덤' }), chips),
+      el('div', { class: 'bar' }, go, lSt, el('button', { text: '모두 한 번에…', title: '모든 포켓몬·트레이너를 자기 타입으로 한 번에', onclick: () => this.randMovesDialog() }), msg),
+      el('div', { class: 'hint', text: '고른 타입의 기술만 뽑아서, 위력이 약한 기술이 낮은 레벨에 오게 넣어요. 레벨은 그대로예요. 공격 기술이 모자라면 같은 타입의 변화 기술로 채우고, 그래도 모자라면 칸이 줄어요.' }));
+  },
+
+  // 트레이너 편집: 그 팀 전부를 각자 타입 안에서 랜덤 (ed = 편집 중인 팀, turnOn = 기술 직접 정하기 켜기, redraw)
+  randTeamBar(ed, turnOn, redraw) {
+    const rom = this.rom, [cSt, lSt] = check('변화 기술도 섞기', false), [cN, lN] = check('노말 기술도 섞기', false);
+    const types = sp => { const t = rom.monTypes(sp); if (cN.checked) t.add(0); return t; };
+    return el('div', { class: 'randbar' }, el('div', { class: 'bar' },
+      el('button', { text: '🎲 이 팀 기술을 각자 타입 안에서 랜덤으로', onclick: () => {
+        turnOn();
+        for (const m of ed.mons) m.moves = rom.randomFour(types(m.species), { status: cSt.checked });
+        redraw();
+      } }), lSt, lN, el('button', { text: '모두 한 번에…', onclick: () => this.randMovesDialog() })),
+      el('div', { class: 'hint', text: '포켓몬마다 그 포켓몬의 타입(포켓몬 편집의 타입) 기술 중에서 4개를 골라요. 포켓몬 줄의 🎲 로 한 마리만 바꿀 수도 있어요. [적용]을 눌러야 들어가요.' }));
+  },
+
+  // 모든 포켓몬 레벨업 기술 · 모든 트레이너 기술을 자기 타입 안에서 한 번에
+  randMovesDialog() {
+    const rom = this.rom;
+    const [cL, lL] = check('🐾 모든 포켓몬의 레벨업 기술', true), [cT, lT] = check('⚔ 트레이너 포켓몬 중 기술이 정해진 팀의 기술', true);
+    const [cT2, lT2] = check('⚔ 기술이 안 정해진 팀도 기술을 정해서 바꾸기 (공간이 모자라 일부 직업은 안 될 수 있어요)', false);
+    const [cSt, lSt] = check('변화 기술도 섞기', false), [cN, lN] = check('노말 기술도 섞기', false);
+    const msg = el('div');
+    let close;
+    const run = () => {
+      const types = sp => { const t = rom.monTypes(sp); if (cN.checked) t.add(0); return t; }, o = { status: cSt.checked }, errs = [];
+      let nl = 0, nt = 0;
+      if (cL.checked && rom.evosBank >= 0) for (let m = 1; m <= 251; m++) {
+        const ev = rom.readEvos(m);
+        if (!ev.moves.length) continue;
+        const e = rom.writeEvos(m, ev.evos, rom.randomLearnset(ev.moves, types(m), o));
+        if (e) errs.push(pad3(m) + ' ' + rom.monName(m) + ': ' + e); else nl++;
+      }
+      if (cT.checked || cT2.checked) for (const tc of rom.trainerClasses) {
+        const backup = tc.parties.map(p => ({ type: p.type, mons: p.mons.map(m => Object.assign({}, m, { moves: m.moves.slice() })) }));
+        let n = 0;
+        for (const p of tc.parties) {
+          if (p.type & 1 ? !cT.checked : !cT2.checked) continue;
+          p.type |= 1; n++;
+          for (const m of p.mons) m.moves = rom.randomFour(types(m.species), o);
+        }
+        if (!n) continue;
+        const e = rom.writeTrainerClass(tc);
+        if (e) { tc.parties.forEach((p, i) => Object.assign(p, backup[i])); errs.push(tc.name + ': ' + e); } else nt += n;
+      }
+      rom.dirty = true;
+      close();
+      this.say('타입별 랜덤 기술을 넣었어요. [저장하기]를 눌러야 롬 파일에 기록돼요.');
+      alert('✅ 바꿨어요: 포켓몬 ' + nl + '마리 · 트레이너 팀 ' + nt + '개' + (errs.length ? '\n\n못 바꾼 것:\n' + errs.slice(0, 15).join('\n') + (errs.length > 15 ? '\n…' : '') : '') + '\n\n열려 있는 편집 창은 닫았다 다시 열면 바뀐 기술이 보여요.');
+    };
+    close = this.dialog('🎲 타입별 랜덤 기술 — 한 번에', () => el('div', null,
+      el('div', { text: '포켓몬마다 자기 타입(포켓몬 편집의 타입)의 기술 중에서 무작위로 바꿔요. 예: 레어코일을 전기·강철로 해 두면 전기·강철 기술만 나와요.' }),
+      el('div', { style: 'margin-top:8px' }, lL), el('div', null, lT), el('div', null, lT2),
+      el('div', { class: 'hint', text: '💡 기술이 안 정해진 트레이너 포켓몬은 게임이 레벨업 기술로 기술을 채워요. 그래서 레벨업 기술만 바꿔도 그 트레이너들은 자기 타입 기술을 써요.' }),
+      el('div', { style: 'margin-top:6px' }, lSt), el('div', null, lN),
+      el('div', { class: 'hint', style: 'margin-top:6px', text: '⚠ 되돌리기가 없어요. 바꾸기 전에 [저장하기]로 따로 저장해 두거나, 마음에 안 들면 롬을 다시 여세요.' }), msg,
+      el('div', { class: 'bar', style: 'justify-content:flex-end;margin-top:10px' }, el('button', { text: '취소', onclick: () => close() }), el('button', { class: 'apply', text: '🎲 바꾸기', onclick: run }))), null, true);
   }
 });
 
