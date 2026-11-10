@@ -139,6 +139,16 @@ const EN_EXTRA = {
   '🎲 타입별 랜덤 기술 — 한 번에': '🎲 Random moves by type — all at once', '포켓몬마다 자기 타입(포켓몬 편집의 타입)의 기술 중에서 무작위로 바꿔요. 예: 레어코일을 전기·강철로 해 두면 전기·강철 기술만 나와요.': "Replaces moves at random with moves of each Pokémon's own types (from the Pokémon Editor). E.g. with Magneton set to Electric/Steel, only Electric and Steel moves appear.",
   '⚠ 되돌리기가 없어요. 바꾸기 전에 [저장하기]로 따로 저장해 두거나, 마음에 안 들면 롬을 다시 여세요.': "⚠ There is no undo. Save a copy with [Save] first, or reopen the ROM if you don't like the result.", '🎲 바꾸기': '🎲 Randomize',
 
+  // ---- 게임코너 경품 (74-prize · 99-prize)
+  '메뉴 글자를 넣을 빈 공간이 부족해요': 'Not enough free space for the menu text', '이 NPC는 경품 교환 NPC가 아니에요.': 'This NPC is not a prize exchange NPC.',
+  ' — 이름이 길어서 안 들어가요': ' — name too long to fit', '경품 목록': 'Prize list', ' · 은 버전에서 나와요': ' · shown in Silver', ' · 금 버전에서 나와요': ' · shown in Gold', ' (이 롬)': ' (this ROM)',
+  '코인': 'Coins', '게임 메뉴에 이렇게 나와요:': 'In-game menu will look like this:', '" 이름이 길어서 메뉴 한 줄(': '" is too long to fit in a menu line (', '칸)에 코인 수와 같이 안 들어가요': ' tiles) together with the coin price',
+  '경품을 바꿨어요 (메뉴 글자·코인·받는 것). [저장하기]를 눌러야 롬 파일에 기록돼요.': 'Prizes changed (menu text, coins, what you get). Press [Save] to write them to the ROM file.',
+  '🎰 경품 교환 — ': '🎰 Prize exchange — ', '포켓몬(도구)과 코인 수를 바꾸면 게임 메뉴 글자, 코인 확인·빼기, 실제로 주는 것까지 함께 바뀌어요.': 'Changing the Pokémon (item) or the coin price updates the menu text, the coin check and charge, and what is actually given.',
+  '🎰 경품 목록 고치기': '🎰 Edit prize list', '⚠ 게임코너 경품이에요. 여기서 바꾸면 메뉴에 옛 이름·코인이 그대로 떠요. ': '⚠ This is a Game Corner prize. Changing it here leaves the old name and price in the menu. ',
+  '🎰 경품 목록 고치기 (이름·코인까지)': '🎰 Edit prize list (name and coins too)', '(게임은 한 지도에 14명까지만 보여줘요)': '(the game shows at most 14 per map)',
+  '이 지도 NPC ': 'NPCs on this map: ', '명 / 최대 14명': ' / max 14',
+
   // ---- 타운맵 (99-townmap)
   '이 롬에서 타운맵 데이터를 찾지 못했어요.': 'Could not find the town map data in this ROM.', '타운맵을 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.': 'Town map changed. Press [Save] to write it to the ROM file.',
   '장소 위치를 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.': 'Place position changed. Press [Save] to write it to the ROM file.', '타일 ': 'Tile ', '고른 타일: ': 'Selected tile: ',
@@ -343,7 +353,7 @@ const I18N = (() => {
     '배틀에서 이겼을 때 상대 대사': "Opponent's text when you win", '상점': 'Mart', '상점 물건 목록을 고르세요': 'Pick a mart item list', '순간이동': 'Teleport', '순간이동 (예를 고르면)': 'Teleport (if Yes)',
     '시야: ': 'Sight: ', '시야는 1~5칸': 'Sight must be 1–5 tiles', '쓸 수 있는 이벤트 번호가 없어요': 'No free event flags left', '아니요를 골랐을 때 대사': 'Text for No', '아이템 교환': 'Item trade', '아이템 볼': 'Item ball',
     '아이템 주기': 'Give item', '아이템 주기 전 대사': 'Text before giving', '알 수 없는 이벤트': 'Unknown event', '야생 포켓몬 배틀': 'Wild Pokémon battle', '여러 번': 'Repeatable', '예/아니요 선택지': 'Yes/No choice',
-    '예를 골랐을 때 대사': 'Text for Yes', '이 구역은 NPC가 너무 많아서 더 넣을 수 없어요 (최대 15명)': 'This area has too many NPCs (max 15)',
+    '예를 골랐을 때 대사': 'Text for Yes', '이 구역은 NPC가 너무 많아서 더 넣을 수 없어요 (게임은 한 지도에 14명까지만 보여줘요)': 'This area has too many NPCs (the game shows at most 14 per map)',
     '이 구역의 데이터 공간이 부족해서 NPC를 더 넣을 수 없어요': 'Not enough data space in this area for more NPCs', '이 구역의 데이터 공간이 부족해요': 'Not enough data space in this area',
     '이 직업은 데이터 형식이 달라서 새 트레이너를 넣을 수 없어요. 다른 직업을 골라주세요': 'This class has a different data format, so new trainers cannot be added. Pick another class',
     '준 뒤 다시 말 걸면 대사': 'Text when talked to after giving', '줄 아이템을 고르세요': 'Pick the item to give', '질문 (예/아니요가 나옴)': 'Question (Yes/No follows)', '처음 말 걸 때 대사': 'Text the first time',
@@ -4280,7 +4290,8 @@ mixin(Rom.prototype, {
     if (err) return err;
     const d = this.data, ev = this.off(a.scriptBank, a.eventsAddr), size = this.eventsSize(ev);
     const pcount = this.eventStarts(a).obj - 1, nObj = d[pcount];
-    if (nObj >= 15) return '이 구역은 NPC가 너무 많아서 더 넣을 수 없어요 (최대 15명)';
+    // 게임의 지도 물체 칸: 0 = 주인공, 1 = 비워 둠, 2~15 = NPC → 14명까지 (원래 게임에서도 가장 많은 지도가 14명)
+    if (nObj >= 14) return '이 구역은 NPC가 너무 많아서 더 넣을 수 없어요 (게임은 한 지도에 14명까지만 보여줘요)';
     let prep;
     try { prep = this.prepareEvent(e, -1); } catch (x) { return x.message; }
     const { flag, asm } = prep;
@@ -6804,6 +6815,108 @@ mixin(Rom.prototype, {
   randomFour(types, o) { const r = this.pickMoves(this.fullPool(types, o, 4), 4); while (r.length < 4) r.push(0); return r; }
 });
 
+// ===== 74-prize.js
+// ================================================================ 게임코너 경품 교환 (메뉴 글자 · 코인 수 · 받는 포켓몬/도구를 한 번에)
+// 경품 NPC 스크립트: loadmenu 메뉴 / verticalmenu / ifequal 1·2·3 → 갈래마다
+//   checkcoins 값 · (getmonname 포켓몬 · setval 포켓몬 · givepoke 포켓몬, 레벨) 또는 (getitemname 도구 · giveitem 도구) · takecoins 값
+// 메뉴 글자는 "이름   코인" 을 같은 폭으로 맞춘 글. 포켓몬·코인만 바꾸면 메뉴 글자가 그대로라 같이 고쳐야 함
+mixin(Rom.prototype, {
+  // 이 NPC 가 경품 교환이면 → { menus: [{ header, data, flags, items: [{ text, width, prize }], cancel }], … } 아니면 null
+  readPrizes(a, o) {
+    if (!o || o.eventOff < 0) return null;
+    const d = this.data;
+    // NPC(말 걸기) 또는 표지판(카운터 조사하기)
+    const ptr = o.isSign ? this.w(o.eventOff + 3) : this.w(o.eventOff + 9);
+    if ((o.isSign ? d[o.eventOff + 2] > 4 : (d[o.eventOff + 7] & 15) !== 0) || !Rom.banked(ptr)) return null;
+    const st = this.readStory(a.scriptBank, ptr), menus = [];
+    const segAt = off => st.byOff.get(off);
+    for (const s of st.segs) s.cards.forEach((c, i) => {
+      if (c.name !== 'loadmenu') return;
+      // loadmenu 뒤의 ifequal N → 갈래
+      const branches = new Map();
+      for (let j = i + 1; j < s.cards.length; j++) {
+        const x = s.cards[j];
+        if (x.name === 'ifequal') branches.set(x.args[0].v, this.off(s.bank, x.args[1].v));
+        else if (!['verticalmenu', 'closewindow', '_2dmenu'].includes(x.name)) break;
+      }
+      const header = this.off(c.bank, c.args[0].v), data = this.off(c.bank, this.w(header + 5)), cnt = d[data + 1];
+      if (cnt < 2 || cnt > 8) return;
+      const items = []; let p = data + 2;
+      for (let k = 0; k < cnt; k++) {
+        const r = this.cs.decode(d, p);
+        if (!r) return;
+        items.push({ text: r.text, start: p });
+        p = r.end + 1;
+      }
+      const prizes = [];
+      for (let k = 0; k < cnt; k++) {
+        const seg = branches.has(k + 1) ? segAt(branches.get(k + 1)) : null;
+        if (!seg) { items[k].prize = null; continue; }
+        // 갈래 안 (그리고 바로 이어지는 갈래) 카드에서 값 자리 모으기
+        const pz = { coins: [], mon: [], item: [], level: null, qty: null };
+        let sg = seg, guard = 0;
+        while (sg && guard++ < 4) {
+          for (const x of sg.cards) {
+            if (x.name === 'checkcoins' || x.name === 'takecoins') pz.coins.push(x.args[0]);
+            if (x.name === 'getmonname') pz.mon.push(x.args[0]);
+            if (x.name === 'setval' && pz.mon.length) pz.mon.push(x.args[0]);
+            if (x.name === 'givepoke') { pz.mon.push(x.args[0]); pz.level = x.args[1]; }
+            if (x.name === 'getitemname') pz.item.push(x.args[0]);
+            if (x.name === 'giveitem' || x.name === 'verbosegiveitem') { pz.item.push(x.args[0]); pz.qty = x.args[1]; }
+          }
+          sg = sg.next != null ? segAt(sg.next) : null;
+        }
+        if (!pz.coins.length || (!pz.mon.length && !pz.item.length)) { items[k].prize = null; continue; }
+        pz.kind = pz.mon.length ? 'mon' : 'item';
+        items[k].prize = pz;
+        prizes.push(pz);
+      }
+      if (!prizes.length) return;
+      // 메뉴 한 줄 폭 = 경품 줄 중 가장 긴 글자 수 (이름과 코인 사이 띄어쓰기로 맞춤)
+      const width = Math.max(...items.filter(x => x.prize).map(x => x.text.length));
+      menus.push({ header, data, flags: d[data], items, width, end: p, inSilver: false, segOff: s.off });
+    });
+    if (!menus.length) return null;
+    // 버전 확인(checkver) 뒤에 갈리는 목록이면 어느 쪽이 금/은인지
+    for (const s of st.segs) s.cards.forEach((c, i) => {
+      if (c.name !== 'checkver') return;
+      const nx = s.cards[i + 1];
+      if (!nx || (nx.name !== 'iftrue' && nx.name !== 'iffalse')) return;
+      const t = this.off(s.bank, nx.args[0].v), reach = new Set(), q = [t];
+      while (q.length) { const sg = segAt(q.pop()); if (!sg || reach.has(sg.off)) continue; reach.add(sg.off); if (sg.next != null) q.push(sg.next); }
+      for (const m of menus) if (reach.has(m.segOff)) m.inSilver = nx.name === 'iftrue';
+      menus.forEach(m => m.verSplit = true);
+    });
+    return { menus };
+  },
+  // 경품 하나 바꾸기: v = { what: 포켓몬/도구 번호, coins, level }
+  setPrize(pz, v) {
+    if (v.coins != null) for (const a of pz.coins) this.storySet(a, Math.max(0, Math.min(9999, v.coins)));
+    const list = pz.kind === 'mon' ? pz.mon : pz.item;
+    if (v.what != null) for (const a of list) this.storySet(a, v.what);
+    if (v.level != null && pz.level) this.storySet(pz.level, Math.max(1, Math.min(100, v.level)));
+  },
+  // 메뉴 글자 다시 쓰기: lines = 모든 줄 (그만두다 포함). 원래 자리에 들어가면 그 자리에, 아니면 같은 뱅크 빈 곳에
+  writePrizeMenu(m, lines) {
+    const d = this.data, out = [m.flags, lines.length];
+    try { for (const l of lines) out.push(...this.encodeName(l), 0x50); } catch (e) { return e.message; }
+    let p = out.length <= m.end - m.data ? m.data : -1;
+    const bank = Math.floor(m.header / 0x4000);
+    if (p < 0) { if (!this.free) this.findFree(); p = this.allocInBank(bank, out.length); }
+    if (p < 0) p = this.allocSmallInBank(bank, out.length);
+    if (p < 0) return '메뉴 글자를 넣을 빈 공간이 부족해요';
+    d.set(out, p);
+    const na = 0x4000 + p % 0x4000; d[m.header + 5] = na & 0xFF; d[m.header + 6] = na >> 8;
+    this.dirty = true;
+    return null;
+  },
+  // "이름      코인" 을 폭에 맞춰 만들기 (이름이 길면 null)
+  prizeLine(name, coins, width) {
+    const c = String(coins), gap = width - name.length - c.length;
+    return gap < 1 ? null : name + ' '.repeat(gap) + c;
+  }
+});
+
 // ===== 90-ui.js
 // ================================================================ 화면 (데스크톱 툴과 같은 배치: 위 버튼줄 · 왼쪽 목록 · 오른쪽 위 지도 · 아래 탭)
 const CSS = `
@@ -6880,6 +6993,7 @@ const CSS = `
 .gsc .list .it.on{background:var(--accent);color:var(--accent-ink)}
 .gsc .list .grp2{font-weight:bold;font-size:12px;color:var(--sub);padding:6px 4px 2px}
 .gsc .grp{margin:10px 0 4px;font-weight:bold}
+.gsc .prize-pre{font-family:monospace;background:#1f2a3a;color:#fff;padding:6px 10px;border-radius:6px;margin:4px 0;white-space:pre;font-size:14px}
 .gsc .randbar{margin-top:8px;padding:6px 8px;border:1px dashed var(--line);border-radius:6px;background:#fafbfd}
 .gsc .chips{display:inline-flex;flex-wrap:wrap;gap:3px}
 .gsc .chip{padding:1px 8px;font-size:12px;border-radius:10px;background:#f1f3f5;color:#666}
@@ -8025,6 +8139,10 @@ Object.assign(App.prototype, {
       const [textChk, textL] = check('포켓몬을 바꾸면 이 NPC 대사 속 이름·타입도 같이 바꾸기', true);
       const sync = el('button', { text: '🔁 대사를 지금 포켓몬에 맞추기', onclick: () => this.syncGiftTexts(g, err) });
       const fs = el('fieldset', null, el('legend', { text: rom.giftWhere(g) + (g.egg ? '  (알로 줌)' : '') }), row, el('div', { class: 'bar' }, textL, sync));
+      // 게임코너 경품이면 여기서 바꾸면 메뉴 글자·코인이 그대로라 경품 창으로
+      let isPrize = false; try { isPrize = !!rom.readPrizes(g.area, g.owner); } catch (x) { }
+      if (isPrize) fs.append(el('div', { class: 'bar' }, el('span', { class: 'err', text: '⚠ 게임코너 경품이에요. 여기서 바꾸면 메뉴에 옛 이름·코인이 그대로 떠요. ' }),
+        el('button', { class: 'apply', text: '🎰 경품 목록 고치기 (이름·코인까지)', onclick: () => this.prizeDialog(g.area, g.owner) })));
       if (hasPic || hasCry) fs.append(picRow);
       if (!g.egg) fs.append(el('div', { class: 'bar' }, ownL, mvBoxes));
       fs.append(preview);
@@ -8257,7 +8375,10 @@ Object.assign(App.prototype, {
       const sType = o.isSign ? rom.data[o.eventOff + 2] : rom.data[o.eventOff + 7] & 0x0F;
       const storyBtn = el('button', { text: '📜 스토리 동작 보기·고치기', onclick: () => this.storyDialog(a, o) });
       storyBtn.disabled = (o.isSign ? sType > 4 : sType !== 0) || !Rom.banked(rom.w(o.eventOff + (o.isSign ? 3 : 9)));
-      info.append(el('div', { class: 'bar' }, loadBtn, storyBtn,
+      // 게임코너 경품 교환 NPC 면 경품 창 버튼
+      let prizeBtn = null;
+      try { if (rom.readPrizes(a, o)) prizeBtn = el('button', { class: 'apply', text: '🎰 경품 목록 고치기', onclick: () => this.prizeDialog(a, o) }); } catch (x) { }
+      info.append(el('div', { class: 'bar' }, loadBtn, storyBtn, prizeBtn,
         el('button', { text: '지도에서 위치 옮기기', onclick: () => {
           this.evMsg('옮길 자리를 지도에서 클릭하세요 (Esc = 취소)'); rerender();
           this.startPick('지도에서 자리를 클릭하세요', (x, y) => {
@@ -8354,8 +8475,14 @@ Object.assign(App.prototype, {
     const mvSel = sel(LOOK_MOVE_NAMES.map((n, i) => [i, n]), st.move, v => st.move = v);
     const addBtn = el('button', { class: 'apply', text: '지도에서 자리 골라 새 NPC 추가', onclick: () => this.evAdd() });
     addBtn.disabled = !a;
+    // 지도 NPC 수 (게임은 14명까지만 보여줌 — 예전 버전 툴로 15명째를 넣었으면 경고)
+    const nObj = a ? rom.data[rom.eventStarts(a).obj - 1] : 0;
+    const countNote = !a ? null : nObj > 14
+      ? el('div', { class: 'err', text: '⚠ 이 지도는 NPC가 ' + nObj + '명이에요. 게임은 한 지도에 14명까지만 보여줘서 15번째부터는 안 나와요. NPC를 지워서 14명으로 맞춰 주세요.' })
+      : el('div', { class: 'hint', text: '이 지도 NPC ' + nObj + '명 / 최대 14명' });
+    if (nObj >= 14) addBtn.disabled = true;
     col.append(el('fieldset', { style: 'margin-top:10px' }, el('legend', { text: '새 NPC 로 놓기' }),
-      el('div', { class: 'bar' }, el('span', { text: '모습' }), spPic, spSel, el('span', { text: '방향' }), mvSel, addBtn)));
+      el('div', { class: 'bar' }, el('span', { text: '모습' }), spPic, spSel, el('span', { text: '방향' }), mvSel, addBtn), countNote));
     // ---- 고른 NPC 바꾸기
     const setBtn = el('button', { text: '고른 NPC의 이벤트를 이걸로 바꾸기', style: 'background:#c8e6ff', onclick: () => this.evSetSelected() });
     setBtn.disabled = !(o && o.isObject);
@@ -12004,6 +12131,72 @@ Object.assign(App.prototype, {
       msg,
       el('div', { class: 'bar', style: 'justify-content:flex-end;margin-top:8px' }, el('button', { text: '취소', onclick: () => close() }),
         el('button', { class: 'apply', text: '📥 고른 것 넣기', onclick: apply }))), null, false);
+  }
+});
+
+// ===== 99-prize.js
+// ================================================================ 게임코너 경품 창 (포켓몬·도구 · 코인 · 메뉴 글자를 한 번에)
+Object.assign(App.prototype, {
+  prizeDialog(a, o) {
+    const rom = this.rom, info = rom.readPrizes(a, o);
+    if (!info) { alert('이 NPC는 경품 교환 NPC가 아니에요.'); return; }
+    const silverRom = /SILVER|SLV/i.test(rom.title), msg = el('div');
+    const monOpts = this.monOptions(false), itemOpts = this.itemOptions().slice(1);
+    // 편집 중인 값
+    const ed = info.menus.map(m => m.items.map(it => it.prize ? {
+      what: (it.prize.kind === 'mon' ? it.prize.mon : it.prize.item)[0].v,
+      coins: it.prize.coins[0].v, level: it.prize.level ? it.prize.level.v : null
+    } : null));
+    const nameOf = (pz, v) => pz.kind === 'mon' ? rom.monName(v) : rom.itemName(v);
+    const lineOf = (m, it, e) => it.prize ? rom.prizeLine(nameOf(it.prize, e.what), e.coins, m.width) : it.text;
+    const body = el('div');
+    const draw = () => {
+      body.replaceChildren();
+      info.menus.forEach((m, mi) => {
+        const here = !m.verSplit || m.inSilver === silverRom;
+        const box = el('fieldset', { style: 'margin-top:8px' + (here ? '' : ';opacity:.7') },
+          el('legend', { text: '경품 목록' + (info.menus.length > 1 ? ' ' + (mi + 1) : '') + (m.verSplit ? (m.inSilver ? ' · 은 버전에서 나와요' : ' · 금 버전에서 나와요') + (here ? ' (이 롬)' : '') : '') }));
+        const preview = el('pre', { class: 'prize-pre' });
+        const upd = () => { preview.textContent = m.items.map((it, k) => { const l = lineOf(m, it, ed[mi][k]); return l == null ? '⚠ ' + nameOf(it.prize, ed[mi][k].what) + ' — 이름이 길어서 안 들어가요' : '▶ ' + l; }).join('\n'); };
+        m.items.forEach((it, k) => {
+          if (!it.prize) return;
+          const e = ed[mi][k], pz = it.prize;
+          const s = sel(pz.kind === 'mon' ? monOpts : itemOpts, e.what, v => { e.what = v; upd(); });
+          const row = el('div', { class: 'bar' }, el('b', { text: (k + 1) + '.' }), s);
+          if (pz.kind === 'mon' && pz.level) row.append(el('span', { text: 'Lv' }), num(e.level, 1, 100, v => { e.level = v; }));
+          if (pz.kind === 'item' && pz.qty) row.append(el('span', { class: 'hint', text: pz.qty.v + '개' }));
+          const cn = num(e.coins, 0, 9999, v => { e.coins = v; upd(); });
+          cn.addEventListener('input', () => { e.coins = Math.max(0, Math.min(9999, +cn.value || 0)); upd(); });
+          row.append(el('span', { text: '코인' }), cn);
+          box.append(row);
+        });
+        upd();
+        box.append(el('div', { class: 'hint', text: '게임 메뉴에 이렇게 나와요:' }), preview);
+        body.append(box);
+      });
+    };
+    draw();
+    let close;
+    const apply = () => {
+      // 먼저 메뉴 글자가 다 들어가는지 확인
+      for (let mi = 0; mi < info.menus.length; mi++) {
+        const m = info.menus[mi];
+        for (let k = 0; k < m.items.length; k++) if (m.items[k].prize && lineOf(m, m.items[k], ed[mi][k]) == null) { this.okMsg(msg, '"' + nameOf(m.items[k].prize, ed[mi][k].what) + '" 이름이 길어서 메뉴 한 줄(' + m.width + '칸)에 코인 수와 같이 안 들어가요', true); return; }
+      }
+      for (let mi = 0; mi < info.menus.length; mi++) {
+        const m = info.menus[mi];
+        m.items.forEach((it, k) => { if (it.prize) rom.setPrize(it.prize, ed[mi][k]); });
+        const e = rom.writePrizeMenu(m, m.items.map((it, k) => lineOf(m, it, ed[mi][k])));
+        if (e) { this.okMsg(msg, e, true); return; }
+      }
+      close();
+      this.say('경품을 바꿨어요 (메뉴 글자·코인·받는 것). [저장하기]를 눌러야 롬 파일에 기록돼요.');
+      this.setTab(this.tab);
+    };
+    close = this.dialog('🎰 경품 교환 — ' + a.regionName + ' › ' + a.name + ' › ' + o.name, () => el('div', null,
+      el('div', { class: 'hint', text: '포켓몬(도구)과 코인 수를 바꾸면 게임 메뉴 글자, 코인 확인·빼기, 실제로 주는 것까지 함께 바뀌어요.' }),
+      body, msg,
+      el('div', { class: 'bar', style: 'justify-content:flex-end;margin-top:10px' }, el('button', { text: '취소', onclick: () => close() }), el('button', { class: 'apply', text: '적용', onclick: apply }))), null, false, true);
   }
 });
 
