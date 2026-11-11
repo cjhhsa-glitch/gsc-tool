@@ -2259,6 +2259,26 @@ const RomCry = (() => {
   }
   // 기술 애니메이션 표: 막치기·태권당수·연속뺨치기 애니메이션에 각자 이름의 효과음이 있는 자리
   function findMoveSounds(d) {
+    const make = (tab) => {
+      const bank = Math.floor(tab / 0x4000), byMove = [];
+      for (let m = 1; m <= 251; m++) { const a = W(d, tab + m * 2); byMove[m] = a >= 0x4000 && a < 0x8000 ? animSounds(d, bank, a) : []; }
+      return { tab, byMove };
+    };
+    // 1) 게임 코드가 표를 읽는 곳: ld hl, wFXAnimID / ld e, [hl] / inc hl / ld d, [hl] / ld hl, BattleAnimations / add hl, de ×2
+    //    표는 다른 뱅크에 있으니 그 주소에 애니메이션 표가 있는 뱅크를 고름 (내용을 고쳐도 찾을 수 있게)
+    for (let p = findPat(d, [0x21, -1, -1, 0x5E, 0x23, 0x56, 0x21, -1, -1, 0x19, 0x19], 0x4000); p >= 0; p = findPat(d, [0x21, -1, -1, 0x5E, 0x23, 0x56, 0x21, -1, -1, 0x19, 0x19], p + 1)) {
+      const a = W(d, p + 7);
+      if (a < 0x4000 || a >= 0x8000) continue;
+      let best = -1, bestScore = 0;
+      for (let b = 1; (b + 1) * 0x4000 <= d.length; b++) {
+        const t = Off(b, a);
+        let score = 0;
+        for (let k = 1; k <= 251; k++) { const w = W(d, t + k * 2); if (w >= 0x4000 && w < 0x8000 && d[Off(b, w)] >= 0xD0) score++; }
+        if (score > bestScore) { bestScore = score; best = t; }
+      }
+      if (bestScore > 200) return make(best);
+    }
+    // 2) 예전 방식: 막치기·태권당수·연속뺨치기 애니메이션에 각자 이름의 효과음이 있는 자리
     const iP = SFX_NAMES.indexOf('POUND'), iK = SFX_NAMES.indexOf('KARATE_CHOP'), iS = SFX_NAMES.indexOf('DOUBLESLAP');
     const ok = (bank, a, s) => a >= 0x4000 && a < 0x8000 && animSounds(d, bank, a).some(x => x.sfx === s);
     for (let i = 0x4000; i < d.length - 8; i++) {
