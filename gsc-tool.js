@@ -149,6 +149,35 @@ const EN_EXTRA = {
   '🎰 경품 목록 고치기 (이름·코인까지)': '🎰 Edit prize list (name and coins too)', '(게임은 한 지도에 14명까지만 보여줘요)': '(the game shows at most 14 per map)',
   '이 지도 NPC ': 'NPCs on this map: ', '명 / 최대 14명': ' / max 14',
 
+  // ---- 기술머신 · 비전머신 (99-tm)
+  '이 기술을 가르치는 것: ': 'Taught by: ', '이 기술을 가르치는 기술머신·비전머신 없음': 'No TM/HM teaches this move', '📀 기술머신·비전머신 기술 바꾸기…': '📀 Change TM/HM moves…',
+  '기술머신·비전머신 기술을 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.': 'TM/HM moves changed. Press [Save] to write them to the ROM file.',
+  ' ⚠ 비전머신을 바꿨어요 — 필드 기술(풀베기·파도타기 등)을 배울 방법이 없어지면 게임 진행이 막힐 수 있어요.': ' ⚠ You changed an HM — if a field move (Cut, Surf…) can no longer be learned, the game may become impossible to finish.',
+  '📀 기술머신 · 비전머신이 가르치는 기술': '📀 Moves taught by TMs / HMs',
+  '기술머신마다 가르치는 기술을 골라요. 어떤 포켓몬이 배울 수 있는지는 기술머신 번호에 붙어 있어서 그대로예요 (포켓몬 편집의 체크 칸).\n⚠ 비전머신(노란 칸)은 바꾸지 않는 걸 추천해요. 풀베기·파도타기·괴력 같은 필드 기술은 게임이 그 기술 번호로 확인해서, 비전머신을 다른 기술로 바꾸면 그 길을 지나갈 수 없게 될 수 있어요.':
+    'Pick the move each TM teaches. Which Pokémon can learn it stays tied to the TM number (the checkboxes in the Pokémon Editor).\n⚠ Changing HMs (yellow) is not recommended. The game checks field moves like Cut, Surf and Strength by move number, so changing an HM can make those paths impassable.',
+
+  // ---- 새 타입 (75-types · 99-types)
+  '이 롬에서 타입 이름표를 찾지 못했어요': 'The type name table was not found in this ROM', '이름을 써 주세요': 'Please enter a name', '타입 이름은 ': 'Type names can have up to ',
+  '글자까지예요 (게임 화면 칸이 그만큼이라서)': ' characters (the game screen has that much room)', '타입 이름을 넣을 빈 공간이 부족해요': 'Not enough free space for the type name',
+  '이 타입을 쓰는 포켓몬 ': 'Pokémon using this type: ', '마리 · 기술 ': ' · moves: ', '개가 있어요. 먼저 다른 타입으로 바꿔 주세요': '. Change them to another type first',
+  '19번(???) 타입은 저주 기술이 쓰는 칸이라 지우지 않아요. 이름만 바꿀 수 있어요': 'Type 19 (???) is used by Curse, so it is not deleted. You can only rename it',
+  '이 롬에서는 상성 표를 읽는 코드를 찾지 못해서 상성 줄을 더 넣을 수 없어요': 'The code that reads the type chart was not found in this ROM, so no more matchups can be added',
+  '배틀 코드가 있는 곳에 빈 자리가 모자라요 (상성 ': 'Not enough free space near the battle code (matchups needed: ', '줄 필요, 넣을 수 있는 건 ': ', room for ', '줄)': ')',
+  '. 물리/특수 분화가 같은 자리를 쓰고 있어요': '. The physical/special split uses the same space', '배틀 코드가 있는 곳에 빈 자리가 모자라요': 'Not enough free space near the battle code',
+  '이 롬에서는 타입 이름표를 찾지 못해서 새 타입을 만들 수 없어요.': 'The type name table was not found in this ROM, so new types cannot be made.', '🆕 새 타입': '🆕 New types', '＋ 새 타입 만들기': '＋ New type',
+  '빈 타입 칸 ': 'Free type slots: ', '개 · 상성 줄 ': ' · matchups ', ' (원래 표 ': ' (main table ', ' + 추가 ': ' + extra ', '번 · 포켓몬 ': ' · Pokémon ', '🗑 지우기': '🗑 Delete',
+  '타입을 지웠어요. [저장하기]를 눌러야 롬 파일에 기록돼요.': 'Type deleted. Press [Save] to write it to the ROM file.', '빈 타입 칸이 없어요 (10~18번을 다 썼어요).': 'No free type slots (10–18 are all used).',
+  '상성 없음 (모두 보통 — 나중에 표에서 칸을 눌러 정해요)': 'No matchups (all neutral — set them later in the chart)', '페어리 (6세대 상성 12줄)': 'Fairy (Gen 6 matchups, 12 rows)', ' 타입과 같은 상성으로 시작': ' — start with the same matchups',
+  '상성 줄 남은 자리: ': 'Matchup rows left: ', '줄 · 이 상성에 필요한 줄: ': ' · needed: ', '  ⚠ 자리가 모자라요': '  ⚠ not enough room', ' (물리/특수 분화가 배틀 코드 빈 자리를 쓰고 있어서예요)': ' (the physical/special split uses the free space in the battle code)',
+  '" 타입을 만들었어요.\n\n⚠ 하지만 상성은 넣지 못했어요: ': '" type created.\n\n⚠ But its matchups could not be added: ', '\n[타입 상성] 표에서 칸을 눌러 꼭 필요한 것만 넣어 보세요.': '\nAdd only the essential ones by clicking cells in the [Type Chart].',
+  '새 타입 "': 'New type "', '"을(를) 만들었어요. [저장하기]를 눌러야 롬 파일에 기록돼요.': '" created. Press [Save] to write it to the ROM file.', '✅ 새 타입 "': '✅ New type "', '"을(를) 만들었어요 (': '" created (', '번, 상성 ': ', matchups: ',
+  '1. [포켓몬 편집]에서 포켓몬의 타입으로 고르기\n2. [기술 편집]에서 기술의 타입으로 고르기\n3. [타입 상성] 표에서 상성 고치기\n\n': '1. Pick it as a Pokémon type in the [Pokémon Editor]\n2. Pick it as a move type in the [Move Editor]\n3. Edit matchups in the [Type Chart]\n\n',
+  '※ 새 타입 번호는 타입 규칙상 "물리" 기술이 돼요. 특수로 하려면 [기술 편집]의 물리/특수 분화를 켜세요 (배틀 코드 빈 자리를 같이 써서, 상성 줄을 많이 넣었으면 자리가 모자랄 수 있어요).\n': '※ Moves of the new type count as "physical" by the type rule. To make them special, turn on the physical/special split in the [Move Editor] (it shares the free space in the battle code, so it may not fit if many matchup rows were added).\n',
+  '※ 저장한 뒤 [게임으로 확인]으로 배틀에서 꼭 확인해 보세요.': '※ After saving, check it in a battle with [Test Play].', '🆕 새 타입 만들기': '🆕 New type',
+  '번)에 이름을 붙여 새 타입을 만들어요. 상태 화면·도감에 이 이름이 나와요.': ') to make a new type. This name shows on the status screen and in the Pokédex.', '게임 안의 빈 타입 칸(': 'Gives a name to an empty type slot in the game (#',
+  '🆕 만들기': '🆕 Create', '. 새 타입 상성 추가 표가 같은 자리를 쓰고 있어요': '. The extra type-matchup table uses the same space', '✏ 타입 이름 바꾸기': '✏ Rename type', '타입 이름을 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.': 'Type renamed. Press [Save] to write it to the ROM file.',
+
   // ---- 타운맵 (99-townmap)
   '이 롬에서 타운맵 데이터를 찾지 못했어요.': 'Could not find the town map data in this ROM.', '타운맵을 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.': 'Town map changed. Press [Save] to write it to the ROM file.',
   '장소 위치를 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.': 'Place position changed. Press [Save] to write it to the ROM file.', '타일 ': 'Tile ', '고른 타일: ': 'Selected tile: ',
@@ -3354,6 +3383,24 @@ Object.assign(Rom.prototype, {
       if (end < 0x8000 && pend - p > 0 && pend - p <= 0x1000) tc.tail = Array.from(this.data.subarray(p, pend));
       this.trainerClasses.push(tc);
     }
+    this.dropStaleParties();
+  },
+  // 예전 버전 툴이 직업 데이터를 새 자리로 옮기며 남긴 옛 데이터 → 앞 직업 끝에 다른 직업의 팀들이 그대로 붙어 읽힘. 목록에서 뺌
+  // (게임에는 영향 없음 · 다음에 그 직업을 고치면 그 자리는 $50 으로 채워짐)
+  dropStaleParties() {
+    const same = (a, b) => a.name === b.name && a.mons.length === b.mons.length && a.mons.every((m, i) => m.species === b.mons[i].species && m.level === b.mons[i].level);
+    for (const c of this.trainerClasses) for (const x of this.trainerClasses) {
+      const k = x.parties.length;
+      if (x === c || x.off === c.off || !k || c.parties.length <= k) continue;
+      const tail = c.parties.slice(c.parties.length - k);
+      // 이름은 순서대로 다 같고, 포켓몬까지 같은 팀이 반 넘게 (고친 팀 하나 때문에 조금 다를 수 있음)
+      if (!tail.every((p, i) => p.name === x.parties[i].name)) continue;
+      const n = tail.filter((p, i) => same(p, x.parties[i])).length;
+      if (n * 2 < k || (k === 1 && n < 1)) continue;
+      c.parties.splice(c.parties.length - k);
+      c.length = c.parties.reduce((s, p) => s + p.length, 0);
+      c.stale = (c.stale || 0) + k;
+    }
   },
   readParty(p, pend) {
     const d = this.data, r = this.cs.decode(d, p);
@@ -3379,6 +3426,10 @@ Object.assign(Rom.prototype, {
     for (const r of this.free) if (Math.floor(r[0] / 0x4000) === bank && r[1] - r[0] >= n) { const p = r[0]; r[0] += n; return p; }
     return -1;
   },
+  // 직업 하나의 팀들을 다시 씀 (팀 데이터만 · 뒤에 붙은 다른 데이터(tail)는 제자리에 그대로)
+  // 다른 직업과 같은 자리를 같이 쓰거나 길어지면 → 새 자리로 옮기고 옛 자리는 $50 으로 채움
+  // (그냥 두면 툴이 옛 데이터를 앞 직업의 트레이너로 읽어서 "트레이너가 새로 생긴" 것처럼 보였음)
+  // 짧아지면 → 제자리에 쓰고 남은 칸을 $50 으로 채움 ($50 = 빈 이름 + 잘못된 종류라 읽기가 거기서 멈춤)
   writeTrainerClass(tc) {
     const b = [];
     for (const pt of tc.parties) {
@@ -3394,17 +3445,20 @@ Object.assign(Rom.prototype, {
       }
       b.push(0xFF);
     }
-    b.push(...tc.tail);
-    let p = tc.off;
-    if (b.length > tc.length + tc.tail.length) {
-      p = this.allocInBank(this.trainerBank, b.length);
+    const shared = this.trainerClasses.some(o => o !== tc && o.off === tc.off);
+    if (!shared && b.length <= tc.length) {
+      this.data.set(b, tc.off);
+      this.data.fill(0x50, tc.off + b.length, tc.off + tc.length);
+    } else {
+      if (!this.free) this.findFree();
+      const p = this.allocInBank(this.trainerBank, b.length);
       if (p < 0) return '트레이너 데이터 공간이 부족해요 (포켓몬 수나 기술 지정을 줄여주세요)';
+      this.data.set(b, p);
       const addr = 0x4000 + p % 0x4000, slot = this.trainerTbl + (tc.cls - 1) * 2;
       this.data[slot] = addr & 0xff; this.data[slot + 1] = addr >> 8;
-      tc.off = p;
+      if (!shared) this.data.fill(0x50, tc.off, tc.off + tc.length);
+      tc.off = p; tc.length = b.length;
     }
-    this.data.set(b, p);
-    tc.length = Math.max(tc.length + tc.tail.length, b.length) - tc.tail.length;
     this.dirty = true;
     return null;
   },
@@ -3453,7 +3507,10 @@ Object.assign(Rom.prototype, {
     const f = this.findPattern([0x4F, 0x06, 0x00, 0x21, -1, -1, 0x09, 0x09, 0x3E, -1, 0xCD], 0x4000, this.data.length);
     this.evosBank = -1;
     if (f >= 0) { this.evosBank = this.data[f + 9]; this.evosTbl = this.off(this.evosBank, this.w(f + 4)); }
-    this.tmOff = this.findPattern([0xDF, 0x1D, 0xAE, 0xCD], 0, this.data.length);
+    // 기술머신·비전머신 표 (57개): GetTMHMMove 가 읽는 곳 (ld a, [x] / dec a / ld hl, TMHMMoves / ld b, 0 / ld c, a / add hl, bc / ld a, [hl])
+    // 표 내용으로 찾으면 기술머신 01~04 를 바꾼 롬에서 못 찾으니 코드로 먼저
+    const tmc = this.findPattern([0xFA, -1, -1, 0x3D, 0x21, -1, -1, 0x06, 0x00, 0x4F, 0x09, 0x7E, 0xEA, -1, -1, 0xC9], 0x4000, this.data.length);
+    this.tmOff = tmc >= 0 ? this.off(Math.floor(tmc / 0x4000), this.w(tmc + 5)) : this.findPattern([0xDF, 0x1D, 0xAE, 0xCD], 0, this.data.length);
   },
   statOff(mon) { return this.baseStatsOff + (mon - 1) * 32; },
   moveOff(move) { return this.movesOff + (move - 1) * 7; },
@@ -3584,11 +3641,14 @@ Object.assign(Rom.prototype, {
   // ------------------------------------------------ 타입 상성
   typeMatchupsOff() {
     if (this._tmOff !== undefined) return this._tmOff;
+    // 게임 코드가 상성 표를 읽는 곳: ld hl, TypeMatchups / ld a, [hli] / cp -1 / jr z / cp -2 / jr nz (내용을 고쳐도 찾게)
+    const c = this.findPattern([0x21, -1, -1, 0x2A, 0xFE, 0xFF, 0x28, -1, 0xFE, 0xFE, 0x20], 0x4000, this.data.length);
+    if (c >= 0) return this._tmOff = this.off(Math.floor(c / 0x4000), this.w(c + 1));
     let o = this.findPattern([0x00, 0x05, 0x05, 0x00, 0x09, 0x05, 0x14, 0x14, 0x05], 0x20000, this.data.length);
     if (o < 0) o = this.findPattern([0x14, 0x16, 0x14, 0x14, 0x19, 0x14, 0x14, 0x07, 0x14], 0x20000, this.data.length);
     if (o < 0) o = this.findPattern([0x14, 0x14, 0x05, 0x14, 0x15, 0x05], 0x20000, this.data.length);
     // 상성을 바꾼 롬은 앞부분 모양이 달라서, 찾은 곳에서 표가 시작하는 데까지 거슬러 올라감
-    const d = this.data, ids = new Set(TYPES.map(t => t[0]).concat([0x13]));
+    const d = this.data, ids = new Set(TYPES.map(t => t[0]).concat([0x13, ...NEW_TYPE_IDS]));
     const ok = p => p >= 0 && ids.has(d[p]) && ids.has(d[p + 1]) && [0, 5, 10, 20].includes(d[p + 2]);
     if (o >= 0) while (ok(o - 3)) o -= 3;
     return this._tmOff = o;
@@ -3600,25 +3660,53 @@ Object.assign(Rom.prototype, {
     while (p < d.length - 3) {
       if (d[p] === 0xFF) break;
       if (d[p] === 0xFE) { foresight = true; p++; continue; }
-      list.push({ atk: d[p], def: d[p + 1], mult: d[p + 2], foresight });
+      if (d[p] !== TYPE_PAD_ROW[0]) list.push({ atk: d[p], def: d[p + 1], mult: d[p + 2], foresight });
       p += 3;
     }
+    // 원래 표에 못 들어가서 추가 표(75-types.js)에 넣은 줄
+    const ex = this.typeExt && this.typeExt();
+    if (ex && ex.installed) list.push(...ex.rows);
     return list;
   },
+  // 원래 표: 보통 줄들을 앞에서부터 채우고 남은 칸은 빈 줄(TYPE_PAD_ROW) → FE · 꿰뚫어보기 줄 → FF (FE·FF 위치가 안 바뀌게)
+  // 원래 표에 다 안 들어가는 보통 줄은 추가 표로
   saveTypeMatchups(entries) {
     const off = this.typeMatchupsOff(), d = this.data;
     if (off < 0) return '타입 상성 표를 찾지 못했어요';
+    let fe = -1, p = off;
+    while (d[p] !== 0xFF && p < off + 1000) { if (d[p] === 0xFE) { fe = p; p++; } else p += 3; }
+    const ff = p, normal = entries.filter(e => !e.foresight && e.mult !== 10), fore = entries.filter(e => e.foresight);
+    const oldFore = fe >= 0 ? (ff - fe - 1) / 3 : 0;
+    if (fe < 0 || fore.length !== oldFore) {
+      // 예전 방식 (꿰뚫어보기 칸 수가 다르면 앞으로 당겨 씀)
+      const b = [];
+      for (const e of normal) b.push(e.atk, e.def, e.mult);
+      b.push(0xFE); for (const e of fore) b.push(e.atk, e.def, e.mult); b.push(0xFF);
+      if (b.length > ff - off + 1) return '상성 표 공간이 부족해요 (원래보다 특별한 상성을 너무 많이 넣었어요)';
+      for (let i = 0; i <= ff - off; i++) d[off + i] = i < b.length ? b[i] : 0xFF;
+      this.dirty = true;
+      return null;
+    }
+    const cap = (fe - off) / 3, main = normal.slice(0, cap), extra = normal.slice(cap);
+    if (extra.length || (this.typeExt && this.typeExt() && this.typeExt().installed)) {
+      const e = this.writeTypeExt(extra);
+      if (e) return e;
+    }
     const b = [];
-    for (const e of entries) if (!e.foresight && e.mult !== 10) b.push(e.atk, e.def, e.mult);
-    b.push(0xFE);
-    for (const e of entries) if (e.foresight) b.push(e.atk, e.def, e.mult);
-    b.push(0xFF);
-    let len = 0; for (let p = off; p < d.length && d[p] !== 0xFF; p++) len++;
-    len++;
-    if (b.length > len) return '상성 표 공간이 부족해요 (원래보다 특별한 상성을 너무 많이 넣었어요)';
-    for (let i = 0; i < len; i++) d[off + i] = i < b.length ? b[i] : 0xFF;
+    for (const e of main) b.push(e.atk, e.def, e.mult);
+    while (b.length < cap * 3) b.push(...TYPE_PAD_ROW);
+    d.set(b, off);
+    let q = fe + 1; for (const e of fore) { d.set([e.atk, e.def, e.mult], q); q += 3; }
     this.dirty = true;
     return null;
+  },
+  // 원래 표에 들어가는 보통 줄 수 · 추가 표에 넣을 수 있는 줄 수
+  typeMatchupRoom() {
+    const off = this.typeMatchupsOff(), d = this.data;
+    if (off < 0) return { main: 0, ext: 0 };
+    let fe = -1, p = off;
+    while (d[p] !== 0xFF && p < off + 1000) { if (d[p] === 0xFE) { fe = p; p++; } else p += 3; }
+    return { main: fe >= 0 ? (fe - off) / 3 : 0, ext: this.typeExtRoom ? this.typeExtRoom() : 0 };
   },
 
   // ------------------------------------------------ 바깥 지도 NPC 모습 목록 (RomOutdoorSprites.cs)
@@ -6697,6 +6785,7 @@ mixin(Rom.prototype, {
     if (!this.free) this.findFree();
     const place = (bank, idAddr) => {
       let p = this.splitFindBlock(bank);
+      if (p < 0) p = this.allocBattleTail(bank, SPLIT_SIZE);
       if (p < 0) p = this.allocSmallInBank(bank, SPLIT_SIZE);
       if (p < 0) p = this.allocInBank(bank, SPLIT_SIZE);
       if (p < 0) return -1;
@@ -6705,7 +6794,7 @@ mixin(Rom.prototype, {
       return base;
     };
     const main = place(s.bank, s.counter ? s.counter.power - 2 : s.aiId);
-    if (main < 0) return '배틀 코드가 있는 곳에 빈 공간이 부족해요 (' + SPLIT_SIZE + '바이트 필요)';
+    if (main < 0) return '배틀 코드가 있는 곳에 빈 공간이 부족해요 (' + SPLIT_SIZE + '바이트 필요)' + (this.typeExt && this.typeExt() && this.typeExt().installed ? '. 새 타입 상성 추가 표가 같은 자리를 쓰고 있어요' : '');
     let ai = -1;
     if (s.ai.length) ai = place(s.aiBank, s.aiId);
     for (const q of [s.pl, s.en]) { d[q] = 0xCD; d[q + 1] = main & 0xFF; d[q + 2] = main >> 8; }
@@ -6937,6 +7026,210 @@ mixin(Rom.prototype, {
   }
 });
 
+// ===== 75-types.js
+// ================================================================ 새 타입 (안 쓰는 타입 번호에 이름 붙이기 · 상성 추가 표)
+// 타입 이름표 = 이름 주소 28개 (0~27). 10~18번은 비어 있어서 0번(노말) 이름을 가리킴 → 여기 새 이름을 붙이면 새 타입
+// 19번은 "???"(저주 기술 타입). 개조롬이 여기를 새 타입으로 쓰기도 해서(후계버전 페어리) 이름이 ??? 가 아니면 타입으로 셈
+// 10~19번은 타입 번호로는 "물리" 쪽 (20번부터 특수). 물리/특수 분화를 켜면 기술마다 정할 수 있음
+//
+// 상성 표는 배틀 뱅크 안에서 게임이 바로 읽고 빈 자리가 없어서 늘릴 수 없음 →
+// 상성을 읽는 두 곳(데미지 계산 · AI/화면)의 "표 끝" 처리 첫 명령(3바이트)을 작은 코드로 바꿔,
+// 원래 표를 끝까지 읽으면 추가 표를 이어서 읽게 함. 추가 표·코드는 배틀 뱅크 끝 빈 자리에 둠
+const NEW_TYPE_IDS = [10, 11, 12, 13, 14, 15, 16, 17, 18];
+const TYPE_EXT_CODE = 50;        // 코드 바이트 수 (확인 18 + 입구 17 + 15)
+const TYPE_PAD_ROW = [0x1F, 0x1F, 0x0A];   // 원래 표 자리 채우기용 줄 (어느 타입에도 안 맞음 → FE·FF 위치를 고정)
+
+// 툴 안 타입 목록: 원래 타입 + 이 롬에서 새로 만든 타입 (이름은 롬 글자 그대로라 RAW)
+function typeList(rom) { return TYPES.concat(rom && rom.customTypes ? rom.customTypes().map(([v, n]) => [v, RAW + n]) : []); }
+function typeNameOf(rom, id) { const t = typeList(rom).find(x => x[0] === id); return t ? t[1] : TYPE_NAME.get(id) || ('#' + id); }
+// 페어리 상성 (6세대 기준, 금·은 타입 번호) — 새 타입 만들 때 고를 수 있는 예시
+function fairyRows(id) {
+  return [[id, 1, 20], [id, 26, 20], [id, 27, 20], [id, 20, 5], [id, 3, 5], [id, 9, 5],
+    [1, id, 5], [7, id, 5], [27, id, 5], [26, id, 0], [3, id, 20], [9, id, 20]].map(([atk, def, mult]) => ({ atk, def, mult, foresight: false }));
+}
+
+mixin(Rom.prototype, {
+  // 배틀 뱅크처럼 빈 자리가 끝에만 조금 있는 뱅크: 끝의 채움 바로 앞이 ret/jp/jr 로 끝나면 2바이트만 띄우고 씀 (아니면 16바이트)
+  battleTailStart(bank) {
+    if (!this.free) this.findFree();
+    const r = this.smallFree.get(bank), d = this.data, end = (bank + 1) * 0x4000, fill = d[end - 1];
+    if (!r || (fill !== 0 && fill !== 0xFF)) return null;
+    let s = end; while (s > bank * 0x4000 && d[s - 1] === fill) s--;
+    let start = r[0];
+    if (start === s + 0x10 && [0xC9, 0xC3, 0x18, 0xD9].includes(d[s - 1])) start = s + 2;
+    return { r, start, room: r[1] - start };
+  },
+  allocBattleTail(bank, n) {
+    const t = this.battleTailStart(bank);
+    if (!t || t.room < n) return -1;
+    t.r[0] = t.start + n;
+    return t.start;
+  },
+  // 타입 이름표: GetTypeName (ld a, [x] / ld hl, TypeNames / ld e, a / ld d, 0 / add hl, de ×2 / ld a, [hli] / ld h, [hl] / ld l, a)
+  typeNamesTab() {
+    if (this._tnt !== undefined) return this._tnt;
+    const p = this.findPattern([0xFA, -1, -1, 0x21, -1, -1, 0x5F, 0x16, 0x00, 0x19, 0x19, 0x2A, 0x66, 0x6F], 0x4000, this.data.length);
+    if (p < 0) return (this._tnt = null);
+    const bank = Math.floor(p / 0x4000), tab = this.off(bank, this.w(p + 4));
+    for (let i = 0; i < 28; i++) if (!Rom.banked(this.w(tab + i * 2))) return (this._tnt = null);
+    let maxLen = 0;
+    for (let i = 0; i < 28; i++) maxLen = Math.max(maxLen, this.typeNameRaw(i, tab, bank).length);
+    return (this._tnt = { tab, bank, maxLen });
+  },
+  typeNameRaw(id, tab, bank) {
+    const t = tab != null ? { tab, bank } : this.typeNamesTab();
+    try { return this.cs.decode(this.data, this.off(t.bank, this.w(t.tab + id * 2))).text; } catch (e) { return ''; }
+  },
+  // 툴이 새로 알아야 하는 타입들 [[번호, 롬 속 이름]] (10~19번 중 이름이 붙은 것)
+  customTypes() {
+    const t = this.typeNamesTab();
+    if (!t) return [];
+    const normal = this.w(t.tab), r = [];
+    for (const id of NEW_TYPE_IDS) if (this.w(t.tab + id * 2) !== normal) r.push([id, this.typeNameRaw(id)]);
+    const q = this.typeNameRaw(0x13);
+    if (q && !/^\?+$/.test(q)) r.push([0x13, q]);
+    return r;
+  },
+  freeTypeSlots() {
+    const t = this.typeNamesTab();
+    if (!t) return [];
+    const normal = this.w(t.tab);
+    return NEW_TYPE_IDS.filter(id => this.w(t.tab + id * 2) === normal);
+  },
+  // 이름 붙이기 (새 타입 만들기 · 이름 바꾸기) → 오류 또는 null
+  setTypeName(id, name) {
+    const t = this.typeNamesTab();
+    if (!t) return '이 롬에서 타입 이름표를 찾지 못했어요';
+    if (!name) return '이름을 써 주세요';
+    if (name.length > t.maxLen) return '타입 이름은 ' + t.maxLen + '글자까지예요 (게임 화면 칸이 그만큼이라서)';
+    let b; try { b = this.encodeName(name); } catch (e) { return e.message; }
+    b.push(0x50);
+    if (!this.free) this.findFree();
+    let p = this.allocInBank(t.bank, b.length);
+    if (p < 0) p = this.allocSmallInBank(t.bank, b.length);
+    if (p < 0) return '타입 이름을 넣을 빈 공간이 부족해요';
+    this.data.set(b, p);
+    const a = 0x4000 + p % 0x4000;
+    this.data[t.tab + id * 2] = a & 0xFF; this.data[t.tab + id * 2 + 1] = a >> 8;
+    this.dirty = true;
+    return null;
+  },
+  // 타입 지우기: 이름을 원래(노말을 가리킴)대로 + 그 타입 상성 줄 빼기. 쓰는 포켓몬·기술이 있으면 오류
+  removeType(id) {
+    const t = this.typeNamesTab(), used = this.typeUsers(id);
+    if (used.mons.length || used.moves.length) return '이 타입을 쓰는 포켓몬 ' + used.mons.length + '마리 · 기술 ' + used.moves.length + '개가 있어요. 먼저 다른 타입으로 바꿔 주세요';
+    if (id === 0x13) return '19번(???) 타입은 저주 기술이 쓰는 칸이라 지우지 않아요. 이름만 바꿀 수 있어요';
+    const w = this.w(t.tab);
+    this.data[t.tab + id * 2] = w & 0xFF; this.data[t.tab + id * 2 + 1] = w >> 8;
+    const e = this.saveTypeMatchups(this.readTypeMatchups().filter(x => x.atk !== id && x.def !== id));
+    this.dirty = true;
+    return e;
+  },
+  typeUsers(id) {
+    const d = this.data, mons = [], moves = [];
+    for (let m = 1; m <= 251; m++) { const o = this.statOff(m); if (d[o + 7] === id || d[o + 8] === id) mons.push(m); }
+    for (let m = 1; m <= 251; m++) if (d[this.moveOff(m) + 3] === id) moves.push(m);
+    return { mons, moves };
+  },
+
+  // ------------------------------------------------ 상성 추가 표
+  // 상성을 읽는 두 곳: ld hl, TypeMatchups / .loop ld a, [hli] / cp -1 / jr z, .end / cp -2 / jr nz …
+  typeExtSites() {
+    if (this._tes !== undefined) return this._tes;
+    const mt = this.typeMatchupsOff();
+    if (mt < 0) return (this._tes = null);
+    const a = 0x4000 + mt % 0x4000, bank = Math.floor(mt / 0x4000), pat = [0x21, a & 0xFF, a >> 8, 0x2A, 0xFE, 0xFF, 0x28, -1, 0xFE, 0xFE, 0x20];
+    const sites = [];
+    for (let p = this.findPattern(pat, bank * 0x4000, bank * 0x4000 + 0x4000); p >= 0; p = this.findPattern(pat, p + 1, bank * 0x4000 + 0x4000)) {
+      const loop = p + 3, end = p + 8 + this.data[p + 7];
+      sites.push({ loop, end });
+    }
+    // 데미지 계산 쪽 끝 = call CheckTypeMatchup (cd ..) · AI/화면 쪽 끝 = pop bc / pop de / pop hl / ret
+    // 이미 바꾼 롬(jp 입구)이면 입구 코드 뒤쪽에 원래 명령이 있음
+    const d = this.data;
+    for (const s of sites) {
+      let at = s.end;
+      if (d[at] === 0xC3) at = this.off(bank, this.w(at + 1)) + 11;
+      s.kind = d[at] === 0xCD ? 'call' : d[at] === 0xC1 ? 'pop' : '?';
+      s.orig = Array.from(d.subarray(at, at + 3));
+    }
+    if (sites.length !== 2 || sites.some(s => s.kind === '?') || sites[0].kind === sites[1].kind) return (this._tes = null);
+    // 원래 표의 FE · FF 위치 (끝까지 읽었는지 확인용)
+    let p = mt, fe = -1;
+    while (this.data[p] !== 0xFF && p < mt + 1000) { if (this.data[p] === 0xFE) { fe = p; p++; } else p += 3; }
+    return (this._tes = { bank, mt, fe, ff: p, sites });
+  },
+  // 이미 넣은 추가 표 → { block(롬 위치), cap(줄 수), rows } 또는 null
+  typeExt() {
+    const s = this.typeExtSites();
+    if (!s) return null;
+    const j = s.sites.find(x => this.data[x.end] === 0xC3);
+    if (!j) return { installed: false };
+    const stub = this.off(s.bank, this.w(j.end + 1));
+    // 입구 코드 앞 3바이트 = call 확인코드 → 확인코드 위치 = 묶음 시작
+    const block = this.off(s.bank, this.w(stub + 1));
+    const tab = block + TYPE_EXT_CODE, cap = this.data[block - 1], rows = [];
+    for (let p = tab; this.data[p] !== 0xFF && rows.length < 200; p += 3) rows.push({ atk: this.data[p], def: this.data[p + 1], mult: this.data[p + 2], foresight: false, ext: true });
+    return { installed: true, block, tab, cap, rows };
+  },
+  // 추가 표 묶음: [줄 수] 확인코드 · 입구 둘 · 표(cap 줄 + FF)
+  typeExtBlock(base, s, rows, cap) {
+    const W = v => [v & 0xFF, v >> 8], A = o => 0x4000 + o % 0x4000;
+    const fe1 = A(s.fe >= 0 ? s.fe + 1 : s.ff + 1), ff1 = A(s.ff + 1);
+    const chk = base, tab = base + TYPE_EXT_CODE;
+    const code = [0x7C, 0xFE, fe1 >> 8, 0x20, 0x03, 0x7D, 0xFE, fe1 & 0xFF, 0xC8,
+      0x7C, 0xFE, ff1 >> 8, 0x20, 0x03, 0x7D, 0xFE, ff1 & 0xFF, 0xC9];
+    const stubs = {};
+    for (const x of s.sites) {
+      stubs[x.kind] = base + code.length;
+      const tail = x.kind === 'pop' ? [0xC1, 0xD1, 0xE1, 0xC9] : [...x.orig, 0xC3, ...W(A(x.end) + 3)];
+      code.push(0xCD, ...W(chk), 0x20, 3 + 3, 0x21, ...W(tab), 0xC3, ...W(A(x.loop)), ...tail);
+    }
+    const out = code.concat([]);
+    while (out.length < TYPE_EXT_CODE) out.push(0);
+    for (let i = 0; i < cap; i++) { const r = rows[i]; out.push(...(r ? [r.atk, r.def, r.mult] : [0xFF, 0xFF, 0xFF])); }
+    out.push(0xFF);
+    // 줄이 cap 보다 적으면 남은 칸 앞에 FF 가 먼저 오게
+    const t = TYPE_EXT_CODE + rows.length * 3; out[t] = 0xFF;
+    return { bytes: out, stubs };
+  },
+  // 추가 표 쓰기 (rows = 원래 표에 못 들어간 줄들). 처음이면 코드를 넣고 두 곳을 바꿈 → 오류 또는 null
+  writeTypeExt(rows) {
+    const s = this.typeExtSites();
+    if (!s) return '이 롬에서는 상성 표를 읽는 코드를 찾지 못해서 상성 줄을 더 넣을 수 없어요';
+    const ex = this.typeExt(), d = this.data;
+    if (ex.installed && rows.length <= ex.cap) {
+      // 표 부분만 다시 씀 (코드는 그대로)
+      const t = []; for (const r of rows) t.push(r.atk, r.def, r.mult);
+      while (t.length < ex.cap * 3 + 1) t.push(0xFF);
+      d.set(t, ex.tab); this.dirty = true; return null;
+    }
+    if (!rows.length && !ex.installed) return null;
+    // 새로 넣기: 배틀 뱅크 끝 빈 자리 (필요한 줄 + 여유 4줄, 자리가 모자라면 들어가는 만큼)
+    const tail = this.battleTailStart(s.bank), avail = tail ? tail.room - 1 : 0;
+    const maxCap = Math.floor((avail - TYPE_EXT_CODE - 1) / 3);
+    if (maxCap < rows.length) return '배틀 코드가 있는 곳에 빈 자리가 모자라요 (상성 ' + rows.length + '줄 필요, 넣을 수 있는 건 ' + Math.max(0, maxCap) + '줄)' + (this.splitOn && this.splitOn() ? '. 물리/특수 분화가 같은 자리를 쓰고 있어요' : '');
+    const cap = Math.min(maxCap, rows.length + 4);
+    const p = this.allocBattleTail(s.bank, 1 + TYPE_EXT_CODE + cap * 3 + 1);
+    if (p < 0) return '배틀 코드가 있는 곳에 빈 자리가 모자라요';
+    d[p] = cap;   // 예전 묶음이 있었으면 그대로 두고 새 자리로 (두 곳이 새 묶음을 부르게 바뀜)
+    const base = 0x4000 + (p + 1) % 0x4000, b = this.typeExtBlock(base, s, rows, cap);
+    d.set(b.bytes, p + 1);
+    for (const x of s.sites) { const st = b.stubs[x.kind]; d.set([0xC3, st & 0xFF, st >> 8], x.end); }
+    this.dirty = true;
+    return null;
+  },
+  // 추가 표가 지금 넣을 수 있는 최대 줄 수 (아직 안 넣었으면 빈 자리로 계산)
+  typeExtRoom() {
+    const s = this.typeExtSites();
+    if (!s) return 0;
+    const ex = this.typeExt();
+    if (ex.installed) return ex.cap;
+    const tail = this.battleTailStart(s.bank), avail = tail ? tail.room - 1 : 0;
+    return Math.max(0, Math.floor((avail - TYPE_EXT_CODE - 1) / 3));
+  }
+});
+
 // ===== 90-ui.js
 // ================================================================ 화면 (데스크톱 툴과 같은 배치: 위 버튼줄 · 왼쪽 목록 · 오른쪽 위 지도 · 아래 탭)
 const CSS = `
@@ -7014,6 +7307,11 @@ const CSS = `
 .gsc .list .grp2{font-weight:bold;font-size:12px;color:var(--sub);padding:6px 4px 2px}
 .gsc .grp{margin:10px 0 4px;font-weight:bold}
 .gsc .prize-pre{font-family:monospace;background:#1f2a3a;color:#fff;padding:6px 10px;border-radius:6px;margin:4px 0;white-space:pre;font-size:14px}
+.gsc .typebar{padding:6px 8px;margin-bottom:8px;border:1px solid var(--line);border-radius:6px;background:#f8f9ff}
+.gsc .newtype{color:#c2255c}
+.gsc .tmgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:2px 10px;margin-top:6px}
+.gsc .tmgrid .bar b{min-width:72px;font-size:12px}
+.gsc .tmgrid .hm{background:#fff9db;border-radius:4px}
 .gsc .randbar{margin-top:8px;padding:6px 8px;border:1px dashed var(--line);border-radius:6px;background:#fafbfd}
 .gsc .chips{display:inline-flex;flex-wrap:wrap;gap:3px}
 .gsc .chip{padding:1px 8px;font-size:12px;border-radius:10px;background:#f1f3f5;color:#666}
@@ -7687,7 +7985,7 @@ Object.assign(App.prototype, {
   monOptions(withNone) { const r = this.rom, o = []; if (withNone) o.push([0, '(없음)']); for (let i = 1; i < r.pokemonNames.length; i++) o.push([i, pad3(i) + ' ' + RAW + r.pokemonNames[i]]); return o; },
   itemOptions() { const r = this.rom, o = [[0, '(없음)']]; for (let i = 1; i < r.itemNames.length; i++) o.push([i, RAW + r.itemNames[i]]); return o; },
   moveOptions() { const r = this.rom, o = [[0, '(없음)']]; for (let i = 1; i < r.moveNames.length; i++) o.push([i, pad3(i) + ' ' + RAW + r.moveNames[i]]); return o; },
-  typeOptions() { return TYPES.map(([v, n]) => [v, n]); },
+  typeOptions() { return typeList(this.rom).map(([v, n]) => [v, n]); },
   notFound(what) { return el('div', { class: 'box' }, el('div', { text: '이 롬에서 ' + what + ' 데이터를 찾지 못했어요.' })); },
   okMsg(box, msg, bad) { box.textContent = msg; box.className = bad ? 'bad' : 'ok'; },
   areaByGM(g, m) { return this.rom.allAreas.find(a => a.group === g && a.map === m); },
@@ -7891,7 +8189,7 @@ Object.assign(App.prototype, {
           this.okMsg(msg, '적용했어요');
         } catch (e) { this.okMsg(msg, e.message, true); }
       } });
-      right.append(el('table', { class: 'grid' },
+      right.append(this.tmBar(mv, () => show(mv)) || '', el('table', { class: 'grid' },
         el('tr', null, el('th', { text: '이름' }), el('td', null, nameIn)),
         el('tr', null, el('th', { text: '설명' }), el('td', null, md ? descIn : el('span', { class: 'hint', text: '이 롬에서는 기술 설명을 찾지 못했어요' }), descErr,
           md ? el('div', { class: 'hint', text: '기술 화면에 나오는 두 줄 설명 · 한 줄 ' + md.maxLine + '글자까지' }) : null)),
@@ -7919,16 +8217,16 @@ Object.assign(App.prototype, {
     for (const e of normal) grid.set(e.atk * 256 + e.def, e.mult);
     const label = m => m === 0 ? '0' : m === 5 ? '½' : m === 20 ? '2' : m === 10 ? '' : (m / 10) + '';
     const cycle = { 10: 20, 20: 5, 5: 0, 0: 10 };
-    const msg = el('div');
+    const msg = el('div'), TL = typeList(rom);
     const tbl = el('table', { class: 'grid types' });
     const head = el('tr', null, el('th', { text: '공격 ↓ / 방어 →' }));
-    for (const [, n] of TYPES) head.append(el('th', { class: 'v', text: n }));
+    for (const [v, n] of TL) head.append(el('th', { class: 'v' + (v >= 10 && v <= 19 ? ' newtype' : ''), text: n }));
     tbl.append(head);
-    for (const [atk, an] of TYPES) {
-      const tr = el('tr', null, el('th', { text: an }));
-      for (const [def] of TYPES) {
+    for (const [atk, an] of TL) {
+      const tr = el('tr', null, el('th', { class: atk >= 10 && atk <= 19 ? 'newtype' : '', text: an }));
+      for (const [def] of TL) {
         const k = atk * 256 + def, m = grid.has(k) ? grid.get(k) : 10;
-        const td = el('td', { class: 'c m' + m, text: label(m), title: an + ' → ' + TYPE_NAME.get(def) });
+        const td = el('td', { class: 'c m' + m, text: label(m), title: an + ' → ' + typeNameOf(rom, def) });
         td.addEventListener('mousedown', ev => {
           ev.preventDefault();
           const cur = grid.has(k) ? grid.get(k) : 10, nx = cycle[cur] !== undefined ? cycle[cur] : 10;
@@ -7947,10 +8245,14 @@ Object.assign(App.prototype, {
       const err = rom.saveTypeMatchups(list.concat(foresight));
       this.okMsg(msg, err || '적용했어요', !!err);
     } });
-    return el('div', { class: 'box' },
+    // 새 타입을 만들거나 지우면 이 표를 다시 그림
+    const refresh = () => { const nb = this.tab_types(); box.replaceWith(nb); };
+    const box = el('div', { class: 'box' },
+      this.typeAddBar(refresh),
       el('div', { class: 'hint', text: '칸을 누를 때마다 보통 → 2배(굉장함) → ½배(반감) → 0배(무효) 순서로 바뀌어요. 고스트·노말/격투 무효(꿰뚫어보기로 풀리는 것)는 따로 그대로 둬요.' }),
       el('div', { class: 'scrollx', style: 'margin:8px 0' }, tbl),
       el('div', { class: 'bar' }, apply, msg));
+    return box;
   }
 });
 
@@ -12110,7 +12412,7 @@ Object.assign(App.prototype, {
     // 고르기 목록
     const box = el('div', { style: 'max-height:340px;overflow:auto;border:1px solid var(--line);background:#fff;padding:4px' });
     const rows = [];
-    const TYPE = new Map(TYPES);
+    const TYPE = new Map(typeList(rom));
     const diffText = (a, b) => { const out = []; for (const k of Object.keys(a)) if (k !== 'name' && JSON.stringify(a[k]) !== JSON.stringify(b[k])) out.push(k); return out; };
     const LABEL = { types: '타입', stats: '능력치', catchRate: '잡히는 정도', baseExp: '경험치', items: '도구', gender: '성별', eggSteps: '알', growth: '성장', eggGroups: '알 그룹', tmhm: '기술머신', evos: '진화', learnset: '레벨업 기술',
       effect: '효과', power: '위력', type: '타입', accuracy: '명중', pp: 'PP', chance: '추가 효과', split: '분류' };
@@ -12229,7 +12531,7 @@ Object.assign(App.prototype, {
     box.types = new Set(initial);
     const draw = () => {
       box.replaceChildren();
-      for (const [v, n] of TYPES) {
+      for (const [v, n] of typeList(this.rom)) {
         if (/\?/.test(n)) continue;
         box.append(el('button', { class: 'chip' + (box.types.has(v) ? ' on' : ''), text: n, onclick: () => { if (box.types.has(v)) box.types.delete(v); else box.types.add(v); draw(); if (onChange) onChange(); } }));
       }
@@ -12972,6 +13274,44 @@ Object.assign(App.prototype, {
   }
 });
 
+// ===== 99-tm.js
+// ================================================================ 기술머신 · 비전머신이 가르치는 기술 바꾸기
+// 표 = 기술 번호 57개 (기술머신 01~50, 비전머신 01~07). 포켓몬마다의 "배울 수 있음" 체크는 번호(칸) 기준이라 그대로 따라감
+const tmLabel = i => i < 50 ? '기술머신' + String(i + 1).padStart(2, '0') : '비전머신' + String(i - 49).padStart(2, '0');
+Object.assign(App.prototype, {
+  // 기술 편집 창 위쪽: 이 기술을 가르치는 기술머신 + 바꾸기 창 버튼
+  tmBar(mv, refresh) {
+    const rom = this.rom;
+    if (!(rom.tmOff >= 0)) return null;
+    const list = [];
+    for (let i = 0; i < 57; i++) if (rom.data[rom.tmOff + i] === mv) list.push(tmLabel(i));
+    return el('div', { class: 'bar' }, el('span', { class: 'hint', text: list.length ? '이 기술을 가르치는 것: ' + list.join(', ') : '이 기술을 가르치는 기술머신·비전머신 없음' }),
+      el('button', { text: '📀 기술머신·비전머신 기술 바꾸기…', onclick: () => this.tmDialog(refresh) }));
+  },
+  tmDialog(refresh) {
+    const rom = this.rom, d = rom.data, msg = el('div');
+    const cur = Array.from(d.subarray(rom.tmOff, rom.tmOff + 57)), moveOpts = this.moveOptions().slice(1);
+    const grid = el('div', { class: 'tmgrid' });
+    cur.forEach((m, i) => {
+      const s = sel(moveOpts, m, v => { cur[i] = v; });
+      grid.append(el('div', { class: 'bar' + (i >= 50 ? ' hm' : '') }, el('b', { text: tmLabel(i) }), s));
+    });
+    let close;
+    const apply = () => {
+      const hmChanged = cur.slice(50).some((m, k) => m !== d[rom.tmOff + 50 + k]);
+      for (let i = 0; i < 57; i++) d[rom.tmOff + i] = cur[i];
+      rom.dirty = true;
+      close();
+      this.say('기술머신·비전머신 기술을 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.' + (hmChanged ? ' ⚠ 비전머신을 바꿨어요 — 필드 기술(풀베기·파도타기 등)을 배울 방법이 없어지면 게임 진행이 막힐 수 있어요.' : ''));
+      if (refresh) refresh();
+    };
+    close = this.dialog('📀 기술머신 · 비전머신이 가르치는 기술', () => el('div', null,
+      el('div', { class: 'hint', text: '기술머신마다 가르치는 기술을 골라요. 어떤 포켓몬이 배울 수 있는지는 기술머신 번호에 붙어 있어서 그대로예요 (포켓몬 편집의 체크 칸).\n⚠ 비전머신(노란 칸)은 바꾸지 않는 걸 추천해요. 풀베기·파도타기·괴력 같은 필드 기술은 게임이 그 기술 번호로 확인해서, 비전머신을 다른 기술로 바꾸면 그 길을 지나갈 수 없게 될 수 있어요.' }),
+      grid, msg,
+      el('div', { class: 'bar', style: 'justify-content:flex-end;margin-top:10px' }, el('button', { text: '취소', onclick: () => close() }), el('button', { class: 'apply', text: '적용', onclick: apply }))), null, false, true);
+  }
+});
+
 // ===== 99-townmap.js
 // ================================================================ 타운맵 편집 창 (지도 칠하기 · 장소 옮기기·이름 · 타일 그림 · 색)
 Object.assign(App.prototype, {
@@ -13326,6 +13666,90 @@ Object.assign(App.prototype, {
       el('div', { class: 'hint', text: '적용한 뒤 메인 화면에서 [저장하기]를 눌러야 롬 파일에 기록돼요' }));
     load(CAL_CLASS);
     this.dialog('트레이너 그림 편집', () => el('div', { class: 'side', style: 'grid-template-columns:240px minmax(0,1fr)' }, list, body));
+  }
+});
+
+// ===== 99-types.js
+// ================================================================ 새 타입 만들기 · 이름 바꾸기 · 지우기 ([타입 상성] 창 위쪽)
+Object.assign(App.prototype, {
+  typeAddBar(refresh) {
+    const rom = this.rom, t = rom.typeNamesTab();
+    if (!t) return el('div', { class: 'hint', text: '이 롬에서는 타입 이름표를 찾지 못해서 새 타입을 만들 수 없어요.' });
+    const custom = rom.customTypes(), free = rom.freeTypeSlots(), room = rom.typeMatchupRoom();
+    const rows = rom.readTypeMatchups().filter(e => !e.foresight).length;
+    const box = el('div', { class: 'typebar' },
+      el('div', { class: 'bar' }, el('b', { text: '🆕 새 타입' }),
+        el('button', { class: 'apply', text: '＋ 새 타입 만들기', onclick: () => this.newTypeDialog(refresh) }),
+        el('span', { class: 'hint', text: '빈 타입 칸 ' + free.length + '개 · 상성 줄 ' + rows + ' / ' + (room.main + room.ext) + (room.ext ? ' (원래 표 ' + room.main + ' + 추가 ' + room.ext + ')' : '') })));
+    for (const [id, name] of custom) {
+      const u = rom.typeUsers(id);
+      box.append(el('div', { class: 'bar' }, el('b', { class: 'newtype', text: RAW + name }), el('span', { class: 'hint', text: '(' + id + '번 · 포켓몬 ' + u.mons.length + '마리 · 기술 ' + u.moves.length + '개)' }),
+        el('button', { class: 'st-mini', text: '✏ 이름', onclick: () => this.typeRenameDialog(id, name, refresh) }),
+        id !== 0x13 ? el('button', { class: 'st-mini', text: '🗑 지우기', onclick: () => {
+          const e = rom.removeType(id);
+          if (e) { alert(e); return; }
+          this.say('타입을 지웠어요. [저장하기]를 눌러야 롬 파일에 기록돼요.'); if (refresh) refresh();
+        } }) : null));
+    }
+    return box;
+  },
+
+  newTypeDialog(refresh) {
+    const rom = this.rom, t = rom.typeNamesTab(), free = rom.freeTypeSlots();
+    if (!free.length) { alert('빈 타입 칸이 없어요 (10~18번을 다 썼어요).'); return; }
+    const nameIn = el('input', { class: 'txt', style: 'width:160px', placeholder: rom.cs.kind === 'en' ? 'FAIRY' : '페어리' });
+    const tl = typeList(rom).filter(x => !/\?/.test(x[1]));
+    const preset = sel([[0, '상성 없음 (모두 보통 — 나중에 표에서 칸을 눌러 정해요)'], [1, '페어리 (6세대 상성 12줄)']].concat(tl.map(([v, n]) => [100 + v, n + ' 타입과 같은 상성으로 시작'])), 1);
+    const msg = el('div'), room = rom.typeMatchupRoom();
+    const used = rom.readTypeMatchups().filter(e => !e.foresight).length;
+    const roomNote = el('div', { class: 'hint' });
+    const need = () => { const v = +preset.value; return v === 0 ? 0 : v === 1 ? 12 : rom.readTypeMatchups().filter(e => !e.foresight && (e.atk === v - 100 || e.def === v - 100)).length; };
+    const updRoom = () => {
+      const left = room.main + room.ext - used;
+      roomNote.textContent = '상성 줄 남은 자리: ' + left + '줄 · 이 상성에 필요한 줄: ' + need() + '줄' + (need() > left ? '  ⚠ 자리가 모자라요' + (rom.splitOn() ? ' (물리/특수 분화가 배틀 코드 빈 자리를 쓰고 있어서예요)' : '') : '');
+      roomNote.className = need() > left ? 'err' : 'hint';
+    };
+    preset.addEventListener('change', updRoom); updRoom();
+    let close;
+    const make = () => {
+      const name = nameIn.value.trim(), id = free[0];
+      const e1 = rom.setTypeName(id, name);
+      if (e1) { this.okMsg(msg, e1, true); return; }
+      const v = +preset.value, all = rom.readTypeMatchups();
+      let add = [];
+      if (v === 1) add = fairyRows(id);
+      else if (v >= 100) { const src = v - 100; add = all.filter(e => !e.foresight && (e.atk === src || e.def === src)).map(e => ({ atk: e.atk === src ? id : e.atk, def: e.def === src ? id : e.def, mult: e.mult, foresight: false })); }
+      if (add.length) {
+        const e2 = rom.saveTypeMatchups(all.concat(add));
+        if (e2) {
+          close(); if (refresh) refresh();
+          alert('✅ 타입 "' + name + '"을(를) 만들었어요.\n\n⚠ 하지만 상성은 넣지 못했어요: ' + e2 + '\n[타입 상성] 표에서 칸을 눌러 꼭 필요한 것만 넣어 보세요.');
+          return;
+        }
+      }
+      close(); if (refresh) refresh();
+      this.say('새 타입 "' + name + '"을(를) 만들었어요. [저장하기]를 눌러야 롬 파일에 기록돼요.');
+      alert('✅ 새 타입 "' + name + '"을(를) 만들었어요 (' + id + '번' + (add.length ? ', 상성 ' + add.length + '줄' : '') + ').\n\n이제 이렇게 쓰면 돼요:\n' +
+        '1. [포켓몬 편집]에서 포켓몬의 타입으로 고르기\n2. [기술 편집]에서 기술의 타입으로 고르기\n3. [타입 상성] 표에서 상성 고치기\n\n' +
+        (rom.splitOn() ? '' : '※ 새 타입 번호는 타입 규칙상 "물리" 기술이 돼요. 특수로 하려면 [기술 편집]의 물리/특수 분화를 켜세요 (배틀 코드 빈 자리를 같이 써서, 상성 줄을 많이 넣었으면 자리가 모자랄 수 있어요).\n') +
+        '※ 저장한 뒤 [게임으로 확인]으로 배틀에서 꼭 확인해 보세요.');
+    };
+    close = this.dialog('🆕 새 타입 만들기', () => el('div', null,
+      el('div', { class: 'hint', text: '게임 안의 빈 타입 칸(' + free[0] + '번)에 이름을 붙여 새 타입을 만들어요. 상태 화면·도감에 이 이름이 나와요.' }),
+      el('table', { class: 'grid', style: 'margin-top:6px' },
+        el('tr', null, el('th', { text: '이름' }), el('td', null, nameIn, el('span', { class: 'hint', text: ' ' + t.maxLen + '글자까지' }))),
+        el('tr', null, el('th', { text: '상성' }), el('td', null, preset, roomNote))),
+      msg,
+      el('div', { class: 'bar', style: 'justify-content:flex-end;margin-top:10px' }, el('button', { text: '취소', onclick: () => close() }), el('button', { class: 'apply', text: '🆕 만들기', onclick: make }))), null, true);
+    setTimeout(() => nameIn.focus(), 0);
+  },
+
+  typeRenameDialog(id, old, refresh) {
+    const rom = this.rom, inp = el('input', { class: 'txt', value: old, style: 'width:160px' }), msg = el('div');
+    let close;
+    const ok = () => { const e = rom.setTypeName(id, inp.value.trim()); if (e) { this.okMsg(msg, e, true); return; } close(); this.say('타입 이름을 바꿨어요. [저장하기]를 눌러야 롬 파일에 기록돼요.'); if (refresh) refresh(); };
+    close = this.dialog('✏ 타입 이름 바꾸기', () => el('div', null, el('div', { class: 'bar' }, el('span', { text: '이름' }), inp), msg,
+      el('div', { class: 'bar', style: 'justify-content:flex-end;margin-top:10px' }, el('button', { text: '취소', onclick: () => close() }), el('button', { class: 'apply', text: '바꾸기', onclick: ok }))), null, true);
   }
 });
 
